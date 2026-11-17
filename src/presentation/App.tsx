@@ -4,6 +4,7 @@ import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
 import { createDefaultLowFrequencyOscillatorSettings } from '../domain/modulation';
 import type { DroneSettings, OscillatorSettings } from '../domain/drone';
 import { createDefaultDroneSettings } from '../domain/drone';
+import { applyInitialSynthesizerSettings } from '../application/apply-initial-synthesizer-settings';
 import { createSynthesizer } from '../composition/create-synthesizer';
 import './styles.css';
 export function App() {
@@ -16,7 +17,7 @@ export function App() {
   async function togglePlayback() {
     try {
       setError('');
-      if (!controller.current) { controller.current = createSynthesizer(); for (const oscillator of settings.oscillators) controller.current.updateOscillator(oscillator); controller.current.setGain(settings.gain); controller.current.updateLowFrequencyOscillator(lowFrequencyOscillatorSettings); }
+      if (!controller.current) { controller.current = createSynthesizer(); applyInitialSynthesizerSettings(controller.current, settings, lowFrequencyOscillatorSettings); }
       if (controller.current.isPlaying) { controller.current.stop(); setPlaying(false); }
       else { await controller.current.start(); setPlaying(true); }
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Audio could not start.'); }
