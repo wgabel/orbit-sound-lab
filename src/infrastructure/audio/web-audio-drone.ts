@@ -49,6 +49,11 @@ export class WebAudioDrone implements DroneVoice {
     oscillator.source.detune.setTargetAtTime(settings.detuneCents, this.context.currentTime, 0.015);
     oscillator.gain.gain.setTargetAtTime(settings.enabled ? 1 / this.oscillators.size : 0, this.context.currentTime, 0.015);
   }
+  getDetuneParameter(oscillatorId: string): AudioParam {
+    const oscillator = this.oscillators.get(oscillatorId);
+    if (!oscillator) throw new Error('Unknown oscillator.');
+    return oscillator.source.detune;
+  }
   dispose(): void {
     if (this.disposed) return;
     this.stop();
