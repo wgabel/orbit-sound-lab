@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
+import type { RefObject } from 'react';
 /** Diagnostic only: keeps the browser rendering pipeline active without React re-renders. */
-export function useRenderingActivityDiagnostic(enabled: boolean): React.RefObject<HTMLDivElement | null> {
+export function useRenderingActivityDiagnostic(enabled: boolean): RefObject<HTMLDivElement | null> {
   const indicator = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!enabled) { if (indicator.current) indicator.current.style.transform = ''; return; }
