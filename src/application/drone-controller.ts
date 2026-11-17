@@ -37,14 +37,16 @@ export class DroneController implements SynthesizerController {
   }
   private attachModulation(voice: DroneVoice): void {
     const modulationSource = this.modulationFactory.create(this.lowFrequencyOscillatorSettings);
+    let connectedDestination: ModulationDestination | null = null;
     try {
       const modulationDestination = {id: this.lowFrequencyOscillatorSettings.targetOscillatorId, parameter: voice.getDetuneParameter(this.lowFrequencyOscillatorSettings.targetOscillatorId)};
       this.modulationMatrix.connect(modulationSource, modulationDestination);
+      connectedDestination = modulationDestination;
       modulationSource.start();
       this.modulationSource = modulationSource;
       this.modulationDestination = modulationDestination;
     } catch (error) {
-      if (this.modulationDestination) this.modulationMatrix.disconnect(modulationSource, this.modulationDestination);
+      if (connectedDestination) this.modulationMatrix.disconnect(modulationSource, connectedDestination);
       modulationSource.dispose();
       throw error;
     }
