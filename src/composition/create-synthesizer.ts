@@ -8,7 +8,9 @@ import { WebAudioDroneFactory } from '../infrastructure/audio/web-audio-drone-fa
 import { WebAudioGraph } from '../infrastructure/audio/web-audio-graph';
 /** Composition root: the only place wiring concrete Web Audio implementations. */
 export function createSynthesizer(): SynthesizerController {
-  const context = new AudioContext();
+  // Prioritize stable playback buffering over interactive latency on mobile devices.
+  // The browser may ignore this hint; never force a sample rate.
+  const context = new AudioContext({latencyHint: 'playback'});
   const factory = new WebAudioDroneFactory(context);
   const graph = new WebAudioGraph();
   graph.register({id: 'master', inputs: [{id: 'audio', node: context.destination}], outputs: []});
