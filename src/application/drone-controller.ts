@@ -23,32 +23,52 @@ export class DroneController implements SynthesizerController {
     try {
       this.graph.register({id: 'drone', inputs: [], outputs: [{id: 'audio', node: voice.output}]});
       this.graph.connect({sourceModuleId: 'drone', sourcePortId: 'audio', destinationModuleId: 'master', destinationPortId: 'audio'});
-      const modulationSource = this.modulationFactory.create(this.lowFrequencyOscillatorSettings);
-      const modulationDestination = {id: this.lowFrequencyOscillatorSettings.targetOscillatorId, parameter: voice.getDetuneParameter(this.lowFrequencyOscillatorSettings.targetOscillatorId)};
-      this.modulationMatrix.connect(modulationSource, modulationDestination);
-      try { modulationSource.start(); voice.start(); } catch (error) {
-        this.modulationMatrix.disconnect(modulationSource, modulationDestination);
-        modulationSource.dispose();
-        throw error;
-      }
-      this.modulationSource = modulationSource;
-      this.modulationDestination = modulationDestination;
+      // A disabled LFO must not allocate or start an audio-rate oscillator.
+      if (this.lowFrequencyOscillatorSettings.enabled) this.attachModulation(voice);
+      voice.start();
       this.voice = voice;
       this.playing = true;
     } catch (error) {
+      this.detachModulation();
       this.graph.unregister('drone');
       voice.dispose();
       throw error;
     }
   }
-  stop(): void {
+  private attachModulation(voice: DroneVoice): void {
+    const modulationSource = this.modulationFactory.create(this.lowFrequencyOscillatorSettings);
+    let connectedDestination: ModulationDestination | null = null;
+    try {
+      const modulationDestination = {id: this.lowFrequencyOscillatorSettings.targetOscillatorId, parameter: voice.getDetuneParameter(this.lowFrequencyOscillatorSettings.targetOscillatorId)};
+      this.modulationMatrix.connect(modulationSource, modulationDestination);
+      connectedDestination = modulationDestination;
+      modulationSource.start();
+      this.modulationSource = modulationSource;
+      this.modulationDestination = modulationDestination;
+    } catch (error) {
+      if (connectedDestination) this.modulationMatrix.disconnect(modulationSource, connectedDestination);
+      modulationSource.dispose();
+      throw error;
+    }
+  }
+  private detachModulation(): void {
     if (this.modulationSource && this.modulationDestination) this.modulationMatrix.disconnect(this.modulationSource, this.modulationDestination);
-    this.modulationSource?.dispose(); this.modulationSource = null; this.modulationDestination = null;
+    this.modulationSource?.dispose();
+    this.modulationSource = null;
+    this.modulationDestination = null;
+  }
+  stop(): void {
+    this.detachModulation();
     this.graph.unregister('drone'); this.voice?.dispose(); this.voice = null; this.playing = false; }
   updateLowFrequencyOscillator(settings: LowFrequencyOscillatorSettings): void {
     validateLowFrequencyOscillatorSettings(settings);
     if (!this.settings.oscillators.some(oscillator => oscillator.id === settings.targetOscillatorId)) throw new Error('Unknown LFO target oscillator.');
-    if (this.modulationSource && this.voice && this.modulationDestination) {
+    if (this.voice && !settings.enabled) {
+      this.detachModulation();
+    } else if (this.voice && settings.enabled && !this.modulationSource) {
+      this.lowFrequencyOscillatorSettings = settings;
+      this.attachModulation(this.voice);
+    } else if (this.modulationSource && this.voice && this.modulationDestination) {
       if (this.modulationDestination.id !== settings.targetOscillatorId) {
         const destination = {id: settings.targetOscillatorId, parameter: this.voice.getDetuneParameter(settings.targetOscillatorId)};
         this.modulationMatrix.connect(this.modulationSource, destination);
