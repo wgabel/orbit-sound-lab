@@ -85,3 +85,57 @@ Treat this as a software-inspired design, not a claim of exact SOLAR 42 internal
 - Verify production build and relevant tests before declaring a change complete. Report checks honestly.
 - Keep a clear README with setup, controls and known limitations.
 - Keep source links in this document up to date when revising hardware claims.
+
+## Mandatory engineering standards
+
+### Design principles
+- Follow **KISS**: choose the simplest solution that fully meets the requirement. Avoid clever abstractions and unnecessary frameworks.
+- Follow **DRY**: consolidate genuine duplication of behavior or knowledge, but do not force unrelated concepts into a shared abstraction merely because they look similar.
+- Follow **SOLID** pragmatically: single responsibility, focused interfaces, dependency inversion at meaningful boundaries, and substitutable implementations.
+- Follow **YAGNI**: do not build hypothetical extensibility or unused features. Introduce abstraction when a concrete boundary, test need, or second implementation justifies it.
+- Favor **composition over inheritance**, explicit data flow, cohesive modules, low coupling, and high cohesion.
+- Avoid god objects, large components, circular dependencies, hidden global mutable state, and cross-layer imports.
+- Optimize for readability and maintainability over code golf. Use complete descriptive names for classes, methods, variables, events and parameters; avoid shortened identifiers.
+- Keep functions focused and side effects explicit. Prefer immutable domain data and pure functions where practical.
+
+### Architecture and dependency injection
+- Use a **composition root** to construct and wire application services, audio engine, repositories and adapters.
+- Use **constructor injection or explicit factory injection** for dependencies; TypeScript does not require a DI framework. Prefer manual DI initially, adding a container only if complexity demonstrably warrants one.
+- Depend on interfaces/ports at boundaries, especially audio engine, clock/scheduler, preset storage and platform/browser adapters. Do not create one-interface-per-class by default.
+- Separate **domain** (tuning, modulation rules, preset types), **application** (use cases and orchestration), **infrastructure** (Web Audio, browser storage, worklets) and **presentation** (React components and hooks).
+- React components must not instantiate AudioContext, own DSP graphs, directly access persistence, or contain domain/business rules.
+- Put UI state in React only when it is truly presentation state. The audio engine owns its real-time lifecycle; application services coordinate commands and observable state.
+- Use explicit lifecycle contracts for start, stop, suspend, resume and dispose. Avoid resource leaks and stale closures.
+- Keep the real-time audio path free from blocking operations, unnecessary allocations, React state updates and network dependencies.
+
+### Suggested project layout (adapt only with justification)
+- `src/domain/` — types, entities, value objects, pure rules
+- `src/application/` — use cases, service contracts and orchestration
+- `src/infrastructure/audio/` — Web Audio adapters, graph construction and worklets
+- `src/infrastructure/storage/` — versioned preset persistence
+- `src/presentation/components/` — focused reusable UI
+- `src/presentation/hooks/` — React bindings to application services
+- `src/composition/` — dependency assembly and application bootstrap
+- `src/shared/` — genuinely shared utilities only
+- `tests/` — domain/application tests and audio lifecycle tests
+
+### Quality gates and testing
+- Use TypeScript strict mode; avoid `any`, non-null assertions and unchecked type casts unless justified.
+- Define and validate input boundaries (especially imported presets and browser storage); handle errors explicitly and show actionable UI feedback.
+- Use ESLint and formatting consistently; do not suppress warnings without explanation.
+- Unit-test pure domain logic and use cases with injected fakes; test audio graph lifecycle and modulation routing with deterministic test doubles.
+- Verify audible features in a real browser where possible; passing unit tests alone does not prove sound output works.
+- Test repeated mount/unmount, start/stop, preset load, missing Audio API support, and audio-context suspension.
+- Avoid flaky timing-based tests; inject clocks/schedulers and use deterministic fixtures.
+- Preserve backwards compatibility for saved presets using schema versions and explicit migrations.
+- For every meaningful change, run typecheck, lint, tests and production build when available; report exactly which commands passed, failed or could not run.
+- Never commit secrets, generated build artifacts or large binary audio assets without explicit justification.
+
+### Change discipline
+- Before coding, inspect relevant modules and trace their responsibilities and dependencies.
+- Prefer extending existing services/components over duplicating logic.
+- Keep changes narrowly scoped, readable and reviewable; avoid unrelated refactors.
+- When a file grows multiple responsibilities, split by behavior and ownership rather than arbitrary line count.
+- Update tests and documentation alongside behavior changes.
+- Document architectural decisions that are non-obvious, especially audio routing, scheduling, dependency ownership and state synchronization.
+- Do not claim an implementation is finished until it is committed and verification status is communicated.
