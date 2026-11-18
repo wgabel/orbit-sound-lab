@@ -19,7 +19,6 @@ interface NumericSliderProps {
   readonly action?: ReactNode;
   readonly modulationRange?: readonly [number, number];
   readonly readLiveValue?: () => number | null;
-  readonly showLiveValue?: boolean;
 }
 
 const numberDisplay = new Intl.NumberFormat('en', {
@@ -29,7 +28,7 @@ const numberDisplay = new Intl.NumberFormat('en', {
 
 export function NumericSlider({
   label, value, min, max, step, scale = 'linear', onChange, unit, displayFactor = 1,
-  disabled = false, className, id, action, modulationRange, readLiveValue, showLiveValue = false
+  disabled = false, className, id, action, modulationRange, readLiveValue
 }: NumericSliderProps) {
   const generatedId = useId();
   const sliderId = id ?? generatedId;
@@ -41,7 +40,6 @@ export function NumericSlider({
   const editButton = useRef<HTMLButtonElement>(null);
   const sliderRef = useRef<HTMLInputElement>(null);
   const [liveValue, setLiveValue] = useState<number | null>(null);
-  const [adjusting, setAdjusting] = useState(false);
   const returnFocus = useRef(false);
   const editing = draft !== null && !disabled;
   const displayedValue = numberDisplay.format(value * displayFactor);
@@ -122,30 +120,14 @@ export function NumericSlider({
     '--modulation-end': trackPosition(modulationRange[1])
   } as CSSProperties | undefined;
 
-  const preview = readLiveValue && !adjusting ? liveValue : null;
-  const boundedPreview = preview === null ? null : Math.max(min, Math.min(max, preview));
-  const shownValue = boundedPreview === null ? value : nonlinear ? boundedPreview :
-    min + Math.round((boundedPreview - min) / step) * step;
-  const shownValueText = shownValue === value ? displayedValue : numberDisplay.format(shownValue * displayFactor);
+  const livePreview = readLiveValue ? liveValue : null;
   const slider = <input type="range" id={sliderId} ref={sliderRef} min={nonlinear ? 0 : min} max={nonlinear ? 1 : max} step={nonlinear ? 'any' : step}
     className={modulationRange ? 'numeric-slider-modulated' : undefined} style={rangeStyle}
-    value={nonlinear ? getSliderPosition(shownValue, min, max, scale) : shownValue} disabled={disabled}
+    value={nonlinear ? getSliderPosition(value, min, max, scale) : value} disabled={disabled}
     aria-valuemin={nonlinear ? displayMinimum : undefined} aria-valuemax={nonlinear ? displayMaximum : undefined}
-    aria-valuenow={nonlinear ? Math.max(displayMinimum, Math.min(displayMaximum, shownValue * displayFactor)) : undefined}
-    aria-valuetext={`${shownValueText}${unitSuffix}`}
+    aria-valuenow={nonlinear ? Math.max(displayMinimum, Math.min(displayMaximum, value * displayFactor)) : undefined}
+    aria-valuetext={`${displayedValue}${unitSuffix}`}
     aria-describedby={modulationRange ? rangeId : undefined}
-    onPointerDown={event => {
-      if (!readLiveValue) return;
-      event.currentTarget.setPointerCapture(event.pointerId);
-      setAdjusting(true);
-    }}
-    onLostPointerCapture={() => setAdjusting(false)}
-    onKeyDown={event => {
-      if (readLiveValue && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(event.key)) {
-        setAdjusting(true);
-      }
-    }}
-    onKeyUp={() => setAdjusting(false)} onBlur={() => setAdjusting(false)}
     onChange={event => changeSlider(event.target.valueAsNumber)}/>;
 
   return <div className={className ? `numeric-slider ${className}` : 'numeric-slider'}>
@@ -177,19 +159,28 @@ export function NumericSlider({
           aria-label={`Edit ${label}, ${displayedValue}${unitSuffix}`}
           disabled={disabled}
           onClick={() => setDraft(displayedValue)}
-        >{displayedValue}{unitSuffix}</button>}
+        >{modulationRange && <span className="numeric-slider-base-label" aria-hidden="true">Base </span>}
+          {displayedValue}{unitSuffix}</button>}
         {action}
       </div>
     </div>
     {invalid && editing && <span className="numeric-slider-error" role="alert" id={errorId}>
       Enter {numberDisplay.format(displayMinimum)} to {numberDisplay.format(displayMaximum)}{unitSuffix}.
     </span>}
-    {slider}
-    {showLiveValue && preview !== null && <span className="numeric-slider-live-value">
-      LIVE {numberDisplay.format(preview * displayFactor)}{unitSuffix}
-    </span>}
-    {modulationRange && <span className="numeric-slider-modulation-range" id={rangeId}>
-      {modulationRange.map(limit => numberDisplay.format(Number((limit * displayFactor).toFixed(2))) + unitSuffix).join(' – ')}
-    </span>}
+    {modulationRange ? <div className="numeric-slider-track">
+      {slider}
+      {livePreview !== null && <span className="numeric-slider-live-track" aria-hidden="true">
+        <span className="numeric-slider-live-marker" style={{left: trackPosition(livePreview)}}/>
+      </span>}
+    </div> : slider}
+    {modulationRange && <div className="numeric-slider-modulation-feedback">
+      <span className="numeric-slider-modulation-range" id={rangeId}>
+        Range {modulationRange.map(limit =>
+          numberDisplay.format(Number((limit * displayFactor).toFixed(2))) + unitSuffix).join(' – ')}
+      </span>
+      {livePreview !== null && <span className="numeric-slider-live-value">
+        Live {numberDisplay.format(livePreview * displayFactor)}{unitSuffix}
+      </span>}
+    </div>}
   </div>;
 }

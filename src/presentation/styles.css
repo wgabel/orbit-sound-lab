@@ -231,19 +231,27 @@ body{margin:0;background:#0c1016;color:#e8e9df;font-family:system-ui,sans-serif}
 .numeric-slider input.numeric-slider-modulated{
   --modulation-track:linear-gradient(to right,#465463 var(--modulation-start),#77dcff var(--modulation-start),
     #77dcff var(--modulation-end),#465463 var(--modulation-end));
-  appearance:none;background:transparent;height:20px;margin-bottom:0
+  appearance:none;background:transparent;height:20px;margin:0
 }
 .numeric-slider-modulated::-webkit-slider-runnable-track{background:var(--modulation-track);height:6px;border-radius:4px}
 .numeric-slider-modulated::-moz-range-track{background:var(--modulation-track);height:6px;border-radius:4px}
 .numeric-slider-modulated::-webkit-slider-thumb{
-  appearance:none;width:14px;height:14px;margin-top:-4px;border:1px solid #172029;border-radius:50%;background:#a6efab
+  appearance:none;position:relative;z-index:1;width:14px;height:14px;margin-top:-4px;border:1px solid #172029;border-radius:50%;background:#a6efab
 }
-.numeric-slider-modulated::-moz-range-thumb{width:14px;height:14px;border:1px solid #172029;border-radius:50%;background:#a6efab}
+.numeric-slider-modulated::-moz-range-thumb{position:relative;z-index:1;width:14px;height:14px;border:1px solid #172029;border-radius:50%;background:#a6efab}
 .numeric-slider-modulated:disabled{opacity:.55}
-.numeric-slider-modulation-range{display:block;color:#a5eaff;font-size:11px;margin-bottom:8px}
-
-.numeric-slider-live-value,.pitch-lfo-detail{display:block;color:#a5eaff;font-size:11px;margin:0 0 7px}
-.numeric-slider-live-value{font-variant-numeric:tabular-nums}
+.numeric-slider-track{position:relative}
+.numeric-slider-live-track{position:absolute;inset:0 7px;pointer-events:none}
+.numeric-slider-live-marker{
+  position:absolute;top:20%;width:7px;height:7px;border:1px solid #0b171c;border-radius:50%;
+  background:#a5eaff;box-shadow:0 0 0 1px #172029;transform:translate(-50%,-50%)
+}
+.numeric-slider-modulation-feedback{
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 8px;
+  margin:0 0 6px;padding:0;color:#a5eaff;font-size:11px;font-variant-numeric:tabular-nums
+}
+.numeric-slider-base-label{color:#bacad4}
+.pitch-lfo-detail{display:block;color:#a5eaff;font-size:11px;margin:0 0 7px}
 
 .pitch-lfo-cycle{display:flex;align-items:center;gap:5px;color:inherit;font-size:inherit;letter-spacing:normal}
 .pitch-lfo-cycle input{width:8ch;font-variant-numeric:tabular-nums}

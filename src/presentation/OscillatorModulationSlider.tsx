@@ -73,15 +73,15 @@ export function OscillatorModulationSlider({
       step={parameter === 'cutoff' ? 0.1 : parameter === 'volume' ? 0.0001 : step}
       value={baseRange.base} disabled={disabled} onChange={onChange}
       modulationRange={showPreview ? bounds : undefined}
-      readLiveValue={playing && showPreview ? readLiveValue : undefined} showLiveValue={parameter !== 'volume' || amplitudeDepth !== undefined}
+      readLiveValue={playing && showPreview ? readLiveValue : undefined}
       action={<button type="button" className="oscillator-modulation-button" data-active={route.enabled}
-        aria-label={`${label} modulation`} title={`${label} modulation`} aria-haspopup="dialog" aria-controls={dialogId}
+        aria-label={`${label} modulation`} title={`Modulate ${label.toLowerCase()} from another oscillator`} aria-haspopup="dialog" aria-controls={dialogId}
         onClick={() => dialog.current?.showModal()}><span aria-hidden="true">∿</span></button>}/>
     <dialog id={dialogId} ref={dialog} className="oscillator-modulation-dialog" aria-labelledby={`${dialogId}-title`}
       onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close(); }}>
       <div className="oscillator-modulation-panel">
         <div className="oscillator-modulation-heading">
-          <h3 id={`${dialogId}-title`}>{label} MODULATION</h3>
+          <h3 id={`${dialogId}-title`}>{label} OSCILLATOR ROUTE</h3>
           <button type="button" aria-label="Close modulation settings" onClick={() => dialog.current?.close()}>×</button>
         </div>
         <label className="switch"><input type="checkbox" checked={route.enabled}
