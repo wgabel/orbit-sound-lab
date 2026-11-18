@@ -29,7 +29,7 @@ export function DroneMixControls({layerId, settings, onChange}: DroneMixControls
             onChange={event => onChange({...settings, filter: {...filter, enabled: event.target.checked}})}/>
           LAYER LOW-PASS
         </label>
-        <NumericSlider label="LAYER CUTOFF" unit="Hz" min={20} max={20000} step={1} disabled={!filter.enabled}
+        <NumericSlider label="LAYER CUTOFF" unit="Hz" min={20} max={20000} step={0.1} scale="logarithmic" disabled={!filter.enabled}
           value={filter.cutoffHz} onChange={cutoffHz => onChange({...settings, filter: {...filter, cutoffHz}})}/>
       </div>
       <div>

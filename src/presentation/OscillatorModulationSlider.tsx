@@ -62,7 +62,9 @@ export function OscillatorModulationSlider({
     [range.lower, range.upper];
 
   return <>
-    <NumericSlider label={label} unit={unit} displayFactor={factor} min={minimum} max={maximum} step={step}
+    <NumericSlider label={label} unit={unit} displayFactor={factor} min={minimum} max={maximum}
+      scale={parameter === 'cutoff' ? 'logarithmic' : parameter === 'volume' ? 'quadratic' : 'linear'}
+      step={parameter === 'cutoff' ? 0.1 : parameter === 'volume' ? 0.0001 : step}
       value={baseRange.base} disabled={disabled} onChange={onChange}
       modulationRange={showPreview ? bounds : undefined}
       readLiveValue={playing && showPreview ? readLiveValue : undefined} showLiveValue={parameter === 'frequency' || amplitudeDepth !== undefined}

@@ -1,5 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
+import { getSliderPosition, getSliderValue } from './slider-scale';
+import type { SliderScale } from './slider-scale';
 
 interface NumericSliderProps {
   readonly label: string;
@@ -7,6 +9,7 @@ interface NumericSliderProps {
   readonly min: number;
   readonly max: number;
   readonly step: number;
+  readonly scale?: SliderScale;
   readonly onChange: (value: number) => void;
   readonly unit?: string;
   readonly displayFactor?: number;
@@ -25,7 +28,7 @@ const numberDisplay = new Intl.NumberFormat('en', {
 });
 
 export function NumericSlider({
-  label, value, min, max, step, onChange, unit, displayFactor = 1,
+  label, value, min, max, step, scale = 'linear', onChange, unit, displayFactor = 1,
   disabled = false, className, id, action, modulationRange, readLiveValue, showLiveValue = false
 }: NumericSliderProps) {
   const generatedId = useId();
@@ -100,8 +103,19 @@ export function NumericSlider({
     setInvalid(false);
   }
 
+  const nonlinear = scale !== 'linear';
   function trackPosition(position: number): string {
-    return `${Math.max(0, Math.min(100, (position - min) / (max - min) * 100))}%`;
+    return `${getSliderPosition(position, min, max, scale) * 100}%`;
+  }
+
+  function changeSlider(input: number) {
+    if (!nonlinear) {
+      onChange(input);
+      return;
+    }
+    const mappedValue = getSliderValue(input, min, max, scale);
+    const roundedValue = Number((min + Math.round((mappedValue - min) / step) * step).toPrecision(15));
+    onChange(Math.max(min, Math.min(max, roundedValue)));
   }
   const rangeStyle = modulationRange && {
     '--modulation-start': trackPosition(modulationRange[0]),
@@ -110,11 +124,15 @@ export function NumericSlider({
 
   const preview = readLiveValue && !adjusting ? liveValue : null;
   const boundedPreview = preview === null ? null : Math.max(min, Math.min(max, preview));
-  const shownValue = boundedPreview === null ? value : min + Math.round((boundedPreview - min) / step) * step;
+  const shownValue = boundedPreview === null ? value : nonlinear ? boundedPreview :
+    min + Math.round((boundedPreview - min) / step) * step;
   const shownValueText = shownValue === value ? displayedValue : numberDisplay.format(shownValue * displayFactor);
-  const slider = <input type="range" id={sliderId} ref={sliderRef} min={min} max={max} step={step}
+  const slider = <input type="range" id={sliderId} ref={sliderRef} min={nonlinear ? 0 : min} max={nonlinear ? 1 : max} step={nonlinear ? 'any' : step}
     className={modulationRange ? 'numeric-slider-modulated' : undefined} style={rangeStyle}
-    value={shownValue} disabled={disabled} aria-valuetext={`${shownValueText}${unitSuffix}`}
+    value={nonlinear ? getSliderPosition(shownValue, min, max, scale) : shownValue} disabled={disabled}
+    aria-valuemin={nonlinear ? displayMinimum : undefined} aria-valuemax={nonlinear ? displayMaximum : undefined}
+    aria-valuenow={nonlinear ? Math.max(displayMinimum, Math.min(displayMaximum, shownValue * displayFactor)) : undefined}
+    aria-valuetext={`${shownValueText}${unitSuffix}`}
     aria-describedby={modulationRange ? rangeId : undefined}
     onPointerDown={event => {
       if (!readLiveValue) return;
@@ -128,7 +146,7 @@ export function NumericSlider({
       }
     }}
     onKeyUp={() => setAdjusting(false)} onBlur={() => setAdjusting(false)}
-    onChange={event => onChange(event.target.valueAsNumber)}/>;
+    onChange={event => changeSlider(event.target.valueAsNumber)}/>;
 
   return <div className={className ? `numeric-slider ${className}` : 'numeric-slider'}>
     <div className="numeric-slider-header">
