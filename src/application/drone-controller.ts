@@ -6,9 +6,9 @@ import type { AudioGraph } from './audio-graph-contracts';
 import type { DroneSettings, OscillatorSettings } from '../domain/drone';
 import { validateDroneSettings } from '../domain/drone';
 
-interface ActiveModulation { readonly source: ModulationSource; readonly destination: ModulationDestination; }
+interface ActiveModulation { readonly source: ModulationSource; readonly destinations: readonly ModulationDestination[]; readonly target: LowFrequencyOscillatorSettings['destination']; }
 
-/** Coordinates one independent pitch LFO per drone oscillator. */
+/** Coordinates one independent routable LFO per drone oscillator. */
 export class DroneController implements SynthesizerController {
   private voice: DroneVoice | null = null;
   private playing = false;
@@ -66,15 +66,15 @@ export class DroneController implements SynthesizerController {
 
   private attachModulation(voice: DroneVoice, settings: LowFrequencyOscillatorSettings): void {
     const source = this.modulationFactory.create(settings);
-    const destination: ModulationDestination = {id: settings.targetOscillatorId, parameter: voice.getDetuneParameter(settings.targetOscillatorId)};
-    let connected = false;
+    const parameters = settings.destination === 'pitch' ? [voice.getDetuneParameter(settings.targetOscillatorId)] : voice.getFilterCutoffParameters(settings.targetOscillatorId);
+    const destinations: ModulationDestination[] = parameters.map((parameter, index) => ({id: `${settings.targetOscillatorId}-${settings.destination}-${index}`, parameter}));
+    const connected: ModulationDestination[] = [];
     try {
-      this.modulationMatrix.connect(source, destination);
-      connected = true;
+      for (const destination of destinations) { this.modulationMatrix.connect(source, destination); connected.push(destination); }
       source.start();
-      this.activeModulations.set(settings.targetOscillatorId, {source, destination});
+      this.activeModulations.set(settings.targetOscillatorId, {source, destinations, target: settings.destination});
     } catch (error) {
-      if (connected) this.modulationMatrix.disconnect(source, destination);
+      for (const destination of connected) this.modulationMatrix.disconnect(source, destination);
       source.dispose();
       throw error;
     }
@@ -83,7 +83,7 @@ export class DroneController implements SynthesizerController {
   private detachModulation(oscillatorId: string): void {
     const active = this.activeModulations.get(oscillatorId);
     if (!active) return;
-    this.modulationMatrix.disconnect(active.source, active.destination);
+    for (const destination of active.destinations) this.modulationMatrix.disconnect(active.source, destination);
     active.source.dispose();
     this.activeModulations.delete(oscillatorId);
   }
@@ -107,7 +107,8 @@ export class DroneController implements SynthesizerController {
     if (index < 0) throw new Error('Unknown LFO target oscillator.');
     const active = this.activeModulations.get(settings.targetOscillatorId);
     if (!settings.enabled) this.detachModulation(settings.targetOscillatorId);
-    else if (active) active.source.update(settings);
+    else if (active && active.target === settings.destination) active.source.update(settings);
+    else if (active && this.voice) { this.detachModulation(settings.targetOscillatorId); this.attachModulation(this.voice, settings); }
     else if (this.voice) this.attachModulation(this.voice, settings);
     this.lowFrequencyOscillatorSettings = this.lowFrequencyOscillatorSettings.map((item, itemIndex) => itemIndex === index ? settings : item);
   }
