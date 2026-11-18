@@ -9,7 +9,7 @@ import type { ModulationMatrix, ModulationSourceFactory } from './modulation-con
 function createHarness() {
   const settings = createDefaultDroneSettings();
   const parameters = new Map(settings.oscillators.map(item => [item.id, {} as AudioParam]));
-  const voice = {output: {} as AudioNode, start: vi.fn(), dispose: vi.fn(), getDetuneParameter: vi.fn((id: string) => parameters.get(id)!), getAmplitudeParameter: vi.fn((id: string) => parameters.get(id)!), getFilterCutoffParameters: vi.fn((id: string) => [parameters.get(id)!, {} as AudioParam])} as unknown as DroneVoice;
+  const voice = {output: {} as AudioNode, start: vi.fn(), stop: vi.fn().mockResolvedValue(undefined), dispose: vi.fn(), getDetuneParameter: vi.fn((id: string) => parameters.get(id)!), getAmplitudeParameter: vi.fn((id: string) => parameters.get(id)!), getFilterCutoffParameters: vi.fn((id: string) => [parameters.get(id)!, {} as AudioParam])} as unknown as DroneVoice;
   const factory = {create: vi.fn(() => voice)} as DroneVoiceFactory;
   const graph = {register: vi.fn(), connect: vi.fn(), unregister: vi.fn(), dispose: vi.fn()} as unknown as AudioGraph;
   const matrix = {connect: vi.fn(), disconnect: vi.fn(), dispose: vi.fn()} as unknown as ModulationMatrix;
@@ -17,7 +17,7 @@ function createHarness() {
   const modulationFactory = {create: vi.fn().mockImplementation(() => sources.shift()!)} as unknown as ModulationSourceFactory;
   const context = {resume: vi.fn().mockResolvedValue(undefined)} as unknown as AudioContext;
   const controller = new DroneController(context, factory, graph, matrix, modulationFactory, settings, createDefaultLowFrequencyOscillators(settings.oscillators.map(item => item.id)));
-  return {controller, matrix, modulationFactory};
+  return {controller, matrix, modulationFactory, graph, voice, factory};
 }
 
 describe('independent oscillator LFOs', () => {
@@ -35,7 +35,7 @@ describe('independent oscillator LFOs', () => {
     controller.updateLowFrequencyOscillator({...first, enabled: false});
     expect(matrix.disconnect).toHaveBeenCalledTimes(1);
     expect(controller.lowFrequencyOscillatorSettings.find(item => item.targetOscillatorId === second.targetOscillatorId)?.enabled).toBe(true);
-    controller.stop();
+    await controller.stop();
     expect(matrix.disconnect).toHaveBeenCalledTimes(2);
   });
 
@@ -52,7 +52,30 @@ describe('independent oscillator LFOs', () => {
     controller.updateLowFrequencyOscillator({...second, enabled: true});
     await controller.start();
     expect(modulationFactory.create).toHaveBeenCalledTimes(2);
-    controller.stop();
+    await controller.stop();
     expect(matrix.disconnect).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('drone playback transitions', () => {
+  it('keeps the voice routed through its fade and waits before restarting', async () => {
+    const {controller, graph, voice, factory} = createHarness();
+    let finishFade = () => {};
+    vi.mocked(voice.stop).mockReturnValueOnce(new Promise(resolve => { finishFade = resolve; }));
+    await controller.start();
+
+    const stopping = controller.stop();
+    expect(controller.stop()).toBe(stopping);
+    const restarting = controller.start();
+    expect(graph.unregister).not.toHaveBeenCalled();
+    expect(voice.dispose).not.toHaveBeenCalled();
+    expect(factory.create).toHaveBeenCalledTimes(1);
+
+    finishFade();
+    await Promise.all([stopping, restarting]);
+    expect(graph.unregister).toHaveBeenCalledOnce();
+    expect(voice.dispose).toHaveBeenCalledOnce();
+    expect(factory.create).toHaveBeenCalledTimes(2);
+    expect(controller.isPlaying).toBe(true);
   });
 });

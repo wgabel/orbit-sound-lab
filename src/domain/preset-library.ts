@@ -53,8 +53,13 @@ export function validatePreset(value: unknown): SoundPreset {
   const preset = value as Partial<SoundPreset>;
   if (preset.schemaVersion !== 1) throw new Error('Unsupported preset version.');
   if (typeof preset.id !== 'string' || !preset.id || typeof preset.name !== 'string' || !preset.name.trim() || preset.name.length > 120 || typeof preset.createdAt !== 'string') throw new Error('Invalid preset metadata.');
-  if (!preset.drone || !Array.isArray(preset.modulation) || !preset.delay) throw new Error('Incomplete preset.');
-  validateDroneSettings(preset.drone);
+  if (!preset.drone || !Array.isArray(preset.drone.oscillators) || !Array.isArray(preset.modulation) || !preset.delay) throw new Error('Incomplete preset.');
+  const drone: DroneSettings = {
+    ...preset.drone,
+    oscillators: preset.drone.oscillators.map(oscillator =>
+      oscillator.pan === undefined ? {...oscillator, pan: 0} : oscillator)
+  };
+  validateDroneSettings(drone);
   validateDelaySettings(preset.delay);
   if (preset.harmony !== undefined) validateHarmonySettings(preset.harmony);
   const ids = new Set(preset.drone.oscillators.map(oscillator => oscillator.id));
@@ -65,7 +70,7 @@ export function validatePreset(value: unknown): SoundPreset {
     validateLowFrequencyOscillatorSettings(modulation);
     if (!ids.has(modulation.targetOscillatorId)) throw new Error('Unknown preset LFO target.');
   }
-  return {...preset, modulation: normalizePresetModulations(preset.modulation, preset.drone.oscillators.map(item => item.id))} as SoundPreset;
+  return {...preset, drone, modulation: normalizePresetModulations(preset.modulation, drone.oscillators.map(item => item.id))} as SoundPreset;
 }
 export function createPreset(name: string, drone: DroneSettings, modulation: readonly LowFrequencyOscillatorSettings[], delay: DelaySettings, harmony: HarmonySettings = DEFAULT_HARMONY_SETTINGS): SoundPreset {
   return validatePreset({schemaVersion: 1, id: crypto.randomUUID(), name: name.trim(), createdAt: new Date().toISOString(), drone, modulation, delay, harmony});

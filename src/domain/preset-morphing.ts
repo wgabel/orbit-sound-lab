@@ -37,6 +37,7 @@ export function morphPresets(start: SoundPreset, end: SoundPreset, position: num
         frequencyHz: interpolateFrequency(a.frequencyHz, b.frequencyHz, position),
         detuneCents: interpolate(a.detuneCents, b.detuneCents, position),
         volume: interpolate(a.volume, b.volume, position),
+        pan: interpolate(a.pan, b.pan, position),
         fade: {
           fadeInSeconds: interpolate(a.fade.fadeInSeconds, b.fade.fadeInSeconds, position),
           fadeOutSeconds: interpolate(a.fade.fadeOutSeconds, b.fade.fadeOutSeconds, position)

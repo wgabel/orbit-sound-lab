@@ -48,12 +48,14 @@
 .oscillator-panel-toggle strong{font-size:20px}
 .oscillator-panel-toggle:focus-visible{outline:2px solid #a6efab;outline-offset:-3px}
 .oscillator-panel-toggle[aria-expanded="true"] .oscillator-expand-hint:after{transform:rotate(180deg)}
-.oscillator-always-visible{display:flex;align-items:center;gap:16px;padding:0 22px 18px}
-.oscillator-always-visible label{flex:1;min-width:0}
+.oscillator-always-visible{display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:0 22px 18px}
+.oscillator-mix-controls{flex:1 1 188px;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:end}
+.oscillator-pan-header{display:flex;align-items:center;justify-content:space-between;gap:4px}
+.oscillator-pan-header button{font:inherit;font-size:12px;line-height:1;padding:4px 6px;color:#a6efab;background:#172029;border:1px solid #35414c;border-radius:4px;cursor:pointer;white-space:nowrap}
 .oscillator-always-visible input[type=range]{margin:10px 0 0}
 .oscillator-always-visible .randomize-button{flex-shrink:0}
 .oscillator-panel-content[hidden]{display:none}
-@media(max-width:420px){.oscillator-always-visible{flex-wrap:wrap}.oscillator-always-visible label{flex-basis:100%}}
+@media(max-width:420px){.oscillator-mix-controls{flex-basis:100%}}
 
 .preset-morph{margin-top:20px;padding:16px;border:1px solid #43594d;border-radius:8px;background:#101e21}
 .preset-morph h3{font-size:12px;letter-spacing:.14em;color:#a6efab;margin:0 0 14px}
