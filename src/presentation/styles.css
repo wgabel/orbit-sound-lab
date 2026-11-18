@@ -7,3 +7,5 @@
 .oscillator-filter{border-top:1px solid #35414c;margin-top:12px;padding-top:18px}.oscillator-filter .oscillator-title{margin-bottom:14px}.oscillator-filter .oscillator-title strong{font-size:14px;letter-spacing:.1em}.oscillator-filter input:disabled{opacity:.4}
 
 .master-delay{padding:22px 24px;margin:0 0 30px;border:1px solid #35414c;border-radius:12px;background:#172029}.master-delay .oscillator-title{margin-bottom:12px}.master-delay .oscillator-title strong{font-size:15px;letter-spacing:.1em;color:#a6efab}.master-delay .delay-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:20px}.master-delay input:disabled{opacity:.4}.master-delay p{font-size:12px;color:#9dabb6}
+
+.oscillator-header-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}.randomize-button{border:1px solid #a6efab;background:#263b38;color:#a6efab;padding:8px 10px;font-size:11px;font-weight:750;letter-spacing:.06em;border-radius:5px;cursor:pointer}.randomize-button:hover{background:#35534b}.randomize-button:focus-visible{outline:2px solid #e8e9df;outline-offset:3px}
