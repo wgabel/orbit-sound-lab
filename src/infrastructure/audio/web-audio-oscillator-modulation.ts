@@ -1,60 +1,44 @@
 import type { OscillatorModulationRoute } from '../../domain/oscillator-modulation';
 
-const NEGATIVE_HALF = new Float32Array([-1, 0, 0]);
-const POSITIVE_HALF = new Float32Array([0, 0, 1]);
-const ROUTE_FADE_SECONDS = 0.008;
-
-/** Scale each half of the bounded waveform so the base value stays put at the slider limits. */
+/** Applies a signed depth to a normalized level signal and exposes the actual modulation offset. */
 export class WebAudioOscillatorModulation {
-  private readonly negative: GainNode;
-  private readonly positive: GainNode;
-  private readonly negativeHalf: WaveShaperNode;
-  private readonly positiveHalf: WaveShaperNode;
+  readonly analyser: AnalyserNode;
+  private readonly depth: GainNode;
+  private readonly output: GainNode;
   private cleanupTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     private readonly context: BaseAudioContext,
     readonly route: OscillatorModulationRoute,
     private readonly source: AudioNode,
-    destinations: readonly AudioParam[]
+    destinations: readonly AudioParam[],
+    outputScale: number
   ) {
-    this.negativeHalf = context.createWaveShaper();
-    this.negativeHalf.curve = NEGATIVE_HALF;
-    this.positiveHalf = context.createWaveShaper();
-    this.positiveHalf.curve = POSITIVE_HALF;
-    this.negative = context.createGain();
-    this.positive = context.createGain();
-    this.negative.gain.value = this.positive.gain.value = 0;
-    source.connect(this.negativeHalf).connect(this.negative);
-    source.connect(this.positiveHalf).connect(this.positive);
-    for (const parameter of destinations) {
-      this.negative.connect(parameter);
-      this.positive.connect(parameter);
-    }
+    this.depth = context.createGain();
+    this.depth.gain.value = 0;
+    this.analyser = context.createAnalyser();
+    this.analyser.fftSize = 32;
+    this.output = context.createGain();
+    this.output.gain.value = outputScale;
+    source.connect(this.depth).connect(this.analyser).connect(this.output);
+    for (const parameter of destinations) this.output.connect(parameter);
   }
 
-  update(negativeDepth: number, positiveDepth: number): void {
-    const smoothingSeconds = this.route.parameter === 'cutoff' ? 0.02 : 0.015;
-    this.setDepth(negativeDepth, positiveDepth, smoothingSeconds);
+  update(depth: number): void {
+    const smoothing = this.route.parameter === 'cutoff' ? 0.02 : 0.015;
+    this.depth.gain.setTargetAtTime(depth, this.context.currentTime, smoothing);
   }
 
   fadeOut(afterFade: () => void): void {
-    this.setDepth(0, 0, ROUTE_FADE_SECONDS);
+    this.depth.gain.setTargetAtTime(0, this.context.currentTime, 0.008);
     this.cleanupTimer = setTimeout(afterFade, 50);
-  }
-
-  private setDepth(negativeDepth: number, positiveDepth: number, smoothingSeconds: number): void {
-    this.negative.gain.setTargetAtTime(negativeDepth, this.context.currentTime, smoothingSeconds);
-    this.positive.gain.setTargetAtTime(positiveDepth, this.context.currentTime, smoothingSeconds);
   }
 
   dispose(): void {
     clearTimeout(this.cleanupTimer);
-    this.source.disconnect(this.negativeHalf);
-    this.source.disconnect(this.positiveHalf);
-    this.negativeHalf.disconnect();
-    this.positiveHalf.disconnect();
-    this.negative.disconnect();
-    this.positive.disconnect();
+    this.source.disconnect(this.depth);
+    this.depth.disconnect();
+    this.analyser.disconnect();
+    this.output.disconnect();
   }
 }

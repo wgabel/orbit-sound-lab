@@ -9,39 +9,36 @@ export const OSCILLATOR_MODULATION_PARAMETERS = {
 
 export type OscillatorModulationParameter = keyof typeof OSCILLATOR_MODULATION_PARAMETERS;
 
+export type OscillatorModulationDirection = 'increase' | 'decrease';
+
+export function defaultModulationDirection(parameter: OscillatorModulationParameter): OscillatorModulationDirection {
+  return parameter === 'volume' ? 'decrease' : 'increase';
+}
+
 export interface OscillatorModulationRoute {
   readonly targetId: string;
   readonly parameter: OscillatorModulationParameter;
   readonly sourceId: string;
   readonly enabled: boolean;
   readonly depth: number;
+  readonly direction?: OscillatorModulationDirection;
 }
 
 export function getOscillatorModulationRange(
-  oscillator: OscillatorSettings, parameter: OscillatorModulationParameter, depth: number, sampleRate = 48000
+  oscillator: OscillatorSettings, parameter: OscillatorModulationParameter, depth: number, sampleRate = 48000,
+  direction = defaultModulationDirection(parameter)
 ) {
   const base = parameter === 'frequency' ? oscillator.frequencyHz :
     parameter === 'volume' ? oscillator.volume : oscillator.filter.cutoffHz;
   const {minimum, maximum} = parameter === 'cutoff' ? getFilterModulationLimits(base, sampleRate) :
     OSCILLATOR_MODULATION_PARAMETERS[parameter];
-  return {base, lower: Math.max(Math.min(minimum, base), base - depth), upper: Math.min(Math.max(maximum, base), base + depth)};
+  const endpoint = direction === 'decrease' ? Math.max(Math.min(minimum, base), base - depth) :
+    Math.min(Math.max(maximum, base), base + depth);
+  return {base, endpoint, lower: Math.min(base, endpoint), upper: Math.max(base, endpoint)};
 }
 
 export function replaceOscillatorModulationRoute(routes: readonly OscillatorModulationRoute[], route: OscillatorModulationRoute) {
   return [...routes.filter(item => item.targetId !== route.targetId || item.parameter !== route.parameter), route];
-}
-
-export function createsFrequencyModulationCycle(
-  routes: readonly OscillatorModulationRoute[], targetId: string, sourceId: string
-): boolean {
-  const upstream = new Map(routes.filter(route => route.enabled && route.parameter === 'frequency')
-    .map(route => [route.targetId, route.sourceId]));
-  const visited = new Set([targetId]);
-  for (let current: string | undefined = sourceId; current !== undefined; current = upstream.get(current)) {
-    if (visited.has(current)) return true;
-    visited.add(current);
-  }
-  return false;
 }
 
 export function validateOscillatorModulationRoutes(
@@ -54,6 +51,7 @@ export function validateOscillatorModulationRoutes(
   for (const route of routes) {
     if (!route || !Object.hasOwn(OSCILLATOR_MODULATION_PARAMETERS, route.parameter) ||
       !ids.has(route.sourceId) || !ids.has(route.targetId) || route.sourceId === route.targetId ||
+      (route.direction !== undefined && route.direction !== 'increase' && route.direction !== 'decrease') ||
       typeof route.enabled !== 'boolean' || !Number.isFinite(route.depth) || route.depth < 0 ||
       route.depth > OSCILLATOR_MODULATION_PARAMETERS[route.parameter].maximumDepth) {
       throw new Error('Invalid oscillator modulation route.');
@@ -61,11 +59,5 @@ export function validateOscillatorModulationRoutes(
     const destination = `${route.targetId}:${route.parameter}`;
     if (destinations.has(destination)) throw new Error('Each slider allows one oscillator modulation source.');
     destinations.add(destination);
-  }
-  for (const route of routes) {
-    if (route.enabled && route.parameter === 'frequency' &&
-      createsFrequencyModulationCycle(routes, route.targetId, route.sourceId)) {
-      throw new Error('Frequency modulation cannot form a feedback loop.');
-    }
   }
 }
