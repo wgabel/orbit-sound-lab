@@ -12,6 +12,14 @@ npm test
 npm run build
 ```
 
+## Manual Pages deployment
+
+Open [Build and deploy Orbit Sound Lab](https://github.com/wgabel/orbit-sound-lab/actions/workflows/deploy.yml)
+in Actions and select **Run workflow**. Leave the workflow's branch dropdown on **main**
+and enter the branch you want to test in **branch**. The workflow checks out and
+tests that branch, then publishes it to the live GitHub Pages URL on success.
+To restore the main build, run the workflow again with **branch** set to **main**.
+
 ## Current scope
 Two drone layers with five oscillators each, modulation, effects and a stereo performance mix. Use **Start Drones** and each layer’s **On** switch for continuous playback.
 
