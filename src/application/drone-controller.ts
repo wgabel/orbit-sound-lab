@@ -3,7 +3,7 @@ import type { OscillatorModulationParameter, OscillatorModulationRoute } from '.
 import type { DroneVoice, DroneVoiceFactory, SynthesizerController } from './audio-contracts';
 import type { ModulationMatrix, ModulationSource, ModulationSourceFactory, ModulationDestination } from './modulation-contracts';
 import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
-import { getEffectiveCutoffLfoDepth, validateLowFrequencyOscillatorSettings } from '../domain/modulation';
+import { getEffectiveCutoffLfoDepth, LFO_DESTINATIONS, validateLowFrequencyOscillatorSettings } from '../domain/modulation';
 import type { AudioGraph } from './audio-graph-contracts';
 import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../domain/drone';
 import { validateDroneMix, validateDroneSettings } from '../domain/drone';
@@ -39,6 +39,10 @@ export class DroneController implements SynthesizerController {
   get isPlaying(): boolean { return this.playing; }
   readOscillatorFrequency(oscillatorId: string): number | null {
     return this.playing ? this.voice?.readOscillatorFrequency?.(oscillatorId) ?? null : null;
+  }
+
+  readOscillatorShape(oscillatorId: string): number | null {
+    return this.playing ? this.voice?.readOscillatorShape?.(oscillatorId) ?? null : null;
   }
 
   readOscillatorVolume(oscillatorId: string): number | null {
@@ -88,7 +92,9 @@ export class DroneController implements SynthesizerController {
   private validateModulationBank(settings: readonly LowFrequencyOscillatorSettings[]): void {
     const oscillatorIds = new Set(this.settings.oscillators.map(oscillator => oscillator.id));
     const targets = new Set<string>();
-    if (settings.length !== oscillatorIds.size * 3) throw new Error('Each oscillator requires three LFO configurations.');
+    if (settings.length !== oscillatorIds.size * LFO_DESTINATIONS.length) {
+      throw new Error('Each oscillator requires one LFO configuration per destination.');
+    }
     for (const item of settings) {
       validateLowFrequencyOscillatorSettings(item);
       if (!oscillatorIds.has(item.targetOscillatorId) || targets.has(this.modulationKey(item))) throw new Error('LFO targets must be unique and match oscillator identifiers.');
@@ -98,8 +104,15 @@ export class DroneController implements SynthesizerController {
 
   private attachModulation(voice: DroneVoice, settings: LowFrequencyOscillatorSettings): void {
     const source = this.modulationFactory.create(this.getEffectiveModulation(settings));
-    const parameters = settings.destination === 'pitch' ? [voice.getDetuneParameter(settings.targetOscillatorId)] : settings.destination === 'amplitude' ? [voice.getAmplitudeParameter(settings.targetOscillatorId)] : voice.getFilterCutoffParameters(settings.targetOscillatorId);
-    const destinations: ModulationDestination[] = parameters.map((parameter, index) => ({id: settings.destination === 'pitch' ? settings.targetOscillatorId : `${settings.targetOscillatorId}-cutoff-${index}`, parameter}));
+    const {destination, targetOscillatorId} = settings;
+    const parameters = destination === 'pitch' ? [voice.getDetuneParameter(targetOscillatorId)] :
+      destination === 'amplitude' ? [voice.getAmplitudeParameter(targetOscillatorId)] :
+      destination === 'shape' ? [voice.getShapeParameter(targetOscillatorId)] :
+      voice.getFilterCutoffParameters(targetOscillatorId);
+    const destinations: ModulationDestination[] = parameters.map((parameter, index) => ({
+      id: destination === 'pitch' ? targetOscillatorId : `${targetOscillatorId}-${destination === 'filterCutoff' ? 'cutoff' : destination}-${index}`,
+      parameter
+    }));
     const connected: ModulationDestination[] = [];
     try {
       for (const destination of destinations) { this.modulationMatrix.connect(source, destination); connected.push(destination); }

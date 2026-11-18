@@ -1,12 +1,13 @@
-import { AMPLITUDE_LFO_CENTER, LOW_FREQUENCY_OSCILLATOR_WAVEFORMS, LFO_MAXIMUM_RATE_HZ, LFO_MINIMUM_RATE_HZ } from '../domain/modulation';
+import { AMPLITUDE_LFO_CENTER, DEFAULT_SHAPE_LFO_DEPTH, LOW_FREQUENCY_OSCILLATOR_WAVEFORMS, LFO_MAXIMUM_RATE_HZ, LFO_MINIMUM_RATE_HZ } from '../domain/modulation';
 import type { LowFrequencyOscillatorSettings, LowFrequencyOscillatorWaveform } from '../domain/modulation';
 import { LfoCycleInput } from './LfoCycleInput';
 import { NumericSlider } from './NumericSlider';
 
 const DESTINATION_LABELS = {
-  amplitude: 'Amplitude LFO',
-  pitch: 'Pitch LFO',
-  filterCutoff: 'Cutoff LFO'
+  amplitude: 'Amplitude',
+  pitch: 'Pitch',
+  filterCutoff: 'Cutoff',
+  shape: 'Shape'
 } as const;
 
 interface OscillatorLfoControlsProps {
@@ -15,8 +16,9 @@ interface OscillatorLfoControlsProps {
 }
 
 export function OscillatorLfoControls({modulation, onChange}: OscillatorLfoControlsProps) {
-  const {destination, enabled, frequencyHz, depthCents, depthAmplitude, depthHz, waveform, sync = false, phaseDegrees = 0} = modulation;
-  const label = DESTINATION_LABELS[destination];
+  const {destination, enabled, frequencyHz, depthCents, depthAmplitude, depthShape = DEFAULT_SHAPE_LFO_DEPTH, depthHz, waveform, sync = false, phaseDegrees = 0} = modulation;
+  const destinationLabel = DESTINATION_LABELS[destination];
+  const label = `${destinationLabel} LFO`;
 
   return <details className="oscillator-lfo-disclosure">
     <summary>
@@ -31,7 +33,7 @@ export function OscillatorLfoControls({modulation, onChange}: OscillatorLfoContr
       <NumericSlider label="RATE" unit="Hz" min={LFO_MINIMUM_RATE_HZ} max={LFO_MAXIMUM_RATE_HZ} step={0.01}
         disabled={!enabled} value={frequencyHz} onChange={value => onChange({...modulation, frequencyHz: value})}/>
       <LfoCycleInput rateHz={frequencyHz}
-        destination={destination === 'pitch' ? 'Pitch' : destination === 'amplitude' ? 'Amplitude' : 'Cutoff'}
+        destination={destinationLabel}
         disabled={!enabled} onRateChange={value => onChange({...modulation, frequencyHz: value})}/>
       <label className="switch">
         <input type="checkbox" checked={sync} disabled={!enabled}
@@ -50,6 +52,9 @@ export function OscillatorLfoControls({modulation, onChange}: OscillatorLfoContr
       </> : destination === 'amplitude' ? <NumericSlider label="DEPTH" unit="%" displayFactor={100 / AMPLITUDE_LFO_CENTER}
         min={0} max={AMPLITUDE_LFO_CENTER} step={AMPLITUDE_LFO_CENTER / 10000} scale="quadratic"
         disabled={!enabled} value={depthAmplitude} onChange={value => onChange({...modulation, depthAmplitude: value})}/>
+      : destination === 'shape' ? <NumericSlider label="DEPTH ±" unit="pp" displayFactor={100}
+        min={0} max={1} step={0.001} disabled={!enabled} value={depthShape}
+        onChange={value => onChange({...modulation, depthShape: value})}/>
       : <NumericSlider label="DEPTH" unit="Hz" min={0} max={5000} step={0.1} scale="quadratic"
         disabled={!enabled} value={depthHz} onChange={value => onChange({...modulation, depthHz: value})}/>}
       <label>LFO WAVEFORM

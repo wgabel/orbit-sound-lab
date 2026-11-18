@@ -4,11 +4,14 @@ export const AMPLITUDE_LFO_CENTER = 0.5;
 
 export const LOW_FREQUENCY_OSCILLATOR_WAVEFORMS = ['sine', 'triangle', 'square', 'sawtooth', 'smoothRandom'] as const;
 export type LowFrequencyOscillatorWaveform = typeof LOW_FREQUENCY_OSCILLATOR_WAVEFORMS[number];
-export type LowFrequencyOscillatorDestination = 'pitch' | 'filterCutoff' | 'amplitude';
+export const LFO_DESTINATIONS = ['pitch', 'filterCutoff', 'amplitude', 'shape'] as const;
+export type LowFrequencyOscillatorDestination = typeof LFO_DESTINATIONS[number];
+export const DEFAULT_SHAPE_LFO_DEPTH = 0.2;
 export interface LowFrequencyOscillatorSettings {
   readonly destination: LowFrequencyOscillatorDestination;
   readonly depthHz: number;
   readonly depthAmplitude: number;
+  readonly depthShape?: number;
   readonly enabled: boolean;
   readonly frequencyHz: number;
   readonly depthCents: number;
@@ -21,14 +24,19 @@ export function createDefaultLowFrequencyOscillatorSettings(targetOscillatorId =
   return { enabled: false, frequencyHz: 0.2, depthCents: 15, depthHz: 400, depthAmplitude: 0.35, destination: 'pitch', waveform: 'sine', targetOscillatorId };
 }
 export function createDefaultLowFrequencyOscillators(oscillatorIds: readonly string[]): readonly LowFrequencyOscillatorSettings[] {
-  return oscillatorIds.flatMap(id => (['pitch', 'filterCutoff', 'amplitude'] as const).map(destination => ({...createDefaultLowFrequencyOscillatorSettings(id), destination})));
+  return oscillatorIds.flatMap(id => LFO_DESTINATIONS.map(destination =>
+    ({...createDefaultLowFrequencyOscillatorSettings(id), destination,
+      ...(destination === 'shape' ? {depthShape: DEFAULT_SHAPE_LFO_DEPTH} : {})})));
 }
 export function validateLowFrequencyOscillatorSettings(settings: LowFrequencyOscillatorSettings): void {
   if (!Number.isFinite(settings.frequencyHz) || settings.frequencyHz < LFO_MINIMUM_RATE_HZ || settings.frequencyHz > LFO_MAXIMUM_RATE_HZ) throw new Error('LFO frequency must be between 0.01 and 20 Hz.');
   if (!Number.isFinite(settings.depthCents) || settings.depthCents < 0 || settings.depthCents > 1200) throw new Error('LFO depth must be between 0 and 1200 cents.');
   if (!Number.isFinite(settings.depthHz) || settings.depthHz < 0 || settings.depthHz > 10000) throw new Error('Filter modulation depth must be between 0 and 10000 Hz.');
   if (!Number.isFinite(settings.depthAmplitude) || settings.depthAmplitude < 0 || settings.depthAmplitude > AMPLITUDE_LFO_CENTER) throw new Error('Amplitude depth must be between 0 and 0.5.');
-  if (settings.destination !== 'pitch' && settings.destination !== 'filterCutoff' && settings.destination !== 'amplitude') throw new Error('Invalid LFO destination.');
+  if (settings.depthShape !== undefined && (!Number.isFinite(settings.depthShape) || settings.depthShape < 0 || settings.depthShape > 1)) {
+    throw new Error('Shape depth must be between 0 and 1.');
+  }
+  if (!LFO_DESTINATIONS.includes(settings.destination)) throw new Error('Invalid LFO destination.');
   if (!LOW_FREQUENCY_OSCILLATOR_WAVEFORMS.includes(settings.waveform)) throw new Error('Invalid LFO waveform.');
   if (settings.sync !== undefined && typeof settings.sync !== 'boolean') throw new Error('Invalid LFO sync setting.');
   if (settings.phaseDegrees !== undefined &&

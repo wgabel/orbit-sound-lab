@@ -5,7 +5,9 @@ import { validateOscillatorModulationRoutes } from './oscillator-modulation';
 import type { OscillatorModulationRoute } from './oscillator-modulation';
 
 export const OSCILLATORS_PER_DRONE = 5 as const;
-export type OscillatorWaveform = 'sawtooth' | 'sine' | 'square' | 'triangle';
+export const OSCILLATOR_WAVEFORMS = ['sine', 'triangle', 'sawtooth', 'square', 'sineTriangle'] as const;
+export type OscillatorWaveform = typeof OSCILLATOR_WAVEFORMS[number];
+export const DEFAULT_OSCILLATOR_SHAPE = 0.5;
 export interface LowPassFilterSettings {
   readonly enabled: boolean;
   readonly cutoffHz: number;
@@ -24,6 +26,7 @@ export interface OscillatorSettings {
   readonly detuneCents: number;
   readonly enabled: boolean;
   readonly waveform: OscillatorWaveform;
+  readonly shape?: number;
   readonly filter: LowPassFilterSettings;
 }
 export interface DroneReverbSettings {readonly enabled: boolean; readonly mix: number}
@@ -85,7 +88,10 @@ export function validateOscillatorSettings(oscillator: OscillatorSettings): void
   if (!Number.isFinite(oscillator.volume) || oscillator.volume < 0 || oscillator.volume > 1) throw new Error('Oscillator volume must be between 0 and 1.');
   if (!Number.isFinite(oscillator.pan) || Math.abs(oscillator.pan) > 1) throw new Error('Oscillator pan must be between -1 and 1.');
   if (!Number.isFinite(oscillator.detuneCents) || Math.abs(oscillator.detuneCents) > 2400) throw new Error('Invalid oscillator detune.');
-  if (!['sine','triangle','sawtooth','square'].includes(oscillator.waveform)) throw new Error('Invalid oscillator waveform.');
+  if (!OSCILLATOR_WAVEFORMS.includes(oscillator.waveform)) throw new Error('Invalid oscillator waveform.');
+  if (oscillator.shape !== undefined && (!Number.isFinite(oscillator.shape) || oscillator.shape < 0 || oscillator.shape > 1)) {
+    throw new Error('Oscillator shape must be between 0 and 1.');
+  }
   validateLowPassFilterSettings(oscillator.filter);
   validateFadeSettings(oscillator.fade);
 }

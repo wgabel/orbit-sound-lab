@@ -6,7 +6,7 @@ import type { HarmonySettings } from './harmony';
 import type { DroneSettings } from './drone';
 import { createDefaultDroneMix, validateDroneSettings } from './drone';
 import type { LowFrequencyOscillatorSettings } from './modulation';
-import { createDefaultLowFrequencyOscillatorSettings, validateLowFrequencyOscillatorSettings } from './modulation';
+import { createDefaultLowFrequencyOscillators, LFO_DESTINATIONS, validateLowFrequencyOscillatorSettings } from './modulation';
 import type { DelaySettings } from './delay';
 import { validateDelaySettings } from './delay';
 
@@ -48,10 +48,9 @@ async function transact<T>(mode: IDBTransactionMode, execute: (store: IDBObjectS
   });
 }
 export function normalizePresetModulations(modulations: readonly LowFrequencyOscillatorSettings[], oscillatorIds: readonly string[]): readonly LowFrequencyOscillatorSettings[] {
-  const destinations = ['pitch', 'filterCutoff', 'amplitude'] as const;
-  return oscillatorIds.flatMap(id => destinations.map(destination =>
-    modulations.find(item => item.targetOscillatorId === id && item.destination === destination)
-      ?? {...createDefaultLowFrequencyOscillatorSettings(id), destination}));
+  return createDefaultLowFrequencyOscillators(oscillatorIds).map(defaults =>
+    modulations.find(item => item.targetOscillatorId === defaults.targetOscillatorId &&
+      item.destination === defaults.destination) ?? defaults);
 }
 function validateLayerSound(settings: DroneSettings, modulationSettings: readonly LowFrequencyOscillatorSettings[]) {
   if (!settings || !Array.isArray(settings.oscillators) || !Array.isArray(modulationSettings)) throw new Error('Incomplete preset layer.');
@@ -66,7 +65,9 @@ function validateLayerSound(settings: DroneSettings, modulationSettings: readonl
   };
   validateDroneSettings(drone);
   const ids = drone.oscillators.map(oscillator => oscillator.id);
-  if (modulationSettings.length !== ids.length && modulationSettings.length !== ids.length * 3) throw new Error('Preset LFO targets do not match oscillators.');
+  if (![1, 3, LFO_DESTINATIONS.length].some(count => modulationSettings.length === ids.length * count)) {
+    throw new Error('Preset LFO targets do not match oscillators.');
+  }
   const keys = modulationSettings.map(item => item.targetOscillatorId + ':' + item.destination);
   if (new Set(keys).size !== keys.length) throw new Error('Duplicate preset LFO destinations.');
   for (const modulation of modulationSettings) {

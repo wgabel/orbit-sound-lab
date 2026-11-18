@@ -10,7 +10,7 @@ it('loads each bundled preset into the chosen oscillator with independent LFO ta
     const {oscillator, modulations} = createBuiltInOscillatorSnapshot(preset.id, target);
     expect(oscillator.id).toBe(target.id);
     expect(oscillator.enabled).toBe(false);
-    expect(modulations.map(item => item.destination)).toEqual(['pitch', 'filterCutoff', 'amplitude']);
+    expect(modulations.map(item => item.destination)).toEqual(['pitch', 'filterCutoff', 'amplitude', 'shape']);
     expect(modulations.every(item => item.targetOscillatorId === target.id && !item.enabled)).toBe(true);
   }
   expect(createBuiltInOscillatorSnapshot('sine-sub', target).oscillator.waveform).toBe('sine');

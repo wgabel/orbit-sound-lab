@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { applyPitchOffset, getEffectiveCutoffLfoDepth, limitFilterModulationDepth, createDefaultLowFrequencyOscillatorSettings, createDefaultLowFrequencyOscillators, validateLowFrequencyOscillatorSettings } from './modulation';
 describe('LFO settings', () => {
-  it('creates three independent lanes for every oscillator', () => {
+  it('creates four independent lanes for every oscillator', () => {
     const bank = createDefaultLowFrequencyOscillators(['a','b']);
-    expect(bank).toHaveLength(6);
-    expect(bank.filter(item => item.targetOscillatorId === 'a').map(item => item.destination)).toEqual(['pitch','filterCutoff','amplitude']);
+    expect(bank).toHaveLength(8);
+    expect(bank.filter(item => item.targetOscillatorId === 'a').map(item => item.destination)).toEqual(['pitch','filterCutoff','amplitude','shape']);
   });
   it('accepts defaults', () => expect(() => validateLowFrequencyOscillatorSettings(createDefaultLowFrequencyOscillatorSettings())).not.toThrow());
   it('accepts Smooth Random for each independent LFO route', () => {
@@ -22,6 +22,7 @@ describe('LFO settings', () => {
     const settings = createDefaultLowFrequencyOscillatorSettings();
     expect(() => validateLowFrequencyOscillatorSettings({...settings,frequencyHz:0})).toThrow();
     expect(() => validateLowFrequencyOscillatorSettings({...settings,depthCents:Infinity})).toThrow();
+    expect(() => validateLowFrequencyOscillatorSettings({...settings, destination: 'shape', depthShape: 1.1})).toThrow('Shape depth');
   });
 });
 
