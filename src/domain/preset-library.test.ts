@@ -12,7 +12,7 @@ describe('preset schema', () => {
     const preset = createPreset('Ambient', drone, modulation, delay);
     expect(preset.schemaVersion).toBe(1);
     expect(preset.drone.oscillators).toHaveLength(5);
-    expect(preset.modulation).toHaveLength(5);
+    expect(preset.modulation).toHaveLength(15);
     expect(validatePreset(JSON.parse(JSON.stringify(preset)))).toEqual(preset);
   });
   it('rejects unsupported schema versions', () => {
