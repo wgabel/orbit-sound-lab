@@ -61,7 +61,7 @@
 .numeric-slider-entry[aria-invalid=true]{border-color:#ff9e9e}
 .numeric-slider-error{display:block;margin-top:4px;color:#ff9e9e;font-size:11px}
 .oscillator-always-visible input[type=range]{margin:10px 0 0}
-.oscillator-always-visible .randomize-button{flex-shrink:0}
+.oscillator-randomize-actions{display:flex;flex-wrap:wrap;gap:8px}
 .oscillator-panel-content[hidden]{display:none}
 @media(max-width:420px){.oscillator-mix-controls{flex-basis:100%}}
 

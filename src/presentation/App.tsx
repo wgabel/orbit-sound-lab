@@ -7,6 +7,7 @@ import type { DroneMixSettings, OscillatorSettings } from '../domain/drone';
 import { DRONE_LAYER_IDS, createDefaultDroneLayer } from '../domain/drone-layers';
 import type { DroneLayer, DroneLayerId } from '../domain/drone-layers';
 import { randomizeOscillatorSettings } from '../domain/randomize-oscillator-settings';
+import type { OscillatorRandomizationMode } from '../domain/randomize-oscillator-settings';
 import { applyInitialSynthesizerSettings } from '../application/apply-initial-synthesizer-settings';
 import { createSynthesizer } from '../composition/create-synthesizer';
 import { DroneMixControls } from './DroneMixControls';
@@ -183,10 +184,10 @@ export function App() {
         item.targetOscillatorId === settings.targetOscillatorId && item.destination === settings.destination ? settings : item)}));
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot update LFO.'); }
   }
-  function randomizeOscillator(oscillator: OscillatorSettings, modulations: readonly LowFrequencyOscillatorSettings[]) {
-    const randomized = randomizeOscillatorSettings(oscillator, modulations[0]);
-    const randomizedModulations = modulations.map(modulation => randomizeOscillatorSettings(oscillator, modulation).modulation);
-    const sourceOscillator = randomized.oscillator;
+  function randomizeOscillator(oscillator: OscillatorSettings, mode: OscillatorRandomizationMode) {
+    const currentModulations = lowFrequencyOscillatorSettings.filter(item => item.targetOscillatorId === oscillator.id);
+    const {oscillator: sourceOscillator, modulations: randomizedModulations} =
+      randomizeOscillatorSettings(oscillator, currentModulations, mode);
     try {
       const engine = controller.current?.layers[activeLayer];
       engine?.updateOscillator({...sourceOscillator,
@@ -244,7 +245,13 @@ export function App() {
       pan={oscillator.pan}
       onChange={pan => updateOscillator({...oscillator, pan})}
     />
-    </div><button type="button" className="randomize-button" onClick={() => randomizeOscillator(oscillator, lowFrequencyOscillatorSettings.filter(item => item.targetOscillatorId === oscillator.id))} aria-label={`Randomize settings for oscillator ${index+1}`}>⤨ RANDOM</button></div><div id={`${oscillator.id}-settings`} className="oscillator-panel-content" hidden={!expandedOscillators[`${activeLayer}:${oscillator.id}`]}><NumericSlider label="FREQUENCY" unit="Hz" min={40} max={880} step={1}
+    </div>
+    <div className="oscillator-randomize-actions">
+      <button type="button" className="randomize-button" onClick={() => randomizeOscillator(oscillator, 'random')}
+        aria-label={`Randomize settings for oscillator ${index + 1}`}>⤨ RANDOM</button>
+      <button type="button" className="randomize-button" onClick={() => randomizeOscillator(oscillator, 'variant')}
+        aria-label={`Generate variant for oscillator ${index + 1}`} title="Vary current settings by up to 5%">VARIANT</button>
+    </div></div><div id={`${oscillator.id}-settings`} className="oscillator-panel-content" hidden={!expandedOscillators[`${activeLayer}:${oscillator.id}`]}><NumericSlider label="FREQUENCY" unit="Hz" min={40} max={880} step={1}
       value={oscillator.frequencyHz} onChange={value => updateOscillator({...oscillator,frequencyHz:value})}/><NumericSlider label="DETUNE" unit="cents" min={-100} max={100} step={1}
       value={oscillator.detuneCents} onChange={value => updateOscillator({...oscillator,detuneCents:value})}/><label>WAVEFORM <select value={oscillator.waveform} onChange={event => updateOscillator({...oscillator,waveform:event.target.value as OscillatorSettings['waveform']})}><option value="sine">Sine (diagnostic)</option><option value="triangle">Triangle</option><option value="sawtooth">Sawtooth</option><option value="square">Square</option></select></label><div className="oscillator-filter"><div className="oscillator-title"><strong>LOW-PASS FILTER</strong><label className="switch"><input type="checkbox" checked={oscillator.filter.enabled} onChange={event => updateOscillator({...oscillator,filter:{...oscillator.filter,enabled:event.target.checked}})}/> ACTIVE</label></div><NumericSlider label="CUTOFF" unit="Hz" min={20} max={20000} step={1}
       disabled={!oscillator.filter.enabled} value={oscillator.filter.cutoffHz} onChange={value => updateOscillator({...oscillator,filter:{...oscillator.filter,cutoffHz:value}})}/><NumericSlider label="RESONANCE" min={0.1} max={12} step={0.1}
