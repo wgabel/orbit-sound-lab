@@ -186,3 +186,7 @@
 
 .numeric-slider-live-value,.pitch-lfo-detail{display:block;color:#a5eaff;font-size:11px;margin:0 0 7px}
 .numeric-slider-live-value{font-variant-numeric:tabular-nums}
+
+.pitch-lfo-cycle{display:flex;align-items:center;gap:5px;color:inherit;font-size:inherit;letter-spacing:normal}
+.pitch-lfo-cycle input{width:8ch;font-variant-numeric:tabular-nums}
+.pitch-lfo-cycle input:disabled{opacity:.55}
