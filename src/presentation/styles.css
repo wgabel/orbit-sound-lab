@@ -5,3 +5,5 @@
 .oscillator-lfo{border-top:1px solid #35414c;margin-top:12px;padding-top:18px}.oscillator-lfo .oscillator-title{margin-bottom:14px}.oscillator-lfo .oscillator-title strong{font-size:14px;letter-spacing:.1em}.oscillator-lfo input:disabled,.oscillator-lfo select:disabled{opacity:.4}
 
 .oscillator-filter{border-top:1px solid #35414c;margin-top:12px;padding-top:18px}.oscillator-filter .oscillator-title{margin-bottom:14px}.oscillator-filter .oscillator-title strong{font-size:14px;letter-spacing:.1em}.oscillator-filter input:disabled{opacity:.4}
+
+.oscillator-envelope{border-top:1px solid #35414c;margin-top:18px;padding-top:18px}.oscillator-envelope .oscillator-title{margin-bottom:10px}.oscillator-envelope .oscillator-title strong{font-size:14px;letter-spacing:.08em}.oscillator-envelope .envelope-help{font-size:12px;line-height:1.5;color:#9dabb6}.oscillator-envelope input:disabled{opacity:.4}.gate-button{width:100%;min-height:48px;border:1px solid #a6efab;border-radius:8px;background:#243b34;color:#d3ffcf;font-weight:800;touch-action:none;cursor:pointer}.gate-button:active{background:#a6efab;color:#172029}.gate-button:disabled{opacity:.35;cursor:not-allowed}
