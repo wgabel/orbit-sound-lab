@@ -22,9 +22,15 @@
 .oscillator-panel summary strong{font-size:20px}
 .oscillator-summary-status{font-size:10px;letter-spacing:.08em;color:#a6efab}
 .oscillator-panel.muted .oscillator-summary-status{color:#8e9ca7}
-.oscillator-expand-hint{margin-left:auto;font-size:11px;color:#9dabb6}
-.oscillator-expand-hint:after{content:" ▾";display:inline-block}
-.oscillator-panel[open] .oscillator-expand-hint:after{transform:rotate(180deg)}
+.oscillator-expand-hint{
+  display:inline-flex;align-items:center;gap:6px;margin-left:auto;padding:4px 7px;
+  border:1px solid #526373;border-radius:5px;background:#283846;color:#e8e9df;
+  font-size:11px;font-weight:700;line-height:1.2
+}
+.oscillator-expand-hint::after{
+  content:"";width:5px;height:5px;border-right:1px solid currentColor;border-bottom:1px solid currentColor;
+  transform:translateY(-1px) rotate(45deg)
+}
 .oscillator-panel summary:focus-visible{outline:2px solid #a6efab;outline-offset:-3px}
 @media(max-width:650px){.oscillator-switches{grid-template-columns:repeat(auto-fit,minmax(100px,1fr))}}
 
@@ -41,14 +47,17 @@
 
 .oscillators .oscillator-panel{padding:0}
 .oscillator-card-header{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:14px}
-.oscillator-panel-toggle{flex:1;display:flex;align-items:center;gap:8px;padding:6px;border:0;background:transparent;color:inherit;text-align:left;white-space:nowrap;cursor:pointer}
+.oscillator-panel-toggle{flex:1;min-height:44px;display:flex;align-items:center;gap:8px;padding:6px;border:0;background:transparent;color:inherit;text-align:left;white-space:nowrap;cursor:pointer}
 .oscillator-card-header .oscillator-header-actions{display:flex;align-items:center;gap:5px;flex-shrink:0}
 .oscillator-header-actions .randomize-button{padding:7px 6px}
 .oscillator-header-actions button:disabled{opacity:.45;cursor:default}
 .oscillator-action-status{margin-left:8px;color:#a8b7bf;font-weight:400;letter-spacing:normal}
 .oscillator-panel-toggle strong{font-size:20px}
 .oscillator-panel-toggle:focus-visible{outline:2px solid #a6efab;outline-offset:-3px}
-.oscillator-panel-toggle[aria-expanded="true"] .oscillator-expand-hint:after{transform:rotate(180deg)}
+.oscillator-panel-toggle:hover .oscillator-expand-hint,.oscillator-panel-toggle:focus-visible .oscillator-expand-hint{
+  border-color:#a6efab
+}
+.oscillator-panel-toggle[aria-expanded="true"] .oscillator-expand-hint::after{transform:translateY(1px) rotate(225deg)}
 /* Shared layout for the parameter blocks inside each oscillator card. */
 .oscillator-controls,.oscillator-panel-content{display:grid;gap:12px;min-width:0}
 .oscillator-controls{padding:0 14px 14px}
