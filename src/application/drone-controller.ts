@@ -5,15 +5,31 @@ import { validateLowFrequencyOscillatorSettings } from '../domain/modulation';
 import type { AudioGraph } from './audio-graph-contracts';
 import type { DroneSettings, OscillatorSettings } from '../domain/drone';
 import { validateDroneSettings } from '../domain/drone';
-/** Application orchestration; browser audio dependencies are injected. */
+
+interface ActiveModulation { readonly source: ModulationSource; readonly destination: ModulationDestination; }
+
+/** Coordinates one independent pitch LFO per drone oscillator. */
 export class DroneController implements SynthesizerController {
   private voice: DroneVoice | null = null;
   private playing = false;
   private disposed = false;
-  private modulationSource: ModulationSource | null = null;
-  private modulationDestination: ModulationDestination | null = null;
-  constructor(private readonly context: AudioContext, private readonly factory: DroneVoiceFactory, private readonly graph: AudioGraph, private readonly modulationMatrix: ModulationMatrix, private readonly modulationFactory: ModulationSourceFactory, public settings: DroneSettings, public lowFrequencyOscillatorSettings: LowFrequencyOscillatorSettings) { validateDroneSettings(settings); }
+  private readonly activeModulations = new Map<string, ActiveModulation>();
+
+  constructor(
+    private readonly context: AudioContext,
+    private readonly factory: DroneVoiceFactory,
+    private readonly graph: AudioGraph,
+    private readonly modulationMatrix: ModulationMatrix,
+    private readonly modulationFactory: ModulationSourceFactory,
+    public settings: DroneSettings,
+    public lowFrequencyOscillatorSettings: readonly LowFrequencyOscillatorSettings[]
+  ) {
+    validateDroneSettings(settings);
+    this.validateModulationBank(lowFrequencyOscillatorSettings);
+  }
+
   get isPlaying(): boolean { return this.playing; }
+
   async start(): Promise<void> {
     if (this.disposed) throw new Error('Controller has been disposed.');
     if (this.playing) return;
@@ -23,72 +39,98 @@ export class DroneController implements SynthesizerController {
     try {
       this.graph.register({id: 'drone', inputs: [], outputs: [{id: 'audio', node: voice.output}]});
       this.graph.connect({sourceModuleId: 'drone', sourcePortId: 'audio', destinationModuleId: 'master', destinationPortId: 'audio'});
-      // A disabled LFO must not allocate or start an audio-rate oscillator.
-      if (this.lowFrequencyOscillatorSettings.enabled) this.attachModulation(voice);
+      for (const settings of this.lowFrequencyOscillatorSettings) {
+        if (settings.enabled) this.attachModulation(voice, settings);
+      }
       voice.start();
       this.voice = voice;
       this.playing = true;
     } catch (error) {
-      this.detachModulation();
+      this.detachAllModulations();
       this.graph.unregister('drone');
       voice.dispose();
       throw error;
     }
   }
-  private attachModulation(voice: DroneVoice): void {
-    const modulationSource = this.modulationFactory.create(this.lowFrequencyOscillatorSettings);
-    let connectedDestination: ModulationDestination | null = null;
+
+  private validateModulationBank(settings: readonly LowFrequencyOscillatorSettings[]): void {
+    const oscillatorIds = new Set(this.settings.oscillators.map(oscillator => oscillator.id));
+    const targets = new Set<string>();
+    if (settings.length !== oscillatorIds.size) throw new Error('Each oscillator requires one LFO configuration.');
+    for (const item of settings) {
+      validateLowFrequencyOscillatorSettings(item);
+      if (!oscillatorIds.has(item.targetOscillatorId) || targets.has(item.targetOscillatorId)) throw new Error('LFO targets must be unique and match oscillator identifiers.');
+      targets.add(item.targetOscillatorId);
+    }
+  }
+
+  private attachModulation(voice: DroneVoice, settings: LowFrequencyOscillatorSettings): void {
+    const source = this.modulationFactory.create(settings);
+    const destination: ModulationDestination = {id: settings.targetOscillatorId, parameter: voice.getDetuneParameter(settings.targetOscillatorId)};
+    let connected = false;
     try {
-      const modulationDestination = {id: this.lowFrequencyOscillatorSettings.targetOscillatorId, parameter: voice.getDetuneParameter(this.lowFrequencyOscillatorSettings.targetOscillatorId)};
-      this.modulationMatrix.connect(modulationSource, modulationDestination);
-      connectedDestination = modulationDestination;
-      modulationSource.start();
-      this.modulationSource = modulationSource;
-      this.modulationDestination = modulationDestination;
+      this.modulationMatrix.connect(source, destination);
+      connected = true;
+      source.start();
+      this.activeModulations.set(settings.targetOscillatorId, {source, destination});
     } catch (error) {
-      if (connectedDestination) this.modulationMatrix.disconnect(modulationSource, connectedDestination);
-      modulationSource.dispose();
+      if (connected) this.modulationMatrix.disconnect(source, destination);
+      source.dispose();
       throw error;
     }
   }
-  private detachModulation(): void {
-    if (this.modulationSource && this.modulationDestination) this.modulationMatrix.disconnect(this.modulationSource, this.modulationDestination);
-    this.modulationSource?.dispose();
-    this.modulationSource = null;
-    this.modulationDestination = null;
+
+  private detachModulation(oscillatorId: string): void {
+    const active = this.activeModulations.get(oscillatorId);
+    if (!active) return;
+    this.modulationMatrix.disconnect(active.source, active.destination);
+    active.source.dispose();
+    this.activeModulations.delete(oscillatorId);
   }
+
+  private detachAllModulations(): void {
+    for (const oscillatorId of [...this.activeModulations.keys()]) this.detachModulation(oscillatorId);
+  }
+
   stop(): void {
-    this.detachModulation();
-    this.graph.unregister('drone'); this.voice?.dispose(); this.voice = null; this.playing = false; }
-  updateLowFrequencyOscillator(settings: LowFrequencyOscillatorSettings): void {
-    validateLowFrequencyOscillatorSettings(settings);
-    if (!this.settings.oscillators.some(oscillator => oscillator.id === settings.targetOscillatorId)) throw new Error('Unknown LFO target oscillator.');
-    if (this.voice && !settings.enabled) {
-      this.detachModulation();
-    } else if (this.voice && settings.enabled && !this.modulationSource) {
-      this.lowFrequencyOscillatorSettings = settings;
-      this.attachModulation(this.voice);
-    } else if (this.modulationSource && this.voice && this.modulationDestination) {
-      if (this.modulationDestination.id !== settings.targetOscillatorId) {
-        const destination = {id: settings.targetOscillatorId, parameter: this.voice.getDetuneParameter(settings.targetOscillatorId)};
-        this.modulationMatrix.connect(this.modulationSource, destination);
-        this.modulationMatrix.disconnect(this.modulationSource, this.modulationDestination);
-        this.modulationDestination = destination;
-      }
-      this.modulationSource.update(settings);
-    }
-    this.lowFrequencyOscillatorSettings = settings;
+    this.detachAllModulations();
+    this.graph.unregister('drone');
+    this.voice?.dispose();
+    this.voice = null;
+    this.playing = false;
   }
+
+  updateLowFrequencyOscillator(settings: LowFrequencyOscillatorSettings): void {
+    if (this.disposed) throw new Error('Controller has been disposed.');
+    validateLowFrequencyOscillatorSettings(settings);
+    const index = this.lowFrequencyOscillatorSettings.findIndex(item => item.targetOscillatorId === settings.targetOscillatorId);
+    if (index < 0) throw new Error('Unknown LFO target oscillator.');
+    const active = this.activeModulations.get(settings.targetOscillatorId);
+    if (!settings.enabled) this.detachModulation(settings.targetOscillatorId);
+    else if (active) active.source.update(settings);
+    else if (this.voice) this.attachModulation(this.voice, settings);
+    this.lowFrequencyOscillatorSettings = this.lowFrequencyOscillatorSettings.map((item, itemIndex) => itemIndex === index ? settings : item);
+  }
+
   setGain(value: number): void {
     if (!Number.isFinite(value) || value < 0 || value > 1) throw new Error('Invalid gain.');
-    this.settings = {...this.settings, gain: value}; this.voice?.setGain(value);
+    this.settings = {...this.settings, gain: value};
+    this.voice?.setGain(value);
   }
+
   updateOscillator(settings: OscillatorSettings): void {
-    const next = {...this.settings, oscillators: this.settings.oscillators.map(item => item.id === settings.id ? settings : item)};
     if (!this.settings.oscillators.some(item => item.id === settings.id)) throw new Error('Unknown oscillator.');
+    const next = {...this.settings, oscillators: this.settings.oscillators.map(item => item.id === settings.id ? settings : item)};
     validateDroneSettings(next);
     this.voice?.updateOscillator(settings);
     this.settings = next;
   }
-  dispose(): void { if (this.disposed) return; this.stop(); this.graph.dispose(); this.modulationMatrix.dispose(); this.disposed = true; }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.stop();
+    this.graph.dispose();
+    this.modulationMatrix.dispose();
+    this.disposed = true;
+  }
 }
