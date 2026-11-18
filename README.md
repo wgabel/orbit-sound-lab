@@ -19,5 +19,7 @@ Each layer also has a **Hold to Play** key under its level control. Hold it with
 
 Pressing a key activates **Key Mode** for that layer. Turn **Key Mode** off to return to continuous playback controls. Each layer’s attack, decay, sustain and release are saved with its sound preset.
 
+**Variant** varies oscillator and modulation values by up to 5% of each slider’s full range in either direction, within its limits.
+
 ## Architecture
 Domain models in `src/domain`; orchestration and ports in `src/application`; Web Audio implementations and factory in `src/infrastructure/audio`; dependency assembly in `src/composition`; React UI in `src/presentation`. See `AGENTS.md`.
