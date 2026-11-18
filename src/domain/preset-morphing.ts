@@ -17,7 +17,7 @@ export interface MorphedSound extends LayerSound {
 const interpolate = (start: number, end: number, position: number): number => start + (end - start) * position;
 const choose = <T>(start: T, end: T, position: number): T => position < 0.5 ? start : end;
 const interpolateFrequency = (start: number, end: number, position: number): number =>
-  Math.exp(interpolate(Math.log(start), Math.log(end), position));
+  start === end ? start : Math.exp(interpolate(Math.log(start), Math.log(end), position));
 
 function morphLayerSound(start: LayerSound, end: LayerSound, position: number): LayerSound {
   const startModulations = normalizePresetModulations(start.modulation, start.drone.oscillators.map(item => item.id));
@@ -30,6 +30,16 @@ function morphLayerSound(start: LayerSound, end: LayerSound, position: number): 
   const drone: DroneSettings = {
     ...start.drone,
     gain: interpolate(start.drone.gain, end.drone.gain, position),
+    mix: {
+      noise: {
+        enabled: choose(start.drone.mix.noise.enabled, end.drone.mix.noise.enabled, position),
+        volume: interpolate(start.drone.mix.noise.volume, end.drone.mix.noise.volume, position)
+      },
+      filter: {
+        enabled: choose(start.drone.mix.filter.enabled, end.drone.mix.filter.enabled, position),
+        cutoffHz: interpolateFrequency(start.drone.mix.filter.cutoffHz, end.drone.mix.filter.cutoffHz, position)
+      }
+    },
     oscillators: start.drone.oscillators.map(a => {
       const b = endOscillators.get(a.id);
       if (!b) throw new Error('Presets have incompatible oscillator identifiers.');

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createDefaultDroneSettings } from './drone';
+import { createDefaultDroneMix, createDefaultDroneSettings } from './drone';
 import { createDefaultDelaySettings } from './delay';
 import { createDefaultLowFrequencyOscillators } from './modulation';
 import { createDefaultDroneLayer } from './drone-layers';
@@ -59,6 +59,22 @@ describe('preset schema', () => {
     const normalized = validatePreset(JSON.parse(JSON.stringify(preset)));
     expect(loadPresetSound(normalized, createDefaultDroneLayer('A'))).toEqual({...secondLayer, enabled: true});
     expect(() => validatePreset({...preset, sourceLayer: 'C'})).toThrow('Invalid preset source layer');
+  });
+  it('defaults legacy mix fields and preserves noise and filter in both layers', () => {
+    const preset = createPreset('Layer texture', drone, modulation, delay);
+    const {mix: _firstMix, ...legacyDrone} = drone;
+    const {mix: _secondMix, ...legacySecondDrone} = preset.layerMix.secondLayer.drone;
+    const legacy = {...preset, drone: legacyDrone, layerMix: {...preset.layerMix,
+      secondLayer: {...preset.layerMix.secondLayer, drone: legacySecondDrone}}};
+    expect(validatePreset(legacy).drone.mix).toEqual(createDefaultDroneMix());
+    expect(validatePreset(legacy).layerMix.secondLayer.drone.mix).toEqual(createDefaultDroneMix());
+
+    const mix = {noise: {enabled: true, volume: 0.37}, filter: {enabled: true, cutoffHz: 840}};
+    const withNoise = {...preset, drone: {...drone, mix}, layerMix: {...preset.layerMix,
+      secondLayer: {...preset.layerMix.secondLayer, drone: {...legacySecondDrone, mix}}}};
+    const roundTrip = validatePreset(JSON.parse(JSON.stringify(withNoise)));
+    expect(roundTrip.drone.mix).toEqual(mix);
+    expect(roundTrip.layerMix.secondLayer.drone.mix).toEqual(mix);
   });
   it('rejects unsupported schema versions', () => {
     const preset = createPreset('Ambient', drone, modulation, delay);

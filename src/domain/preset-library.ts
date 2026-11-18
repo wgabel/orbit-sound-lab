@@ -3,7 +3,7 @@ import type { DroneLayer, DroneLayerId, LayerMix } from './drone-layers';
 import { DEFAULT_HARMONY_SETTINGS, validateHarmonySettings } from './harmony';
 import type { HarmonySettings } from './harmony';
 import type { DroneSettings } from './drone';
-import { validateDroneSettings } from './drone';
+import { createDefaultDroneMix, validateDroneSettings } from './drone';
 import type { LowFrequencyOscillatorSettings } from './modulation';
 import { createDefaultLowFrequencyOscillatorSettings, validateLowFrequencyOscillatorSettings } from './modulation';
 import type { DelaySettings } from './delay';
@@ -56,6 +56,7 @@ function validateLayerSound(settings: DroneSettings, modulationSettings: readonl
   if (!settings || !Array.isArray(settings.oscillators) || !Array.isArray(modulationSettings)) throw new Error('Incomplete preset layer.');
   const drone: DroneSettings = {
     ...settings,
+    mix: settings.mix === undefined ? createDefaultDroneMix() : settings.mix,
     oscillators: settings.oscillators.map(oscillator =>
       oscillator.pan === undefined ? {...oscillator, pan: 0} : oscillator)
   };

@@ -145,6 +145,8 @@ Treat this as a software-inspired design, not a claim of exact SOLAR 42 internal
 - Each layer owns five oscillators, harmony, modulation and its level. Start enables the selected layer and starts all enabled layers. Stop stops both; layer switches control their own voice. Both layers feed the shared echo, master level and output protection.
 - Layer A maps to the original version 1 preset fields. Optional serialized layer mix data stores A's enable state, layer B and the master level. Older presets load with A enabled, B disabled and master at unity.
 - Load the saved sound into the layer selected in the UI, preserving its enable state, the other layer and the shared effects. Save the source layer with the preset; older presets use A as their source.
+- Each drone has a white-noise source with its own level. Center the noise and sum it with the oscillator outputs before the layer low-pass. The per-oscillator filters and panorama precede this layer stage, and the shared echo follows it.
+- The noise source is created on first use in a running voice, and released with that voice. Old presets default to noise off and layer filter bypass.
 - Morph both layers' continuous sound controls and master level; discrete layer enable states switch at the midpoint.
 
 ## Automatic playback fades

@@ -1,6 +1,8 @@
 import type { DroneVoice } from '../../application/audio-contracts';
-import type { DroneSettings, OscillatorSettings } from '../../domain/drone';
+import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../../domain/drone';
 import { validateDroneSettings, validateLowPassFilterSettings } from '../../domain/drone';
+import { WebAudioDroneMix } from './web-audio-drone-mix';
+import { PLAYBACK_FADE_SECONDS, fadeGain } from './web-audio-fade';
 
 /** Spread resonance across two stages to avoid squaring the full UI Q peak. */
 export function mapResonanceToStageQ(resonance: number): number {
@@ -9,7 +11,6 @@ export function mapResonanceToStageQ(resonance: number): number {
 
 // Restore the previous unity-gain mono upmix at the panner's center.
 const MONO_PAN_GAIN_COMPENSATION = Math.SQRT2;
-const OSCILLATOR_SWITCH_SECONDS = 0.02;
 
 interface OscillatorNodes {
   readonly source: OscillatorNode;
@@ -24,9 +25,11 @@ interface OscillatorNodes {
   readonly waveformAnalyser: AnalyserNode;
   enabled: boolean;
 }
-/** Native Web Audio signal path: oscillator → dry/two cascaded low-pass filters → voice gain → master. Two biquads yield a four-pole (24 dB/octave asymptotic) response; this is not a nonlinear analog ladder. */
+/** Panned oscillator paths and centered noise feed the layer mix, then the drone level. */
 export class WebAudioDrone implements DroneVoice {
   readonly output: GainNode;
+  private readonly mix: WebAudioDroneMix;
+  private mixSettings: DroneMixSettings;
   private readonly oscillators = new Map<string, OscillatorNodes>();
   private started = false;
   private stopped = false;
@@ -37,6 +40,8 @@ export class WebAudioDrone implements DroneVoice {
     validateDroneSettings(settings);
     this.output = context.createGain();
     this.output.gain.value = settings.gain * MONO_PAN_GAIN_COMPENSATION;
+    this.mixSettings = settings.mix;
+    this.mix = new WebAudioDroneMix(context, settings.mix, this.output);
     for (const oscillatorSettings of settings.oscillators) {
       const source = context.createOscillator();
       const filter = context.createBiquadFilter();
@@ -74,7 +79,7 @@ export class WebAudioDrone implements DroneVoice {
       gain.connect(amplitudeGain);
       amplitudeGain.connect(fadeGain);
       fadeGain.connect(panner);
-      panner.connect(this.output);
+      panner.connect(this.mix.input);
       // Passive analysis branch: reads the audible voice after filters, LFO and fades.
       fadeGain.connect(waveformAnalyser);
       this.oscillators.set(oscillatorSettings.id, {source, filter, secondFilter, dryGain, wetGain, gain, fadeGain, panner, amplitudeGain, waveformAnalyser, enabled: oscillatorSettings.enabled});
@@ -87,20 +92,23 @@ export class WebAudioDrone implements DroneVoice {
     const now = this.context.currentTime;
     for (const oscillator of this.oscillators.values()) {
       oscillator.source.start(now);
-      if (oscillator.enabled) this.scheduleFade(oscillator, 1, now);
+      if (oscillator.enabled) fadeGain(oscillator.fadeGain.gain, 1, now);
     }
+    this.mix.update(this.mixSettings, now);
   }
   stop(): Promise<void> {
     if (this.stopPromise) return this.stopPromise;
     if (!this.started || this.stopped || this.disposed) return Promise.resolve();
     this.stopped = true;
+    const now = this.context.currentTime;
     if (this.context.state !== 'running') {
+      this.mix.stop(now, now);
       for (const {source} of this.oscillators.values()) source.stop();
       return Promise.resolve();
     }
     const firstSource = this.oscillators.values().next().value?.source;
     if (!firstSource) return Promise.resolve();
-    const now = this.context.currentTime;
+    const end = now + PLAYBACK_FADE_SECONDS;
     this.stopPromise = new Promise(resolve => {
       const finish = () => {
         firstSource.removeEventListener('ended', finish);
@@ -114,9 +122,10 @@ export class WebAudioDrone implements DroneVoice {
       this.finishStop = finish;
       this.context.addEventListener('statechange', handleStateChange);
       firstSource.addEventListener('ended', finish);
+      this.mix.stop(now, end);
       for (const oscillator of this.oscillators.values()) {
-        this.scheduleFade(oscillator, 0, now);
-        oscillator.source.stop(now + OSCILLATOR_SWITCH_SECONDS);
+        fadeGain(oscillator.fadeGain.gain, 0, now);
+        oscillator.source.stop(end);
       }
     });
     return this.stopPromise;
@@ -138,7 +147,7 @@ export class WebAudioDrone implements DroneVoice {
     oscillator.gain.gain.setTargetAtTime((2 / this.oscillators.size) * settings.volume, now, 0.015);
     if (oscillator.enabled !== settings.enabled) {
       oscillator.enabled = settings.enabled;
-      if (this.started && !this.stopped) this.scheduleFade(oscillator, settings.enabled ? 1 : 0, now);
+      if (this.started && !this.stopped) fadeGain(oscillator.fadeGain.gain, settings.enabled ? 1 : 0, now);
     }
     oscillator.filter.frequency.setTargetAtTime(settings.filter.cutoffHz, now, 0.02);
     oscillator.filter.Q.setTargetAtTime(mapResonanceToStageQ(settings.filter.resonance), now, 0.02);
@@ -148,15 +157,9 @@ export class WebAudioDrone implements DroneVoice {
     oscillator.dryGain.gain.setTargetAtTime(settings.filter.enabled ? 0 : 1, now, 0.015);
     oscillator.wetGain.gain.setTargetAtTime(settings.filter.enabled ? 1 : 0, now, 0.015);
   }
-  private scheduleFade(oscillator: OscillatorNodes, target: number, now: number): void {
-    const parameter = oscillator.fadeGain.gain;
-    if (typeof parameter.cancelAndHoldAtTime === 'function') parameter.cancelAndHoldAtTime(now);
-    else {
-      const currentValue = parameter.value;
-      parameter.cancelScheduledValues(now);
-      parameter.setValueAtTime(currentValue, now);
-    }
-    parameter.linearRampToValueAtTime(target, now + OSCILLATOR_SWITCH_SECONDS);
+  setMix(settings: DroneMixSettings): void {
+    this.mixSettings = settings;
+    if (this.started && !this.stopped) this.mix.update(settings, this.context.currentTime);
   }
   getWaveformAnalyser(oscillatorId: string): AnalyserNode | null {
     return this.oscillators.get(oscillatorId)?.waveformAnalyser ?? null;
@@ -185,6 +188,7 @@ export class WebAudioDrone implements DroneVoice {
       source.disconnect(); filter.disconnect(); secondFilter.disconnect(); dryGain.disconnect(); wetGain.disconnect(); gain.disconnect(); fadeGain.disconnect(); amplitudeGain.disconnect(); panner.disconnect(); waveformAnalyser.disconnect();
     }
     this.oscillators.clear();
+    this.mix.dispose();
     this.output.disconnect();
   }
 }
