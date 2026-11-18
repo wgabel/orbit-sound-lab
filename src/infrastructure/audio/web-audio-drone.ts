@@ -50,7 +50,7 @@ export class WebAudioDrone implements DroneVoice {
       secondFilter.Q.value = mapResonanceToStageQ(oscillatorSettings.filter.resonance);
       dryGain.gain.value = oscillatorSettings.filter.enabled ? 0 : 1;
       wetGain.gain.value = oscillatorSettings.filter.enabled ? 1 : 0;
-      gain.gain.value = 1 / settings.oscillators.length;
+      gain.gain.value = 2 / settings.oscillators.length;
       fadeGain.gain.value = 0;
       amplitudeGain.gain.value = 0.5;
       source.connect(dryGain);
