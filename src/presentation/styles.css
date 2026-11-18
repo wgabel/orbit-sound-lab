@@ -3,7 +3,6 @@
 .diagnostic{margin-top:30px;padding:20px;border:1px solid #35414c;border-radius:12px;background:#172029}.diagnostic a{color:#a6efab}.diagnostic h2{font-size:13px;letter-spacing:.12em;color:#a6efab}.diagnostic label{display:flex;gap:10px;align-items:center;letter-spacing:0}.diagnostic-track{height:16px;margin:18px 40px;background:#273442;border-radius:12px;display:flex;justify-content:center;align-items:center}.diagnostic-indicator{width:12px;height:12px;border-radius:50%;background:#a6efab;will-change:transform}.diagnostic p{font-size:12px;color:#9dabb6;line-height:1.5}
 
 
-.oscillator-filter{border-top:1px solid #35414c;margin-top:12px;padding-top:18px}.oscillator-filter .oscillator-title{margin-bottom:14px}.oscillator-filter .oscillator-title strong{font-size:14px;letter-spacing:.1em}.oscillator-filter input:disabled{opacity:.4}
 
 .master-delay{padding:22px 24px;margin:0 0 30px;border:1px solid #35414c;border-radius:12px;background:#172029}.master-delay .oscillator-title{margin-bottom:12px}.master-delay .oscillator-title strong{font-size:15px;letter-spacing:.1em;color:#a6efab}.master-delay .delay-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:20px}.master-delay input:disabled{opacity:.4}.master-delay p{font-size:12px;color:#9dabb6}
 
@@ -26,8 +25,6 @@
 .oscillator-expand-hint{margin-left:auto;font-size:11px;color:#9dabb6}
 .oscillator-expand-hint:after{content:" ▾";display:inline-block}
 .oscillator-panel[open] .oscillator-expand-hint:after{transform:rotate(180deg)}
-.oscillator-panel-content{padding:0 22px 22px}
-.oscillator-panel-content>.oscillator-header-actions{margin:0 0 18px}
 .oscillator-panel summary:focus-visible{outline:2px solid #a6efab;outline-offset:-3px}
 @media(max-width:650px){.oscillator-switches{grid-template-columns:repeat(auto-fit,minmax(100px,1fr))}}
 
@@ -52,8 +49,27 @@
 .oscillator-panel-toggle strong{font-size:20px}
 .oscillator-panel-toggle:focus-visible{outline:2px solid #a6efab;outline-offset:-3px}
 .oscillator-panel-toggle[aria-expanded="true"] .oscillator-expand-hint:after{transform:rotate(180deg)}
-.oscillator-always-visible{display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:0 22px 18px}
-.oscillator-volume-group{flex:1 1 100%;min-width:0}
+/* Shared layout for the parameter blocks inside each oscillator card. */
+.oscillator-controls,.oscillator-panel-content{display:grid;gap:12px;min-width:0}
+.oscillator-controls{padding:0 14px 14px}
+.oscillator-control-section{
+  min-width:0;border:1px solid #526373;border-radius:9px;background:#111b25
+}
+.oscillator-control-section-heading{
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;
+  padding:8px 10px;border-bottom:1px solid #526373;border-radius:8px 8px 0 0;background:#283846
+}
+.oscillator-control-section-heading h3{
+  margin:0;color:#dde8ef;font-size:11px;font-weight:750;letter-spacing:.08em;text-transform:uppercase
+}
+.oscillator-control-section-body{display:grid;gap:12px;min-width:0;padding:10px}
+.oscillator-control-section-body input[type=range]{margin:8px 0 0}
+.oscillator-control-section-body select{
+  max-width:100%;padding:4px 6px;border:1px solid #526373;border-radius:5px;
+  color:#e8e9df;background:#172029;color-scheme:dark
+}
+.oscillator-waveform-control{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.oscillator-waveform-control select{min-width:0}
 .oscillator-mix-controls{min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:end}
 .numeric-slider{min-width:0}
 .numeric-slider-header,.numeric-slider-actions{display:flex;align-items:center;gap:4px}
@@ -65,7 +81,6 @@
 .numeric-slider-entry{width:9ch;max-width:100%;text-align:right}
 .numeric-slider-entry[aria-invalid=true]{border-color:#ff9e9e}
 .numeric-slider-error{display:block;margin-top:4px;color:#ff9e9e;font-size:11px}
-.oscillator-always-visible input[type=range]{margin:10px 0 0}
 .oscillator-randomize-actions{display:flex;flex-wrap:wrap;gap:8px}
 .oscillator-panel-content[hidden]{display:none}
 
@@ -191,11 +206,15 @@
 .pitch-lfo-cycle input:disabled{opacity:.55}
 
 
-.oscillator-lfo-disclosure{margin:0 0 14px;border:1px solid #35414c;border-radius:7px;background:#15202b}
-.oscillator-volume-group .oscillator-lfo-disclosure{margin:8px 0 0}
-.oscillator-lfo-disclosure summary{padding:7px 8px;color:#c7d1d8;font-size:12px;cursor:pointer}
+.oscillator-lfo-disclosure{margin:0;border:1px solid #35414c;border-radius:7px;background:#15202b}
+.oscillator-lfo-disclosure summary{gap:7px;padding:7px 8px;color:#c7d1d8;font-size:12px;cursor:pointer}
+.oscillator-lfo-disclosure summary::before{
+  content:"";width:6px;height:6px;flex:none;border-right:1px solid currentColor;border-bottom:1px solid currentColor;
+  transform:rotate(-45deg)
+}
+.oscillator-lfo-disclosure[open] summary::before{transform:rotate(45deg)}
 .oscillator-lfo-disclosure summary:focus-visible{outline:2px solid #77dcff;outline-offset:2px}
-.oscillator-lfo-state{float:right;color:#9caeba;font-size:10px;font-weight:700;line-height:17px}
+.oscillator-lfo-state{margin-left:auto;color:#9caeba;font-size:10px;font-weight:700;line-height:17px}
 .oscillator-lfo-state[data-active=true]{color:#77dcff}
 .oscillator-lfo-disclosure .lfo-destination{display:grid;gap:8px;padding:8px;border-top:1px solid #35414c}
 .oscillator-lfo-disclosure input[type=range]{margin:7px 0 0}
