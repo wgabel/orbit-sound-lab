@@ -65,8 +65,7 @@ export function OscillatorWaveform({oscillatorId, playing, enabled, getAnalyser}
     return () => { cancelAnimationFrame(frame); observer?.disconnect(); context.clearRect(0, 0, canvas.width, canvas.height); };
   }, [oscillatorId, playing, enabled, getAnalyser]);
   return <div className="oscillator-waveform" aria-label={`Live audio waveform for ${oscillatorId}`}>
-    <span className="oscillator-waveform-label">LIVE WAVEFORM</span>
     <canvas ref={canvasRef} aria-hidden="true"/>
-    {!playing || !enabled ? <span className="oscillator-waveform-idle">{playing ? 'OSC OFF' : 'STANDBY'}</span> : null}
+    {!playing || !enabled ? <span className="oscillator-waveform-idle">{enabled ? 'Standby' : 'Off'}</span> : null}
   </div>;
 }
