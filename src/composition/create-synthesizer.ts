@@ -1,5 +1,6 @@
 import { createDefaultDelaySettings } from '../domain/delay';
 import type { DelaySettings } from '../domain/delay';
+import { WebAudioOutputProtection } from '../infrastructure/audio/web-audio-output-protection';
 import { WebAudioDelay } from '../infrastructure/audio/web-audio-delay';
 import type { SoundLabController } from '../application/audio-contracts';
 import { createDefaultLowFrequencyOscillators } from '../domain/modulation';
@@ -16,9 +17,12 @@ export function createSynthesizer(): SoundLabController {
   const settings = createDefaultDroneSettings();
   const delay = new WebAudioDelay(context, createDefaultDelaySettings());
   let delaySettings: DelaySettings = createDefaultDelaySettings();
+  const outputProtection = new WebAudioOutputProtection(context);
   graph.register({id: 'effects', inputs: [{id: 'audio', node: delay.input}], outputs: [{id: 'audio', node: delay.output}]});
+  graph.register({id: 'output-protection', inputs: [{id: 'audio', node: outputProtection.input}], outputs: [{id: 'audio', node: outputProtection.output}]});
   graph.register({id: 'master', inputs: [{id: 'audio', node: context.destination}], outputs: []});
-  graph.connect({sourceModuleId: 'effects', sourcePortId: 'audio', destinationModuleId: 'master', destinationPortId: 'audio'});
+  graph.connect({sourceModuleId: 'effects', sourcePortId: 'audio', destinationModuleId: 'output-protection', destinationPortId: 'audio'});
+  graph.connect({sourceModuleId: 'output-protection', sourcePortId: 'audio', destinationModuleId: 'master', destinationPortId: 'audio'});
   const controller = new DroneController(context, new WebAudioDroneFactory(context), graph, new WebAudioModulationMatrix(), new WebAudioLowFrequencyOscillatorFactory(context), settings, createDefaultLowFrequencyOscillators(settings.oscillators.map(oscillator => oscillator.id)));
   return {
     get settings() { return controller.settings; },
@@ -31,6 +35,6 @@ export function createSynthesizer(): SoundLabController {
     stop: () => controller.stop(),
     setGain: value => controller.setGain(value),
     updateOscillator: settings => controller.updateOscillator(settings),
-    dispose: () => { controller.dispose(); delay.dispose(); void context.close(); }
+    dispose: () => { controller.dispose(); graph.dispose(); delay.dispose(); outputProtection.dispose(); void context.close(); }
   };
 }
