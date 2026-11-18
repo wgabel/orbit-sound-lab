@@ -3,7 +3,7 @@ import type { OscillatorModulationParameter, OscillatorModulationRoute } from '.
 import type { DroneVoice, DroneVoiceFactory, SynthesizerController } from './audio-contracts';
 import type { ModulationMatrix, ModulationSource, ModulationSourceFactory, ModulationDestination } from './modulation-contracts';
 import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
-import { limitFilterModulationDepth, validateLowFrequencyOscillatorSettings } from '../domain/modulation';
+import { getEffectiveCutoffLfoDepth, validateLowFrequencyOscillatorSettings } from '../domain/modulation';
 import type { AudioGraph } from './audio-graph-contracts';
 import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../domain/drone';
 import { validateDroneMix, validateDroneSettings } from '../domain/drone';
@@ -43,6 +43,10 @@ export class DroneController implements SynthesizerController {
 
   readOscillatorVolume(oscillatorId: string): number | null {
     return this.playing ? this.voice?.readOscillatorVolume?.(oscillatorId) ?? null : null;
+  }
+
+  readOscillatorCutoff(oscillatorId: string): number | null {
+    return this.playing ? this.voice?.readOscillatorCutoff?.(oscillatorId) ?? null : null;
   }
 
   getWaveformAnalyser(oscillatorId: string): AnalyserNode | null {
@@ -162,13 +166,10 @@ export class DroneController implements SynthesizerController {
     if (settings.destination !== 'filterCutoff') return settings;
     const oscillator = this.settings.oscillators.find(item => item.id === settings.targetOscillatorId);
     if (!oscillator) throw new Error('Unknown LFO target oscillator.');
-    const cutoff = oscillator.filter.cutoffHz;
     const route = this.settings.oscillatorModulations?.find(item =>
       item.enabled && item.parameter === 'cutoff' && item.targetId === oscillator.id);
-    const maximumDepth = limitFilterModulationDepth(Infinity, cutoff, this.context.sampleRate);
     const range = getOscillatorModulationRange(oscillator, 'cutoff', route?.depth ?? 0, this.context.sampleRate);
-    const occupiedDepth = Math.max(cutoff - range.lower, range.upper - cutoff);
-    return {...settings, depthHz: Math.min(settings.depthHz, Math.max(0, maximumDepth - occupiedDepth))};
+    return {...settings, depthHz: getEffectiveCutoffLfoDepth(settings.depthHz, range, this.context.sampleRate)};
   }
 
   setOscillatorModulations(routes: readonly OscillatorModulationRoute[]): void {

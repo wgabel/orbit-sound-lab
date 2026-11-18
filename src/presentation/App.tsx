@@ -54,6 +54,9 @@ export function App() {
   const readOscillatorVolume = useCallback((oscillatorId: string) =>
     controller.current?.layers[activeLayer].readOscillatorVolume(oscillatorId) ?? null, [activeLayer]);
 
+  const readOscillatorCutoff = useCallback((oscillatorId: string) =>
+    controller.current?.layers[activeLayer].readOscillatorCutoff(oscillatorId) ?? null, [activeLayer]);
+
   function updateActiveLayer(update: (layer: DroneLayer) => DroneLayer) {
     setLayers(previous => ({...previous, [activeLayer]: update(previous[activeLayer])}));
   }
@@ -251,9 +254,12 @@ export function App() {
       modulation.targetOscillatorId === oscillator.id && modulation.destination === 'pitch' && modulation.enabled) : undefined;
     const amplitudeLfo = parameter === 'volume' ? lowFrequencyOscillatorSettings.find(modulation =>
       modulation.targetOscillatorId === oscillator.id && modulation.destination === 'amplitude' && modulation.enabled) : undefined;
+    const cutoffLfo = parameter === 'cutoff' ? lowFrequencyOscillatorSettings.find(modulation =>
+      modulation.targetOscillatorId === oscillator.id && modulation.destination === 'filterCutoff' && modulation.enabled) : undefined;
     return <OscillatorModulationSlider oscillator={oscillator} oscillators={settings.oscillators}
       effectiveFrequency={getEffectiveOscillatorFrequency(harmony, oscillator.frequencyHz, index)}
       parameter={parameter} routes={settings.oscillatorModulations ?? []} sampleRate={controller.current?.layers[activeLayer].sampleRate}
+      cutoffDepthHz={cutoffLfo?.depthHz} readOscillatorCutoff={readOscillatorCutoff}
       amplitudeDepth={amplitudeLfo?.depthAmplitude} readOscillatorVolume={readOscillatorVolume}
       pitchDepthCents={pitchLfo?.depthCents} readOscillatorFrequency={readOscillatorFrequency}
       playing={playing} getModulationAnalyser={getOscillatorModulationAnalyser}

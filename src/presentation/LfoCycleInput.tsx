@@ -5,7 +5,7 @@ const MINIMUM_SECONDS = 1 / LFO_MAXIMUM_RATE_HZ;
 const MAXIMUM_SECONDS = 1 / LFO_MINIMUM_RATE_HZ;
 
 interface LfoCycleInputProps {
-  readonly destination: 'Pitch' | 'Amplitude';
+  readonly destination: 'Pitch' | 'Amplitude' | 'Cutoff';
   readonly rateHz: number;
   readonly disabled: boolean;
   readonly onRateChange: (rateHz: number) => void;

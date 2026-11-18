@@ -1,5 +1,5 @@
 import { useCallback, useId, useRef } from 'react';
-import { applyPitchOffset } from '../domain/modulation';
+import { applyPitchOffset, getEffectiveCutoffLfoDepth } from '../domain/modulation';
 import type { OscillatorSettings } from '../domain/drone';
 import {
   getAmplitudeModulationRange, getOscillatorModulationRange, getOscillatorSliderSpan, OSCILLATOR_MODULATION_PARAMETERS
@@ -17,6 +17,8 @@ interface OscillatorModulationSliderProps {
   readonly playing: boolean;
   readonly pitchDepthCents?: number;
   readonly amplitudeDepth?: number;
+  readonly cutoffDepthHz?: number;
+  readonly readOscillatorCutoff: (oscillatorId: string) => number | null;
   readonly readOscillatorVolume: (oscillatorId: string) => number | null;
   readonly readOscillatorFrequency: (oscillatorId: string) => number | null;
   readonly getModulationAnalyser: (targetId: string, parameter: OscillatorModulationParameter) => AnalyserNode | null;
@@ -27,7 +29,7 @@ interface OscillatorModulationSliderProps {
 
 export function OscillatorModulationSlider({
   oscillator, effectiveFrequency, oscillators, parameter, routes, sampleRate, playing, getModulationAnalyser, pitchDepthCents, readOscillatorFrequency, amplitudeDepth, readOscillatorVolume,
-  disabled, onChange, onRouteChange
+  cutoffDepthHz, readOscillatorCutoff, disabled, onChange, onRouteChange
 }: OscillatorModulationSliderProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const dialogId = useId();
@@ -45,21 +47,25 @@ export function OscillatorModulationSlider({
   const samples = useRef(new Float32Array(32));
   const readLiveValue = useCallback(() => {
     if (parameter === 'frequency') return readOscillatorFrequency(oscillator.id);
+    if (parameter === 'cutoff') return readOscillatorCutoff(oscillator.id);
     if (amplitudeDepth !== undefined) return readOscillatorVolume(oscillator.id);
     const analyser = getModulationAnalyser(oscillator.id, parameter);
     if (!analyser) return null;
     const buffer = samples.current;
     analyser.getFloatTimeDomainData(buffer);
     return range.base + buffer.reduce((total, sample) => total + sample, 0) / buffer.length;
-  }, [amplitudeDepth, getModulationAnalyser, oscillator.id, parameter, range.base, readOscillatorFrequency, readOscillatorVolume]);
-  const showPreview = route.enabled || pitchDepthCents !== undefined || amplitudeDepth !== undefined;
+  }, [amplitudeDepth, getModulationAnalyser, oscillator.id, parameter, range.base, readOscillatorCutoff, readOscillatorFrequency, readOscillatorVolume]);
+  const showPreview = !disabled && (route.enabled || pitchDepthCents !== undefined ||
+    amplitudeDepth !== undefined || cutoffDepthHz !== undefined);
   const depthCents = pitchDepthCents ?? 0;
-  const nyquist = (sampleRate ?? 48000) / 2;
+  const currentSampleRate = sampleRate ?? 48000;
+  const nyquist = currentSampleRate / 2;
+  const cutoffDepth = cutoffDepthHz === undefined ? 0 : getEffectiveCutoffLfoDepth(cutoffDepthHz, range, currentSampleRate);
   const bounds: readonly [number, number] = parameter === 'frequency' ? [
     Math.min(nyquist, applyPitchOffset(range.lower, oscillator.detuneCents - depthCents)),
     Math.min(nyquist, applyPitchOffset(range.upper, oscillator.detuneCents + depthCents))
   ] : amplitudeDepth !== undefined ? getAmplitudeModulationRange(range.lower, range.upper, amplitudeDepth) :
-    [range.lower, range.upper];
+    [range.lower - cutoffDepth, range.upper + cutoffDepth];
 
   return <>
     <NumericSlider label={label} unit={unit} displayFactor={factor} min={minimum} max={maximum}
@@ -67,7 +73,7 @@ export function OscillatorModulationSlider({
       step={parameter === 'cutoff' ? 0.1 : parameter === 'volume' ? 0.0001 : step}
       value={baseRange.base} disabled={disabled} onChange={onChange}
       modulationRange={showPreview ? bounds : undefined}
-      readLiveValue={playing && showPreview ? readLiveValue : undefined} showLiveValue={parameter === 'frequency' || amplitudeDepth !== undefined}
+      readLiveValue={playing && showPreview ? readLiveValue : undefined} showLiveValue={parameter !== 'volume' || amplitudeDepth !== undefined}
       action={<button type="button" className="oscillator-modulation-button" data-active={route.enabled}
         aria-label={`${label} modulation`} title={`${label} modulation`} aria-haspopup="dialog" aria-controls={dialogId}
         onClick={() => dialog.current?.showModal()}><span aria-hidden="true">∿</span></button>}/>

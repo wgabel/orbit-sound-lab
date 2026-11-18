@@ -40,6 +40,15 @@ export function limitFilterModulationDepth(depthHz: number, cutoffHz: number, sa
   return Math.max(0, Math.min(depthHz, cutoffHz - minimum, maximum - cutoffHz));
 }
 
+export function getEffectiveCutoffLfoDepth(
+  requestedDepth: number, sweep: {base: number; lower: number; upper: number}, sampleRate: number
+): number {
+  const {base, lower, upper} = sweep;
+  const maximumDepth = limitFilterModulationDepth(Infinity, base, sampleRate);
+  const occupiedDepth = Math.max(base - lower, upper - base);
+  return Math.min(requestedDepth, Math.max(0, maximumDepth - occupiedDepth));
+}
+
 export function applyPitchOffset(frequencyHz: number, cents: number): number {
   return frequencyHz * 2 ** (cents / 1200);
 }

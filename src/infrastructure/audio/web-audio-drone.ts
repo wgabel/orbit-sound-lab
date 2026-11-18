@@ -23,6 +23,7 @@ interface OscillatorNodes {
   readonly source: WebAudioWaveformSource;
   readonly filter: BiquadFilterNode;
   readonly secondFilter: BiquadFilterNode;
+  readonly cutoffControl: ConstantSourceNode;
   readonly dryGain: GainNode;
   readonly wetGain: GainNode;
   readonly gain: GainNode;
@@ -37,6 +38,7 @@ interface OscillatorNodes {
   readonly waveformAnalyser: AnalyserNode;
   settings: OscillatorSettings;
   amplitudeModulated: boolean;
+  cutoffPreview?: {analyser: AnalyserNode; samples: Float32Array<ArrayBuffer>};
   volumePreview?: {product: GainNode; analyser: AnalyserNode; samples: Float32Array<ArrayBuffer>};
 }
 /** Panned oscillator paths and centered noise feed the layer mix, then the drone level. */
@@ -81,9 +83,13 @@ export class WebAudioDrone implements DroneVoice {
       waveformAnalyser.smoothingTimeConstant = 0;
       filter.type = 'lowpass';
       secondFilter.type = 'lowpass';
-      filter.frequency.value = oscillatorSettings.filter.cutoffHz;
+      const cutoffControl = context.createConstantSource();
+      cutoffControl.offset.value = oscillatorSettings.filter.cutoffHz;
+      filter.frequency.value = 0;
+      secondFilter.frequency.value = 0;
+      cutoffControl.connect(filter.frequency);
+      cutoffControl.connect(secondFilter.frequency);
       filter.Q.value = mapResonanceToStageQ(oscillatorSettings.filter.resonance);
-      secondFilter.frequency.value = oscillatorSettings.filter.cutoffHz;
       secondFilter.Q.value = mapResonanceToStageQ(oscillatorSettings.filter.resonance);
       dryGain.gain.value = oscillatorSettings.filter.enabled ? 0 : 1;
       wetGain.gain.value = oscillatorSettings.filter.enabled ? 1 : 0;
@@ -116,7 +122,7 @@ export class WebAudioDrone implements DroneVoice {
       panner.connect(this.mix.input);
       // Passive analysis branch: reads the audible voice after filters, LFO and fades.
       fadeGain.connect(waveformAnalyser);
-      this.oscillators.set(oscillatorSettings.id, {source, filter, secondFilter, dryGain, wetGain, gain, volumeControl, fadeGain, panner, amplitudeGain, amplitudeControl, modulationVolume, bipolarLevel, modulationLevel, waveformAnalyser, settings: oscillatorSettings, amplitudeModulated: false});
+      this.oscillators.set(oscillatorSettings.id, {source, filter, secondFilter, cutoffControl, dryGain, wetGain, gain, volumeControl, fadeGain, panner, amplitudeGain, amplitudeControl, modulationVolume, bipolarLevel, modulationLevel, waveformAnalyser, settings: oscillatorSettings, amplitudeModulated: false});
     }
     this.setOscillatorModulations(settings.oscillatorModulations ?? []);
   }
@@ -130,6 +136,7 @@ export class WebAudioDrone implements DroneVoice {
       oscillator.source.start(now);
       oscillator.amplitudeControl.start(now);
       oscillator.volumeControl.start(now);
+      oscillator.cutoffControl.start(now);
       if (oscillator.settings.enabled) {
         fadeGain(oscillator.fadeGain.gain, 1, now);
         fadeGain(oscillator.modulationLevel.gain, 1, now);
@@ -144,10 +151,11 @@ export class WebAudioDrone implements DroneVoice {
     const now = this.context.currentTime;
     if (this.context.state !== 'running') {
       this.mix.stop(now, now);
-      for (const {source, amplitudeControl, volumeControl} of this.oscillators.values()) {
+      for (const {source, amplitudeControl, volumeControl, cutoffControl} of this.oscillators.values()) {
         source.stop(now);
         amplitudeControl.stop(now);
         volumeControl.stop(now);
+        cutoffControl.stop(now);
       }
       return Promise.resolve();
     }
@@ -174,6 +182,7 @@ export class WebAudioDrone implements DroneVoice {
         oscillator.source.stop(end);
         oscillator.amplitudeControl.stop(end);
         oscillator.volumeControl.stop(end);
+        oscillator.cutoffControl.stop(end);
       }
     });
     return this.stopPromise;
@@ -199,9 +208,8 @@ export class WebAudioDrone implements DroneVoice {
         fadeGain(oscillator.modulationLevel.gain, settings.enabled ? 1 : 0, now);
       }
     }
-    oscillator.filter.frequency.setTargetAtTime(settings.filter.cutoffHz, now, 0.02);
+    oscillator.cutoffControl.offset.setTargetAtTime(settings.filter.cutoffHz, now, 0.02);
     oscillator.filter.Q.setTargetAtTime(mapResonanceToStageQ(settings.filter.resonance), now, 0.02);
-    oscillator.secondFilter.frequency.setTargetAtTime(settings.filter.cutoffHz, now, 0.02);
     oscillator.secondFilter.Q.setTargetAtTime(mapResonanceToStageQ(settings.filter.resonance), now, 0.02);
     // Short crossfade avoids discontinuities when switching filter bypass.
     oscillator.dryGain.gain.setTargetAtTime(settings.filter.enabled ? 0 : 1, now, 0.015);
@@ -237,7 +245,7 @@ export class WebAudioDrone implements DroneVoice {
         const target = this.oscillators.get(route.targetId);
         if (!source || !target) throw new Error('Unknown oscillator modulation source or target.');
         const destinations = route.parameter === 'frequency' ? [target.source.frequency] :
-          route.parameter === 'volume' ? [target.volumeControl.offset] : [target.filter.frequency, target.secondFilter.frequency];
+          route.parameter === 'volume' ? [target.volumeControl.offset] : [target.cutoffControl.offset];
         this.modulationRoutes.set(key, new WebAudioOscillatorModulation(this.context, route, source.modulationLevel, destinations,
           route.parameter === 'volume' ? this.oscillatorVolumeScale : 1));
       }
@@ -310,6 +318,23 @@ export class WebAudioDrone implements DroneVoice {
     return samples[samples.length - 1] / this.oscillatorVolumeScale;
   }
 
+  readOscillatorCutoff(oscillatorId: string): number | null {
+    const oscillator = this.oscillators.get(oscillatorId);
+    if (!oscillator || !this.started || this.stopped || this.context.state !== 'running') return null;
+    if (!oscillator.cutoffPreview) {
+      const analyser = this.context.createAnalyser();
+      const samples = new Float32Array(32);
+      analyser.fftSize = samples.length;
+      oscillator.cutoffControl.connect(analyser);
+      oscillator.cutoffPreview = {analyser, samples};
+      return null;
+    }
+    const {analyser, samples} = oscillator.cutoffPreview;
+    analyser.getFloatTimeDomainData(samples);
+    const cutoffHz = samples[samples.length - 1];
+    return cutoffHz > 0 ? Math.min(cutoffHz, this.context.sampleRate / 2) : null;
+  }
+
   getDetuneParameter(oscillatorId: string): AudioParam {
     const oscillator = this.oscillators.get(oscillatorId);
     if (!oscillator) throw new Error('Unknown oscillator.');
@@ -318,7 +343,7 @@ export class WebAudioDrone implements DroneVoice {
   getFilterCutoffParameters(oscillatorId: string): readonly AudioParam[] {
     const oscillator = this.oscillators.get(oscillatorId);
     if (!oscillator) throw new Error('Unknown oscillator.');
-    return [oscillator.filter.frequency, oscillator.secondFilter.frequency];
+    return [oscillator.cutoffControl.offset];
   }
   setPitchBend(cents: number): void {
     if (this.started) this.pitchBend.offset.setTargetAtTime(cents, this.context.currentTime, 0.008);
@@ -334,12 +359,14 @@ export class WebAudioDrone implements DroneVoice {
     for (const node of this.modulationRoutes.values()) node.dispose();
     for (const node of this.fadingRoutes) this.disposeFadingRoute(node);
     this.modulationRoutes.clear();
-    for (const {source, filter, secondFilter, dryGain, wetGain, gain, volumeControl, fadeGain, panner, amplitudeGain, amplitudeControl, modulationVolume, bipolarLevel, modulationLevel, waveformAnalyser, volumePreview} of this.oscillators.values()) {
+    for (const {source, filter, secondFilter, cutoffControl, dryGain, wetGain, gain, volumeControl, fadeGain, panner, amplitudeGain, amplitudeControl, modulationVolume, bipolarLevel, modulationLevel, waveformAnalyser, volumePreview} of this.oscillators.values()) {
       if (this.started && !this.stopped) {
         amplitudeControl.stop();
         volumeControl.stop();
+        cutoffControl.stop();
       }
       volumeControl.disconnect();
+      cutoffControl.disconnect();
       volumePreview?.product.disconnect();
       amplitudeControl.disconnect();
       modulationVolume.disconnect();
