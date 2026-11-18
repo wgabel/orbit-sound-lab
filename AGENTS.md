@@ -150,6 +150,11 @@ Treat this as a software-inspired design, not a claim of exact SOLAR 42 internal
 - Apply each layer’s optional stereo convolver after the shared low-pass and before the layer level. Reverb uses a fixed 1.8-second response with separate dry/wet mix; presets without the reverb settings start bypassed.
 - Morph both layers' continuous sound controls and master level; discrete layer enable states switch at the midpoint.
 
+## XY performance pad
+
+- Apply pad gains after each drone’s own level and filter their sum before the shared echo. The center preserves both saved levels. Use the top edge as a true brightness bypass and ramp audio parameters during gestures.
+- Reset returns to top center. The pad position belongs to the current session, independent of preset load and morph. Layer switches remain the source of truth for which voices can play.
+
 ## Click prevention
 
 - Crossfade carrier waveform changes over the existing 20 ms playback ramp. Reuse a stable detune parameter so pitch LFOs remain connected through the change.

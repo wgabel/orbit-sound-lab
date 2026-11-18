@@ -1,3 +1,4 @@
+import type { PerformancePosition } from '../domain/performance-pad';
 import type { DroneLayerId } from '../domain/drone-layers';
 import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
 import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../domain/drone';
@@ -28,6 +29,7 @@ export interface SoundLabController {
   stop(): Promise<void>;
   setLayersEnabled(enabled: Readonly<Record<DroneLayerId, boolean>>): Promise<void>;
   setMasterGain(gain: number): void;
+  setPerformancePosition(position: PerformancePosition): void;
   dispose(): void;
   readonly delaySettings: import('../domain/delay').DelaySettings;
   updateDelay(settings: import('../domain/delay').DelaySettings): void;

@@ -1,3 +1,5 @@
+import { NEUTRAL_PERFORMANCE_POSITION } from '../domain/performance-pad';
+import { PerformancePad } from './PerformancePad';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createDefaultDelaySettings } from '../domain/delay';
 import type { DelaySettings } from '../domain/delay';
@@ -27,6 +29,7 @@ export function App() {
   const [layers, setLayers] = useState<Record<DroneLayerId, DroneLayer>>(() =>
     ({A: createDefaultDroneLayer('A'), B: createDefaultDroneLayer('B')}));
   const [masterGain, setMasterGain] = useState(1);
+  const performancePosition = useRef(NEUTRAL_PERFORMANCE_POSITION);
   const [playing, setPlaying] = useState(false);
   const {drone: settings, modulation: lowFrequencyOscillatorSettings, harmony, enabled: layerEnabled} = layers[activeLayer];
   const getWaveformAnalyser = useCallback((oscillatorId: string) =>
@@ -148,6 +151,7 @@ export function App() {
         controller.current = createSynthesizer();
         for (const id of DRONE_LAYER_IDS) applyLayer(id, layers[id]);
         controller.current.setMasterGain(masterGain);
+        controller.current.setPerformancePosition(performancePosition.current);
         controller.current.updateDelay(delaySettings);
       }
       const engine = controller.current;
@@ -217,6 +221,10 @@ export function App() {
   }
   return <main className="instrument"><header><span className="eyebrow">ORBIT / SOUND LAB</span><h1>DRONE ENGINE</h1></header><section className="master"><button className={playing ? 'playing' : ''} disabled={playbackTransition} onClick={() => void togglePlayback()}>{playing ? '■ STOP ALL DRONES' : '▶ START DRONES'}</button><NumericSlider label="MASTER LEVEL" unit="%" displayFactor={100} min={0} max={1} step={0.01}
       value={masterGain} onChange={gain => {controller.current?.setMasterGain(gain); setMasterGain(gain);}}/></section>
+    <PerformancePad onChange={position => {
+      performancePosition.current = position;
+      controller.current?.setPerformancePosition(position);
+    }}/>
     <section className="drone-layers" aria-label="Drone layers">
       {DRONE_LAYER_IDS.map(id => <div key={id} className={activeLayer === id ? 'drone-layer selected' : 'drone-layer'}>
         <div className="drone-layer-header">
