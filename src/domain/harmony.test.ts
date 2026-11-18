@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {DEFAULT_HARMONY_SETTINGS,getHarmonicFrequency,validateHarmonySettings} from './harmony';
+import {DEFAULT_HARMONY_SETTINGS,getHarmonicFrequency,getEffectiveOscillatorFrequency,validateHarmonySettings} from './harmony';
 describe('harmony engine',()=>{
   const natural={...DEFAULT_HARMONY_SETTINGS,mode:'natural' as const,chord:'major' as const};
   it('uses pure natural major ratios',()=>{
@@ -15,6 +15,12 @@ describe('harmony engine',()=>{
     const spread={...natural,spreadCents:20};
     expect(getHarmonicFrequency(spread,0)).toBeCloseTo(110*Math.pow(2,-20/1200));
     expect(getHarmonicFrequency(spread,4)).toBeCloseTo(275*Math.pow(2,20/1200));
+  });
+  it('preserves source frequency in FREE and snaps to chord tones in tuned modes',()=>{
+    expect(getEffectiveOscillatorFrequency(DEFAULT_HARMONY_SETTINGS,183,2)).toBe(183);
+    expect(getEffectiveOscillatorFrequency(natural,183,2)).toBeCloseTo(165);
+    expect(getEffectiveOscillatorFrequency({...natural,mode:'piano'},183,2)).toBeCloseTo(110*Math.pow(2,7/12));
+    expect(getEffectiveOscillatorFrequency(natural,440,2)).toBeCloseTo(440);
   });
   it('rejects invalid inputs and free mode tuning',()=>{
     expect(()=>validateHarmonySettings({...natural,rootFrequencyHz:0})).toThrow();
