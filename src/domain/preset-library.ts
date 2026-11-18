@@ -1,3 +1,5 @@
+import { DEFAULT_HARMONY_SETTINGS, validateHarmonySettings } from './harmony';
+import type { HarmonySettings } from './harmony';
 import type { DroneSettings } from './drone';
 import { validateDroneSettings } from './drone';
 import type { LowFrequencyOscillatorSettings } from './modulation';
@@ -13,6 +15,7 @@ export interface SoundPreset {
   readonly drone: DroneSettings;
   readonly modulation: readonly LowFrequencyOscillatorSettings[];
   readonly delay: DelaySettings;
+  readonly harmony?: HarmonySettings;
 }
 const DATABASE_NAME = 'orbit-sound-lab-presets';
 const STORE_NAME = 'presets';
@@ -47,6 +50,7 @@ export function validatePreset(value: unknown): SoundPreset {
   if (!preset.drone || !Array.isArray(preset.modulation) || !preset.delay) throw new Error('Incomplete preset.');
   validateDroneSettings(preset.drone);
   validateDelaySettings(preset.delay);
+  if (preset.harmony !== undefined) validateHarmonySettings(preset.harmony);
   const ids = new Set(preset.drone.oscillators.map(oscillator => oscillator.id));
   if (preset.modulation.length !== ids.size || new Set(preset.modulation.map(item => item.targetOscillatorId)).size !== ids.size) throw new Error('Preset LFO targets do not match oscillators.');
   for (const modulation of preset.modulation) {
@@ -55,8 +59,8 @@ export function validatePreset(value: unknown): SoundPreset {
   }
   return preset as SoundPreset;
 }
-export function createPreset(name: string, drone: DroneSettings, modulation: readonly LowFrequencyOscillatorSettings[], delay: DelaySettings): SoundPreset {
-  return validatePreset({schemaVersion: 1, id: crypto.randomUUID(), name: name.trim(), createdAt: new Date().toISOString(), drone, modulation, delay});
+export function createPreset(name: string, drone: DroneSettings, modulation: readonly LowFrequencyOscillatorSettings[], delay: DelaySettings, harmony: HarmonySettings = DEFAULT_HARMONY_SETTINGS): SoundPreset {
+  return validatePreset({schemaVersion: 1, id: crypto.randomUUID(), name: name.trim(), createdAt: new Date().toISOString(), drone, modulation, delay, harmony});
 }
 export async function listPresets(): Promise<SoundPreset[]> {
   const values = await transact<unknown[]>('readonly', (store, resolve, reject) => {
