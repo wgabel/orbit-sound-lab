@@ -7,6 +7,9 @@ export function mapResonanceToStageQ(resonance: number): number {
   return Math.sqrt(resonance);
 }
 
+// Restore the previous unity-gain mono upmix at the panner's center.
+const MONO_PAN_GAIN_COMPENSATION = Math.SQRT2;
+
 interface OscillatorNodes {
   readonly source: OscillatorNode;
   readonly filter: BiquadFilterNode;
@@ -15,6 +18,7 @@ interface OscillatorNodes {
   readonly wetGain: GainNode;
   readonly gain: GainNode;
   readonly fadeGain: GainNode;
+  readonly panner: StereoPannerNode;
   readonly amplitudeGain: GainNode;
   readonly waveformAnalyser: AnalyserNode;
   fadeSettings: OscillatorSettings['fade'];
@@ -30,7 +34,7 @@ export class WebAudioDrone implements DroneVoice {
   constructor(private readonly context: AudioContext, settings: DroneSettings) {
     validateDroneSettings(settings);
     this.output = context.createGain();
-    this.output.gain.value = settings.gain;
+    this.output.gain.value = settings.gain * MONO_PAN_GAIN_COMPENSATION;
     for (const oscillatorSettings of settings.oscillators) {
       const source = context.createOscillator();
       const filter = context.createBiquadFilter();
@@ -39,6 +43,8 @@ export class WebAudioDrone implements DroneVoice {
       const wetGain = context.createGain();
       const gain = context.createGain();
       const fadeGain = context.createGain();
+      const panner = context.createStereoPanner();
+      panner.pan.value = oscillatorSettings.pan;
       const amplitudeGain = context.createGain();
       const waveformAnalyser = context.createAnalyser();
       waveformAnalyser.fftSize = 2048;
@@ -65,10 +71,11 @@ export class WebAudioDrone implements DroneVoice {
       wetGain.connect(gain);
       gain.connect(amplitudeGain);
       amplitudeGain.connect(fadeGain);
-      fadeGain.connect(this.output);
+      fadeGain.connect(panner);
+      panner.connect(this.output);
       // Passive analysis branch: reads the audible voice after filters, LFO and fades.
       fadeGain.connect(waveformAnalyser);
-      this.oscillators.set(oscillatorSettings.id, {source, filter, secondFilter, dryGain, wetGain, gain, fadeGain, amplitudeGain, waveformAnalyser, fadeSettings: oscillatorSettings.fade, enabled: oscillatorSettings.enabled});
+      this.oscillators.set(oscillatorSettings.id, {source, filter, secondFilter, dryGain, wetGain, gain, fadeGain, panner, amplitudeGain, waveformAnalyser, fadeSettings: oscillatorSettings.fade, enabled: oscillatorSettings.enabled});
     }
   }
   start(): void {
@@ -87,7 +94,7 @@ export class WebAudioDrone implements DroneVoice {
   }
   setGain(value: number): void {
     if (!Number.isFinite(value) || value < 0 || value > 1) throw new Error('Gain must be between 0 and 1.');
-    this.output.gain.setTargetAtTime(value, this.context.currentTime, 0.015);
+    this.output.gain.setTargetAtTime(value * MONO_PAN_GAIN_COMPENSATION, this.context.currentTime, 0.015);
   }
   updateOscillator(settings: OscillatorSettings): void {
     if (!Number.isFinite(settings.frequencyHz) || settings.frequencyHz < 20 || settings.frequencyHz > 20000 || !Number.isFinite(settings.detuneCents) || Math.abs(settings.detuneCents) > 2400) throw new Error('Invalid oscillator settings.');
@@ -98,6 +105,7 @@ export class WebAudioDrone implements DroneVoice {
     const now = this.context.currentTime;
     oscillator.source.frequency.setTargetAtTime(settings.frequencyHz, now, 0.015);
     oscillator.source.detune.setTargetAtTime(settings.detuneCents, now, 0.015);
+    oscillator.panner.pan.setTargetAtTime(settings.pan, now, 0.015);
     oscillator.fadeSettings = settings.fade;
     oscillator.gain.gain.setTargetAtTime((2 / this.oscillators.size) * settings.volume, now, 0.015);
     if (oscillator.enabled !== settings.enabled) {
@@ -145,8 +153,8 @@ export class WebAudioDrone implements DroneVoice {
     if (this.disposed) return;
     this.stop();
     this.disposed = true;
-    for (const {source, filter, secondFilter, dryGain, wetGain, gain, fadeGain, amplitudeGain, waveformAnalyser} of this.oscillators.values()) {
-      source.disconnect(); filter.disconnect(); secondFilter.disconnect(); dryGain.disconnect(); wetGain.disconnect(); gain.disconnect(); fadeGain.disconnect(); amplitudeGain.disconnect(); waveformAnalyser.disconnect();
+    for (const {source, filter, secondFilter, dryGain, wetGain, gain, fadeGain, panner, amplitudeGain, waveformAnalyser} of this.oscillators.values()) {
+      source.disconnect(); filter.disconnect(); secondFilter.disconnect(); dryGain.disconnect(); wetGain.disconnect(); gain.disconnect(); fadeGain.disconnect(); amplitudeGain.disconnect(); panner.disconnect(); waveformAnalyser.disconnect();
     }
     this.oscillators.clear();
     this.output.disconnect();
