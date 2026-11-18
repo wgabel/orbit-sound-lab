@@ -68,7 +68,7 @@ export function App() {
     try {
       const name = snapshot ? `Snapshot ${new Date().toLocaleString()}` : presetName.trim();
       if (!name) { setError('Enter a preset name.'); return; }
-      const preset = createPreset(name, settings, lowFrequencyOscillatorSettings, delaySettings);
+      const preset = createPreset(name, settings, lowFrequencyOscillatorSettings, delaySettings, harmony);
       await savePreset(preset);
       setPresets(await listPresets());
       setSelectedPresetId(preset.id);
@@ -88,6 +88,7 @@ export function App() {
       setSettings(preset.drone);
       setLowFrequencyOscillatorSettings(preset.modulation);
       setDelaySettings(preset.delay);
+      setHarmony(preset.harmony ?? DEFAULT_HARMONY_SETTINGS);
       setSelectedPresetId(preset.id);
       setError('');
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot load preset.'); }
