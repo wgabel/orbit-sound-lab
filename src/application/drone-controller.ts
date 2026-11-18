@@ -25,7 +25,8 @@ export class DroneController implements SynthesizerController {
     private readonly modulationFactory: ModulationSourceFactory,
     public settings: DroneSettings,
     public lowFrequencyOscillatorSettings: readonly LowFrequencyOscillatorSettings[],
-    private readonly moduleId = 'drone'
+    private readonly moduleId = 'drone',
+    private readonly outputRoute = {moduleId: 'effects', portId: 'audio'}
   ) {
     validateDroneSettings(settings);
     this.validateModulationBank(lowFrequencyOscillatorSettings);
@@ -45,7 +46,7 @@ export class DroneController implements SynthesizerController {
     const voice = this.factory.create(this.settings);
     try {
       this.graph.register({id: this.moduleId, inputs: [], outputs: [{id: 'audio', node: voice.output}]});
-      this.graph.connect({sourceModuleId: this.moduleId, sourcePortId: 'audio', destinationModuleId: 'effects', destinationPortId: 'audio'});
+      this.graph.connect({sourceModuleId: this.moduleId, sourcePortId: 'audio', destinationModuleId: this.outputRoute.moduleId, destinationPortId: this.outputRoute.portId});
       for (const settings of this.lowFrequencyOscillatorSettings) {
         if (settings.enabled) this.attachModulation(voice, settings);
       }
