@@ -7,7 +7,7 @@ import type { AudioGraph } from './audio-graph-contracts';
 import type { ModulationMatrix, ModulationSourceFactory } from './modulation-contracts';
 
 describe('LFO destination routing', () => {
-  it('connects both filter stages and reconnects to pitch on target change', async () => {
+  it('connects filter stages and pitch simultaneously without disconnecting either', async () => {
     const drone = createDefaultDroneSettings();
     const pitch = {} as AudioParam;
     const cutoffA = {} as AudioParam;
@@ -19,15 +19,18 @@ describe('LFO destination routing', () => {
     const factory = {create: vi.fn(() => source())} as unknown as ModulationSourceFactory;
     const controller = new DroneController({resume: vi.fn().mockResolvedValue(undefined)} as unknown as AudioContext, {create: vi.fn(() => voice)} as DroneVoiceFactory, graph, matrix, factory, drone, createDefaultLowFrequencyOscillators(drone.oscillators.map(item => item.id)));
     await controller.start();
-    const original = controller.lowFrequencyOscillatorSettings[0];
-    controller.updateLowFrequencyOscillator({...original, enabled: true, destination: 'filterCutoff'});
+    const filterModulation = controller.lowFrequencyOscillatorSettings.find(item => item.targetOscillatorId === drone.oscillators[0].id && item.destination === 'filterCutoff')!;
+    const pitchModulation = controller.lowFrequencyOscillatorSettings.find(item => item.targetOscillatorId === drone.oscillators[0].id && item.destination === 'pitch')!;
+    controller.updateLowFrequencyOscillator({...filterModulation, enabled: true});
     expect(matrix.connect).toHaveBeenCalledTimes(2);
     expect(matrix.connect).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({parameter: cutoffA}));
     expect(matrix.connect).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({parameter: cutoffB}));
-    controller.updateLowFrequencyOscillator({...original, enabled: true, destination: 'pitch'});
-    expect(matrix.disconnect).toHaveBeenCalledTimes(2);
+    controller.updateLowFrequencyOscillator({...pitchModulation, enabled: true});
+    expect(matrix.disconnect).not.toHaveBeenCalled();
     expect(matrix.connect).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({parameter: pitch}));
+    expect(matrix.connect).toHaveBeenCalledTimes(3);
     controller.stop();
+    expect(matrix.disconnect).toHaveBeenCalledTimes(3);
   });
   it('rejects invalid destinations and depth', () => {
     const original = createDefaultLowFrequencyOscillators(['oscillator-1'])[0];
