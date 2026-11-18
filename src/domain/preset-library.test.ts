@@ -3,7 +3,7 @@ import { createDefaultDroneSettings } from './drone';
 import { createDefaultDelaySettings } from './delay';
 import { createDefaultLowFrequencyOscillators } from './modulation';
 import { createDefaultDroneLayer } from './drone-layers';
-import { createPreset, validatePreset } from './preset-library';
+import { createPreset, loadPresetSound, validatePreset } from './preset-library';
 
 describe('preset schema', () => {
   const drone = createDefaultDroneSettings();
@@ -43,6 +43,22 @@ describe('preset schema', () => {
     const preset = createPreset('Dual layer', drone, modulation, delay, undefined, layerMix);
     expect(validatePreset(JSON.parse(JSON.stringify(preset))).layerMix).toEqual(layerMix);
     expect(() => validatePreset({...preset, layerMix: {...layerMix, masterGain: 2}})).toThrow('Master level');
+  });
+  it('loads a legacy layer A sound into B and preserves the destination enable state', () => {
+    const {sourceLayer: _sourceLayer, ...legacy} = createPreset('Legacy', drone, modulation, delay);
+    const destination = createDefaultDroneLayer('B');
+    const sound = loadPresetSound(validatePreset(legacy), destination);
+    expect(sound.drone).toEqual(drone);
+    expect(sound.modulation).toEqual(modulation);
+    expect(sound.enabled).toBe(false);
+  });
+  it('uses the layer selected when the preset was saved', () => {
+    const secondLayer = createDefaultDroneLayer('B');
+    const mix = {firstLayerEnabled: false, secondLayer, masterGain: 1};
+    const preset = createPreset('Texture', drone, modulation, delay, undefined, mix, 'B');
+    const normalized = validatePreset(JSON.parse(JSON.stringify(preset)));
+    expect(loadPresetSound(normalized, createDefaultDroneLayer('A'))).toEqual({...secondLayer, enabled: true});
+    expect(() => validatePreset({...preset, sourceLayer: 'C'})).toThrow('Invalid preset source layer');
   });
   it('rejects unsupported schema versions', () => {
     const preset = createPreset('Ambient', drone, modulation, delay);

@@ -1,5 +1,5 @@
 import { createDefaultLayerMix, validateMasterGain } from './drone-layers';
-import type { LayerMix } from './drone-layers';
+import type { DroneLayer, DroneLayerId, LayerMix } from './drone-layers';
 import { DEFAULT_HARMONY_SETTINGS, validateHarmonySettings } from './harmony';
 import type { HarmonySettings } from './harmony';
 import type { DroneSettings } from './drone';
@@ -19,6 +19,7 @@ export interface SoundPreset {
   readonly delay: DelaySettings;
   readonly harmony?: HarmonySettings;
   readonly layerMix: LayerMix;
+  readonly sourceLayer: DroneLayerId;
 }
 const DATABASE_NAME = 'orbit-sound-lab-presets';
 const STORE_NAME = 'presets';
@@ -85,12 +86,21 @@ export function validatePreset(value: unknown): SoundPreset {
   validateMasterGain(mix.masterGain);
   validateHarmonySettings(mix.secondLayer.harmony);
   const secondLayer = {...mix.secondLayer, ...validateLayerSound(mix.secondLayer.drone, mix.secondLayer.modulation)};
-  return {...preset, schemaVersion, id, name, createdAt, ...primary, delay, harmony, layerMix: {...mix, secondLayer}};
+  const sourceLayer = preset.sourceLayer === undefined ? 'A' : preset.sourceLayer;
+  if (sourceLayer !== 'A' && sourceLayer !== 'B') throw new Error('Invalid preset source layer.');
+  return {...preset, schemaVersion, id, name, createdAt, ...primary, delay, harmony, layerMix: {...mix, secondLayer}, sourceLayer};
 }
 export function createPreset(name: string, drone: DroneSettings, modulation: readonly LowFrequencyOscillatorSettings[], delay: DelaySettings,
-  harmony: HarmonySettings = DEFAULT_HARMONY_SETTINGS, layerMix: LayerMix = createDefaultLayerMix()): SoundPreset {
-  return validatePreset({schemaVersion: 1, id: crypto.randomUUID(), name: name.trim(), createdAt: new Date().toISOString(), drone, modulation, delay, harmony, layerMix});
+  harmony: HarmonySettings = DEFAULT_HARMONY_SETTINGS, layerMix: LayerMix = createDefaultLayerMix(), sourceLayer: DroneLayerId = 'A'): SoundPreset {
+  return validatePreset({schemaVersion: 1, id: crypto.randomUUID(), name: name.trim(), createdAt: new Date().toISOString(), drone, modulation, delay, harmony, layerMix, sourceLayer});
 }
+export function loadPresetSound(preset: SoundPreset, destination: DroneLayer): DroneLayer {
+  const source = preset.sourceLayer === 'B'
+    ? preset.layerMix.secondLayer
+    : {drone: preset.drone, modulation: preset.modulation, harmony: preset.harmony ?? DEFAULT_HARMONY_SETTINGS};
+  return {...source, enabled: destination.enabled};
+}
+
 export async function listPresets(): Promise<SoundPreset[]> {
   const values = await transact<unknown[]>('readonly', (store, resolve, reject) => {
     const request = store.getAll();
