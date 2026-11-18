@@ -26,6 +26,16 @@ describe('preset morphing', () => {
     expect(morphPresets(a, b, 0.5).drone.oscillators[0].waveform).toBe('sine');
     expect(morphPresets(a, b, 0.5).drone.oscillators[0].enabled).toBe(false);
   });
+  it('morphs layer B independently and switches its enable state at the midpoint', () => {
+    const from = a.layerMix.secondLayer;
+    const to = {...from, enabled: true, drone: {...from.drone, gain: 0.28}};
+    const destination = {...b, layerMix: {...b.layerMix, secondLayer: to}};
+    expect(morphPresets(a, destination, 0.49).layerMix.secondLayer.enabled).toBe(false);
+    const middle = morphPresets(a, destination, 0.5).layerMix.secondLayer;
+    expect(middle.enabled).toBe(true);
+    expect(middle.drone.gain).toBeCloseTo(0.20);
+    expect(morphPresets(a, destination, 1).layerMix.secondLayer).toEqual(to);
+  });
   it('rejects invalid positions', () => {
     expect(() => morphPresets(a, b, Number.NaN)).toThrow();
     expect(() => morphPresets(a, b, 1.5)).toThrow();

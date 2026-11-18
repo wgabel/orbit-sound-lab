@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createDefaultDroneSettings } from './drone';
 import { createDefaultDelaySettings } from './delay';
 import { createDefaultLowFrequencyOscillators } from './modulation';
+import { createDefaultDroneLayer } from './drone-layers';
 import { createPreset, validatePreset } from './preset-library';
 
 describe('preset schema', () => {
@@ -27,6 +28,21 @@ describe('preset schema', () => {
       const oscillators = [{...drone.oscillators[0], pan}, ...drone.oscillators.slice(1)];
       expect(() => validatePreset({...preset, drone: {...drone, oscillators}})).toThrow('Oscillator pan');
     }
+  });
+  it('loads old presets into layer A and keeps layer B disabled', () => {
+    const {layerMix: _layerMix, ...legacy} = createPreset('Legacy', drone, modulation, delay);
+    const normalized = validatePreset(legacy);
+    expect(normalized.drone).toEqual(drone);
+    expect(normalized.layerMix).toEqual({
+      firstLayerEnabled: true, secondLayer: createDefaultDroneLayer('B'), masterGain: 1
+    });
+  });
+  it('round-trips the second layer and the master level', () => {
+    const secondLayer = {...createDefaultDroneLayer('B'), enabled: true};
+    const layerMix = {firstLayerEnabled: false, secondLayer, masterGain: 0.63};
+    const preset = createPreset('Dual layer', drone, modulation, delay, undefined, layerMix);
+    expect(validatePreset(JSON.parse(JSON.stringify(preset))).layerMix).toEqual(layerMix);
+    expect(() => validatePreset({...preset, layerMix: {...layerMix, masterGain: 2}})).toThrow('Master level');
   });
   it('rejects unsupported schema versions', () => {
     const preset = createPreset('Ambient', drone, modulation, delay);

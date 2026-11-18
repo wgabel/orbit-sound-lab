@@ -1,3 +1,4 @@
+import type { DroneLayerId } from '../domain/drone-layers';
 import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
 import type { DroneSettings, OscillatorSettings } from '../domain/drone';
 export interface AudioSourceModule { readonly output: AudioNode; start(): void; stop(): Promise<void>; dispose(): void; }
@@ -19,7 +20,14 @@ export interface SynthesizerController {
 }
 
 /** Composition-level interface: effects belong to the instrument, not the drone voice controller. */
-export interface SoundLabController extends SynthesizerController {
+export interface SoundLabController {
+  readonly layers: Readonly<Record<DroneLayerId, SynthesizerController>>;
+  readonly isPlaying: boolean;
+  start(): Promise<void>;
+  stop(): Promise<void>;
+  setLayersEnabled(enabled: Readonly<Record<DroneLayerId, boolean>>): Promise<void>;
+  setMasterGain(gain: number): void;
+  dispose(): void;
   readonly delaySettings: import('../domain/delay').DelaySettings;
   updateDelay(settings: import('../domain/delay').DelaySettings): void;
 }

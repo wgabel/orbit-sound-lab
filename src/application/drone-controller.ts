@@ -24,7 +24,8 @@ export class DroneController implements SynthesizerController {
     private readonly modulationMatrix: ModulationMatrix,
     private readonly modulationFactory: ModulationSourceFactory,
     public settings: DroneSettings,
-    public lowFrequencyOscillatorSettings: readonly LowFrequencyOscillatorSettings[]
+    public lowFrequencyOscillatorSettings: readonly LowFrequencyOscillatorSettings[],
+    private readonly moduleId = 'drone'
   ) {
     validateDroneSettings(settings);
     this.validateModulationBank(lowFrequencyOscillatorSettings);
@@ -43,8 +44,8 @@ export class DroneController implements SynthesizerController {
     if (this.disposed || this.playing) return;
     const voice = this.factory.create(this.settings);
     try {
-      this.graph.register({id: 'drone', inputs: [], outputs: [{id: 'audio', node: voice.output}]});
-      this.graph.connect({sourceModuleId: 'drone', sourcePortId: 'audio', destinationModuleId: 'effects', destinationPortId: 'audio'});
+      this.graph.register({id: this.moduleId, inputs: [], outputs: [{id: 'audio', node: voice.output}]});
+      this.graph.connect({sourceModuleId: this.moduleId, sourcePortId: 'audio', destinationModuleId: 'effects', destinationPortId: 'audio'});
       for (const settings of this.lowFrequencyOscillatorSettings) {
         if (settings.enabled) this.attachModulation(voice, settings);
       }
@@ -53,7 +54,7 @@ export class DroneController implements SynthesizerController {
       this.playing = true;
     } catch (error) {
       this.detachAllModulations();
-      this.graph.unregister('drone');
+      this.graph.unregister(this.moduleId);
       voice.dispose();
       throw error;
     }
@@ -112,7 +113,7 @@ export class DroneController implements SynthesizerController {
 
   private releaseVoice(): void {
     this.detachAllModulations();
-    this.graph.unregister('drone');
+    this.graph.unregister(this.moduleId);
     this.voice?.dispose();
     this.voice = null;
     this.playing = false;
@@ -150,7 +151,6 @@ export class DroneController implements SynthesizerController {
   dispose(): void {
     if (this.disposed) return;
     this.releaseVoice();
-    this.graph.dispose();
     this.modulationMatrix.dispose();
     this.disposed = true;
   }
