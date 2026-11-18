@@ -1,5 +1,5 @@
 import { getOscillatorModulationRange, validateOscillatorModulationRoutes } from '../domain/oscillator-modulation';
-import type { OscillatorModulationRoute } from '../domain/oscillator-modulation';
+import type { OscillatorModulationParameter, OscillatorModulationRoute } from '../domain/oscillator-modulation';
 import type { DroneVoice, DroneVoiceFactory, SynthesizerController } from './audio-contracts';
 import type { ModulationMatrix, ModulationSource, ModulationSourceFactory, ModulationDestination } from './modulation-contracts';
 import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
@@ -39,6 +39,10 @@ export class DroneController implements SynthesizerController {
   get isPlaying(): boolean { return this.playing; }
   getWaveformAnalyser(oscillatorId: string): AnalyserNode | null {
     return this.voice?.getWaveformAnalyser?.(oscillatorId) ?? null;
+  }
+
+  getOscillatorModulationAnalyser(targetId: string, parameter: OscillatorModulationParameter): AnalyserNode | null {
+    return this.playing ? this.voice?.getOscillatorModulationAnalyser?.(targetId, parameter) ?? null : null;
   }
 
   async start(): Promise<void> {
@@ -148,7 +152,7 @@ export class DroneController implements SynthesizerController {
     const route = this.settings.oscillatorModulations?.find(item =>
       item.enabled && item.parameter === 'cutoff' && item.targetId === oscillator.id);
     const maximumDepth = limitFilterModulationDepth(Infinity, cutoff, this.context.sampleRate);
-    const range = getOscillatorModulationRange(oscillator, 'cutoff', route?.depth ?? 0, this.context.sampleRate);
+    const range = getOscillatorModulationRange(oscillator, 'cutoff', route?.depth ?? 0, this.context.sampleRate, route?.direction);
     const occupiedDepth = Math.max(cutoff - range.lower, range.upper - cutoff);
     return {...settings, depthHz: Math.min(settings.depthHz, Math.max(0, maximumDepth - occupiedDepth))};
   }

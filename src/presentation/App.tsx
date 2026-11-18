@@ -43,6 +43,9 @@ export function App() {
   const getWaveformAnalyser = useCallback((oscillatorId: string) =>
     controller.current?.layers[activeLayer].getWaveformAnalyser(oscillatorId) ?? null, [activeLayer]);
 
+  const getOscillatorModulationAnalyser = useCallback((targetId: string, parameter: OscillatorModulationParameter) =>
+    controller.current?.layers[activeLayer].getOscillatorModulationAnalyser(targetId, parameter) ?? null, [activeLayer]);
+
   function updateActiveLayer(update: (layer: DroneLayer) => DroneLayer) {
     setLayers(previous => ({...previous, [activeLayer]: update(previous[activeLayer])}));
   }
@@ -239,6 +242,7 @@ export function App() {
     return <OscillatorModulationSlider oscillator={oscillator} oscillators={settings.oscillators}
       effectiveFrequency={getEffectiveOscillatorFrequency(harmony, oscillator.frequencyHz, index)}
       parameter={parameter} routes={settings.oscillatorModulations ?? []} sampleRate={controller.current?.layers[activeLayer].sampleRate}
+      playing={playing} getModulationAnalyser={getOscillatorModulationAnalyser}
       disabled={parameter === 'cutoff' && !oscillator.filter.enabled} onRouteChange={updateOscillatorModulation}
       onChange={value => updateOscillator(parameter === 'cutoff' ? {...oscillator, filter: {...oscillator.filter, cutoffHz: value}} :
         parameter === 'frequency' ? {...oscillator, frequencyHz: value} : {...oscillator, volume: value})}/>;
