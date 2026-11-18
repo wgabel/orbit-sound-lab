@@ -1,6 +1,7 @@
 import type { DroneVoice } from '../../application/audio-contracts';
 import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../../domain/drone';
 import { validateDroneSettings, validateLowPassFilterSettings } from '../../domain/drone';
+import { WebAudioWaveformSource } from './web-audio-waveform-source';
 import { WebAudioDroneMix } from './web-audio-drone-mix';
 import { PLAYBACK_FADE_SECONDS, fadeGain } from './web-audio-fade';
 
@@ -13,7 +14,7 @@ export function mapResonanceToStageQ(resonance: number): number {
 const MONO_PAN_GAIN_COMPENSATION = Math.SQRT2;
 
 interface OscillatorNodes {
-  readonly source: OscillatorNode;
+  readonly source: WebAudioWaveformSource;
   readonly filter: BiquadFilterNode;
   readonly secondFilter: BiquadFilterNode;
   readonly dryGain: GainNode;
@@ -43,7 +44,7 @@ export class WebAudioDrone implements DroneVoice {
     this.mixSettings = settings.mix;
     this.mix = new WebAudioDroneMix(context, settings.mix, this.output);
     for (const oscillatorSettings of settings.oscillators) {
-      const source = context.createOscillator();
+      const source = new WebAudioWaveformSource(context, oscillatorSettings);
       const filter = context.createBiquadFilter();
       const secondFilter = context.createBiquadFilter();
       const dryGain = context.createGain();
@@ -56,9 +57,6 @@ export class WebAudioDrone implements DroneVoice {
       const waveformAnalyser = context.createAnalyser();
       waveformAnalyser.fftSize = 2048;
       waveformAnalyser.smoothingTimeConstant = 0;
-      source.type = oscillatorSettings.waveform;
-      source.frequency.value = oscillatorSettings.frequencyHz;
-      source.detune.value = oscillatorSettings.detuneCents;
       filter.type = 'lowpass';
       secondFilter.type = 'lowpass';
       filter.frequency.value = oscillatorSettings.filter.cutoffHz;
@@ -70,8 +68,8 @@ export class WebAudioDrone implements DroneVoice {
       gain.gain.value = (2 / settings.oscillators.length) * oscillatorSettings.volume;
       fadeGain.gain.value = 0;
       amplitudeGain.gain.value = 0.5;
-      source.connect(dryGain);
-      source.connect(filter);
+      source.output.connect(dryGain);
+      source.output.connect(filter);
       filter.connect(secondFilter);
       secondFilter.connect(wetGain);
       dryGain.connect(gain);
@@ -103,10 +101,10 @@ export class WebAudioDrone implements DroneVoice {
     const now = this.context.currentTime;
     if (this.context.state !== 'running') {
       this.mix.stop(now, now);
-      for (const {source} of this.oscillators.values()) source.stop();
+      for (const {source} of this.oscillators.values()) source.stop(now);
       return Promise.resolve();
     }
-    const firstSource = this.oscillators.values().next().value?.source;
+    const firstSource = this.oscillators.values().next().value?.source.activeOscillator;
     if (!firstSource) return Promise.resolve();
     const end = now + PLAYBACK_FADE_SECONDS;
     this.stopPromise = new Promise(resolve => {
@@ -139,9 +137,8 @@ export class WebAudioDrone implements DroneVoice {
     validateLowPassFilterSettings(settings.filter);
     const oscillator = this.oscillators.get(settings.id);
     if (!oscillator) throw new Error('Unknown oscillator.');
-    oscillator.source.type = settings.waveform;
     const now = this.context.currentTime;
-    oscillator.source.frequency.setTargetAtTime(settings.frequencyHz, now, 0.015);
+    oscillator.source.update(settings.waveform, settings.frequencyHz, now);
     oscillator.source.detune.setTargetAtTime(settings.detuneCents, now, 0.015);
     oscillator.panner.pan.setTargetAtTime(settings.pan, now, 0.015);
     oscillator.gain.gain.setTargetAtTime((2 / this.oscillators.size) * settings.volume, now, 0.015);
@@ -184,8 +181,7 @@ export class WebAudioDrone implements DroneVoice {
     this.disposed = true;
     this.finishStop?.();
     for (const {source, filter, secondFilter, dryGain, wetGain, gain, fadeGain, panner, amplitudeGain, waveformAnalyser} of this.oscillators.values()) {
-      if (this.started && !this.stopped) source.stop();
-      source.disconnect(); filter.disconnect(); secondFilter.disconnect(); dryGain.disconnect(); wetGain.disconnect(); gain.disconnect(); fadeGain.disconnect(); amplitudeGain.disconnect(); panner.disconnect(); waveformAnalyser.disconnect();
+      source.dispose(); filter.disconnect(); secondFilter.disconnect(); dryGain.disconnect(); wetGain.disconnect(); gain.disconnect(); fadeGain.disconnect(); amplitudeGain.disconnect(); panner.disconnect(); waveformAnalyser.disconnect();
     }
     this.oscillators.clear();
     this.mix.dispose();

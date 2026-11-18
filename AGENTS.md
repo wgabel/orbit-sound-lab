@@ -150,6 +150,11 @@ Treat this as a software-inspired design, not a claim of exact SOLAR 42 internal
 - Apply each layer’s optional stereo convolver after the shared low-pass and before the layer level. Reverb uses a fixed 1.8-second response with separate dry/wet mix; presets without the reverb settings start bypassed.
 - Morph both layers' continuous sound controls and master level; discrete layer enable states switch at the midpoint.
 
+## Click prevention
+
+- Crossfade carrier waveform changes over the existing 20 ms playback ramp. Reuse a stable detune parameter so pitch LFOs remain connected through the change.
+- Bound normalized LFO samples and smooth their edges before feeding audio parameters. Cap effective cutoff depth symmetrically as the base cutoff changes, keeping sweeps away from DC. Presets retain the requested depth.
+
 ## Automatic playback fades
 
 - Use a fixed 20 ms gain ramp when starting or toggling an oscillator and when stopping the drone. Keep the voice routed until its sources end so Stop can finish the ramp.

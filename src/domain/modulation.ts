@@ -25,3 +25,10 @@ export function validateLowFrequencyOscillatorSettings(settings: LowFrequencyOsc
   if (!['sine', 'triangle', 'square', 'sawtooth'].includes(settings.waveform)) throw new Error('Invalid LFO waveform.');
   if (!settings.targetOscillatorId) throw new Error('LFO target is required.');
 }
+
+/** Keep a symmetric cutoff sweep away from DC and below the filter's upper limit. */
+export function limitFilterModulationDepth(depthHz: number, cutoffHz: number, sampleRate: number): number {
+  const minimum = Math.max(20, cutoffHz * 0.12);
+  const maximum = Math.min(20000, sampleRate / 2);
+  return Math.max(0, Math.min(depthHz, cutoffHz - minimum, maximum - cutoffHz));
+}
