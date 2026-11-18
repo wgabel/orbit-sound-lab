@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createDefaultDelaySettings } from '../domain/delay';
 import type { DelaySettings } from '../domain/delay';
 import type { SoundLabController } from '../application/audio-contracts';
@@ -19,7 +19,7 @@ import { OscillatorWaveform } from './OscillatorWaveform';
 import './styles.css';
 export function App() {
   const controller = useRef<SoundLabController | null>(null);
-  const getWaveformAnalyser = (oscillatorId: string) => controller.current?.getWaveformAnalyser(oscillatorId) ?? null;
+  const getWaveformAnalyser = useCallback((oscillatorId: string) => controller.current?.getWaveformAnalyser(oscillatorId) ?? null, []);
   const [settings, setSettings] = useState<DroneSettings>(createDefaultDroneSettings);
   const [lowFrequencyOscillatorSettings, setLowFrequencyOscillatorSettings] = useState<readonly LowFrequencyOscillatorSettings[]>(() => createDefaultLowFrequencyOscillators(createDefaultDroneSettings().oscillators.map(oscillator => oscillator.id)));
   const [playing, setPlaying] = useState(false);
