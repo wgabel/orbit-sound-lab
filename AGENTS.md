@@ -139,3 +139,38 @@ Treat this as a software-inspired design, not a claim of exact SOLAR 42 internal
 - Update tests and documentation alongside behavior changes.
 - Document architectural decisions that are non-obvious, especially audio routing, scheduling, dependency ownership and state synchronization.
 - Do not claim an implementation is finished until it is committed and verification status is communicated.
+
+## Current implementation and architectural decisions (November 2026)
+
+### Current scope
+- The current application contains five oscillators in one drone, not the six drone voices and two melodic voices of the longer-term roadmap.
+- Current features: oscillator waveform/frequency/volume/detune, per-oscillator filter, LFO modulation, fades, RANDOM, delay, local preset library, JSON import/export, preset morphing, Harmony Engine, and master output protection.
+- Distinguish shipped functionality from future roadmap ideas.
+
+### Harmony Engine: non-destructive pitch
+- src/domain/harmony.ts owns pure tuning and validation. Modes are FREE, NATURAL (simple ratios), and PIANO (equal temperament), with root frequency, chord and spread.
+- Source frequency and effective audible frequency are different. Switching harmony modes MUST NOT overwrite source frequencies in DroneSettings, presets, or UI controls.
+- FREE outputs source pitch; NATURAL/PIANO derive the audible pitch from source pitch and selected harmony. Only the audio engine receives derived pitch.
+- Apply tuning consistently during startup, per-oscillator changes, RANDOM, preset load, and morphing. Returning to FREE restores source pitch.
+- RANDOM randomizes source parameters even in tuned modes; harmonic processing constrains the audible result without destroying the randomized source frequency.
+- Show SOURCE → PLAYING values where useful. Test mode switching, source preservation and tuning.
+
+### Morph activation
+- Preset morphing interpolates source settings; Harmony Engine processes the audible pitch afterward.
+- ENABLE MORPH checkbox defaults off. When disabled, preset A/B selectors and morph position slider are inactive.
+- Disabling morphing leaves the current sound unchanged; it does not revert or overwrite presets.
+- Preset harmony configuration is optional in schema version 1 for compatibility with older saved presets; absent configuration means FREE.
+
+### Audio output protection and click prevention
+- Signal path: oscillators → per-voice processing → delay → output protection → destination.
+- src/infrastructure/audio/web-audio-output-protection.ts provides master high-pass (~25 Hz), low-pass (~16 kHz, sample-rate constrained), and gentle dynamics compression.
+- This is not a frequency normalizer, true brick-wall limiter, or guaranteed click remover. Do not claim it eliminates all clicks or ensures safe listening levels.
+- Clicks may result from waveform discontinuities, abrupt gain changes, switching oscillators, filter bypass, modulation or routing. Diagnose and smooth transitions at the source using ramps/crossfades; do not reject audio samples based on rolling averages.
+- Existing frequency, detune, gain and filter updates use AudioParam automation. Preserve smooth transitions and investigate abrupt waveform changes separately.
+- Verify extreme resonance, feedback and combined oscillator levels, including different sample rates.
+- Output protection remains a disposable infrastructure component wired in src/composition/create-synthesizer.ts, never React.
+
+### PR and verification discipline
+- When extending a feature, inspect whether its PR is still open before selecting the branch.
+- At the time of this update, PR #24 (feature/morph-enable-toggle) includes morph enablement and output protection; recheck its status before future edits.
+- Commit changes, inspect GitHub Actions and fix failures. Explicitly distinguish successful commit from verified typecheck, tests, production build and audible browser testing.
