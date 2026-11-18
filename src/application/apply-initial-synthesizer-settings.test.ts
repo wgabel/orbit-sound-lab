@@ -5,7 +5,7 @@ import type { SynthesizerController } from './audio-contracts';
 import { applyInitialSynthesizerSettings } from './apply-initial-synthesizer-settings';
 
 describe('initial synthesizer settings', () => {
-  it('applies five oscillator and five independent LFO settings before playback', () => {
+  it('applies five oscillator and fifteen independent LFO settings before playback', () => {
     const drone = createDefaultDroneSettings();
     const settings = {...drone, gain: 0.08, oscillators: drone.oscillators.map((oscillator,index) => ({...oscillator, enabled: index === 0, waveform: 'sine' as const}))};
     const controller = {updateOscillator: vi.fn(),setGain: vi.fn(),updateLowFrequencyOscillator: vi.fn()} as unknown as SynthesizerController;
@@ -14,7 +14,7 @@ describe('initial synthesizer settings', () => {
     expect(controller.updateOscillator).toHaveBeenCalledTimes(5);
     expect(controller.updateOscillator).toHaveBeenNthCalledWith(2,expect.objectContaining({enabled:false,waveform:'sine'}));
     expect(controller.setGain).toHaveBeenCalledWith(0.08);
-    expect(controller.updateLowFrequencyOscillator).toHaveBeenCalledTimes(5);
-    expect(controller.updateLowFrequencyOscillator).toHaveBeenNthCalledWith(5, expect.objectContaining({targetOscillatorId:'oscillator-5'}));
+    expect(controller.updateLowFrequencyOscillator).toHaveBeenCalledTimes(15);
+    expect(controller.updateLowFrequencyOscillator).toHaveBeenNthCalledWith(15, expect.objectContaining({targetOscillatorId:'oscillator-5'}));
   });
 });

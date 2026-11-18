@@ -14,7 +14,7 @@ export function createDefaultLowFrequencyOscillatorSettings(targetOscillatorId =
   return { enabled: false, frequencyHz: 0.2, depthCents: 15, depthHz: 400, depthAmplitude: 0.35, destination: 'pitch', waveform: 'sine', targetOscillatorId };
 }
 export function createDefaultLowFrequencyOscillators(oscillatorIds: readonly string[]): readonly LowFrequencyOscillatorSettings[] {
-  return oscillatorIds.map(createDefaultLowFrequencyOscillatorSettings);
+  return oscillatorIds.flatMap(id => (['pitch', 'filterCutoff', 'amplitude'] as const).map(destination => ({...createDefaultLowFrequencyOscillatorSettings(id), destination})));
 }
 export function validateLowFrequencyOscillatorSettings(settings: LowFrequencyOscillatorSettings): void {
   if (!Number.isFinite(settings.frequencyHz) || settings.frequencyHz < 0.01 || settings.frequencyHz > 20) throw new Error('LFO frequency must be between 0.01 and 20 Hz.');
