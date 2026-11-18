@@ -81,6 +81,8 @@ function morphLayerSound(start: LayerSound, end: LayerSound, position: number): 
       ...a,
       enabled: choose(a.enabled, b.enabled, position),
       destination: choose(a.destination, b.destination, position),
+      sync: choose(a.sync, b.sync, position),
+      phaseDegrees: choose(a.phaseDegrees, b.phaseDegrees, position),
       waveform: choose(a.waveform, b.waveform, position),
       frequencyHz: interpolateFrequency(a.frequencyHz, b.frequencyHz, position),
       depthCents: interpolate(a.depthCents, b.depthCents, position),

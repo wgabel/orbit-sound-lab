@@ -37,5 +37,7 @@ Cutoff LFO accepts a cycle duration in seconds and offers finer control at low d
 
 Select **Smooth Random** as an LFO waveform to glide between randomly chosen targets. Each transition takes one cycle at the set Rate, and Depth bounds the motion. The waveform is available for Pitch, Amplitude, and Cutoff.
 
+Enable **Sync** on LFOs with the same Rate to align them to the audio clock, even if you turn them on at different times. **Phase** offsets an LFO within the cycle. With the same sine waveform, 180° makes two LFOs move in opposite directions. Synced Smooth Random LFOs at the same Rate and Phase share random targets during playback.
+
 ## Architecture
 Domain models in `src/domain`; orchestration and ports in `src/application`; Web Audio implementations and factory in `src/infrastructure/audio`; dependency assembly in `src/composition`; React UI in `src/presentation`. See `AGENTS.md`.

@@ -9,7 +9,7 @@ import { WebAudioOutputProtection } from '../infrastructure/audio/web-audio-outp
 import { WebAudioDelay } from '../infrastructure/audio/web-audio-delay';
 import type { SoundLabController } from '../application/audio-contracts';
 import { WebAudioModulationMatrix } from '../infrastructure/audio/web-audio-modulation-matrix';
-import { WebAudioSmoothRandomLfoFactory } from '../infrastructure/audio/web-audio-smooth-random-lfo';
+import { WebAudioLfoWorkletFactory } from '../infrastructure/audio/web-audio-lfo-worklet';
 import { WebAudioLowFrequencyOscillatorFactory } from '../infrastructure/audio/web-audio-low-frequency-oscillator';
 import { DroneController } from '../application/drone-controller';
 import { WebAudioDroneFactory } from '../infrastructure/audio/web-audio-drone-factory';
@@ -17,8 +17,8 @@ import { WebAudioGraph } from '../infrastructure/audio/web-audio-graph';
 
 export function createSynthesizer(): SoundLabController {
   const context = new AudioContext({latencyHint: 'playback'});
-  const smoothRandom = new WebAudioSmoothRandomLfoFactory(context);
-  const modulationFactory = new WebAudioLowFrequencyOscillatorFactory(context, smoothRandom);
+  const lfoWorklet = new WebAudioLfoWorkletFactory(context);
+  const modulationFactory = new WebAudioLowFrequencyOscillatorFactory(context, lfoWorklet);
   const graph = new WebAudioGraph();
   let delaySettings: DelaySettings = createDefaultDelaySettings();
   const delay = new WebAudioDelay(context, delaySettings);
@@ -79,7 +79,7 @@ export function createSynthesizer(): SoundLabController {
       continuousPlayback = true;
       try {
         // Resume on Start even when both layers are disabled.
-        await Promise.all([context.resume(), smoothRandom.prepare()]);
+        await Promise.all([context.resume(), lfoWorklet.prepare()]);
         await synchronizeLayers();
       } catch (error) {
         playing = false;
@@ -119,7 +119,7 @@ export function createSynthesizer(): SoundLabController {
       layers[id].setPitchBend(0);
       playing = true;
       try {
-        await Promise.all([context.resume(), smoothRandom.prepare()]);
+        await Promise.all([context.resume(), lfoWorklet.prepare()]);
         if (pressedKeys.get(id) !== press) return;
         if (!layers[id].isPlaying) {
           armedLayers.add(id);

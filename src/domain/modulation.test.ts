@@ -12,6 +12,12 @@ describe('LFO settings', () => {
       expect(() => validateLowFrequencyOscillatorSettings({...settings, waveform: 'smoothRandom'})).not.toThrow();
     }
   });
+  it('accepts old settings and validates optional sync and phase', () => {
+    const legacy = createDefaultLowFrequencyOscillatorSettings();
+    expect(() => validateLowFrequencyOscillatorSettings(legacy)).not.toThrow();
+    expect(() => validateLowFrequencyOscillatorSettings({...legacy, sync: true, phaseDegrees: 180})).not.toThrow();
+    expect(() => validateLowFrequencyOscillatorSettings({...legacy, phaseDegrees: 361})).toThrow('phase');
+  });
   it('rejects invalid frequency and depth', () => {
     const settings = createDefaultLowFrequencyOscillatorSettings();
     expect(() => validateLowFrequencyOscillatorSettings({...settings,frequencyHz:0})).toThrow();

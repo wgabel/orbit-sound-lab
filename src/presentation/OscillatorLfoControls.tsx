@@ -15,7 +15,7 @@ interface OscillatorLfoControlsProps {
 }
 
 export function OscillatorLfoControls({modulation, onChange}: OscillatorLfoControlsProps) {
-  const {destination, enabled, frequencyHz, depthCents, depthAmplitude, depthHz, waveform} = modulation;
+  const {destination, enabled, frequencyHz, depthCents, depthAmplitude, depthHz, waveform, sync = false, phaseDegrees = 0} = modulation;
   const label = DESTINATION_LABELS[destination];
 
   return <details className="oscillator-lfo-disclosure">
@@ -33,6 +33,16 @@ export function OscillatorLfoControls({modulation, onChange}: OscillatorLfoContr
       <LfoCycleInput rateHz={frequencyHz}
         destination={destination === 'pitch' ? 'Pitch' : destination === 'amplitude' ? 'Amplitude' : 'Cutoff'}
         disabled={!enabled} onRateChange={value => onChange({...modulation, frequencyHz: value})}/>
+      <label className="switch">
+        <input type="checkbox" checked={sync} disabled={!enabled}
+          onChange={event => onChange({...modulation, sync: event.target.checked})}/>
+        {' '}Sync
+      </label>
+      {sync && <>
+        <NumericSlider label="PHASE" unit="°" min={0} max={360} step={1} disabled={!enabled}
+          value={phaseDegrees} onChange={value => onChange({...modulation, phaseDegrees: value})}/>
+        <p className="pitch-lfo-detail">Match the Rate of the LFOs you want to sync.</p>
+      </>}
       {destination === 'pitch' ? <>
         <NumericSlider label="DEPTH" unit="cents" min={0} max={300} step={0.1}
           disabled={!enabled} value={depthCents} onChange={value => onChange({...modulation, depthCents: value})}/>
