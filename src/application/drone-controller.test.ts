@@ -25,7 +25,7 @@ describe('independent oscillator LFOs', () => {
     const {controller, matrix, modulationFactory} = createHarness();
     await controller.start();
     expect(modulationFactory.create).not.toHaveBeenCalled();
-    const [first, second] = controller.lowFrequencyOscillatorSettings;
+    const [first, , , second] = controller.lowFrequencyOscillatorSettings;
     controller.updateLowFrequencyOscillator({...first, enabled: true});
     controller.updateLowFrequencyOscillator({...second, enabled: true, frequencyHz: 0.35});
     expect(modulationFactory.create).toHaveBeenCalledTimes(2);
@@ -42,7 +42,7 @@ describe('independent oscillator LFOs', () => {
   it('rejects unknown targets without changing existing settings', () => {
     const {controller} = createHarness();
     expect(() => controller.updateLowFrequencyOscillator({...controller.lowFrequencyOscillatorSettings[0], targetOscillatorId: 'missing'})).toThrow('Unknown LFO target');
-    expect(controller.lowFrequencyOscillatorSettings).toHaveLength(5);
+    expect(controller.lowFrequencyOscillatorSettings).toHaveLength(15);
   });
 
   it('starts each pre-enabled LFO and disposes them on stop', async () => {
