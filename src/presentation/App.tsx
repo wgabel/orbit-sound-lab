@@ -1,3 +1,5 @@
+import { AMPLITUDE_LFO_CENTER, LFO_MAXIMUM_RATE_HZ, LFO_MINIMUM_RATE_HZ } from '../domain/modulation';
+import { LfoCycleInput } from './LfoCycleInput';
 import { replaceOscillatorModulationRoute, validateOscillatorModulationRoutes } from '../domain/oscillator-modulation';
 import type { OscillatorModulationParameter, OscillatorModulationRoute } from '../domain/oscillator-modulation';
 import { OscillatorModulationSlider } from './OscillatorModulationSlider';
@@ -48,6 +50,9 @@ export function App() {
 
   const readOscillatorFrequency = useCallback((oscillatorId: string) =>
     controller.current?.layers[activeLayer].readOscillatorFrequency(oscillatorId) ?? null, [activeLayer]);
+
+  const readOscillatorVolume = useCallback((oscillatorId: string) =>
+    controller.current?.layers[activeLayer].readOscillatorVolume(oscillatorId) ?? null, [activeLayer]);
 
   function updateActiveLayer(update: (layer: DroneLayer) => DroneLayer) {
     setLayers(previous => ({...previous, [activeLayer]: update(previous[activeLayer])}));
@@ -244,9 +249,12 @@ export function App() {
   function renderOscillatorModulationSlider(oscillator: OscillatorSettings, index: number, parameter: OscillatorModulationParameter) {
     const pitchLfo = parameter === 'frequency' ? lowFrequencyOscillatorSettings.find(modulation =>
       modulation.targetOscillatorId === oscillator.id && modulation.destination === 'pitch' && modulation.enabled) : undefined;
+    const amplitudeLfo = parameter === 'volume' ? lowFrequencyOscillatorSettings.find(modulation =>
+      modulation.targetOscillatorId === oscillator.id && modulation.destination === 'amplitude' && modulation.enabled) : undefined;
     return <OscillatorModulationSlider oscillator={oscillator} oscillators={settings.oscillators}
       effectiveFrequency={getEffectiveOscillatorFrequency(harmony, oscillator.frequencyHz, index)}
       parameter={parameter} routes={settings.oscillatorModulations ?? []} sampleRate={controller.current?.layers[activeLayer].sampleRate}
+      amplitudeDepth={amplitudeLfo?.depthAmplitude} readOscillatorVolume={readOscillatorVolume}
       pitchDepthCents={pitchLfo?.depthCents} readOscillatorFrequency={readOscillatorFrequency}
       playing={playing} getModulationAnalyser={getOscillatorModulationAnalyser}
       disabled={parameter === 'cutoff' && !oscillator.filter.enabled} onRouteChange={updateOscillatorModulation}
@@ -378,14 +386,16 @@ export function App() {
         aria-label={`Generate variant for oscillator ${index + 1}`} title="Vary each setting by up to 5% of its slider range">VARIANT</button>
     </div></div><div id={`${oscillator.id}-settings`} className="oscillator-panel-content" hidden={!expandedOscillators[`${activeLayer}:${oscillator.id}`]}>{renderOscillatorModulationSlider(oscillator, index, 'frequency')}<NumericSlider label="DETUNE" unit="cents" min={-100} max={100} step={1}
       value={oscillator.detuneCents} onChange={value => updateOscillator({...oscillator,detuneCents:value})}/><label>WAVEFORM <select value={oscillator.waveform} onChange={event => updateOscillator({...oscillator,waveform:event.target.value as OscillatorSettings['waveform']})}><option value="sine">Sine (diagnostic)</option><option value="triangle">Triangle</option><option value="sawtooth">Sawtooth</option><option value="square">Square</option></select></label><div className="oscillator-filter"><div className="oscillator-title"><strong>LOW-PASS FILTER</strong><label className="switch"><input type="checkbox" checked={oscillator.filter.enabled} onChange={event => updateOscillator({...oscillator,filter:{...oscillator.filter,enabled:event.target.checked}})}/> ACTIVE</label></div>{renderOscillatorModulationSlider(oscillator, index, 'cutoff')}<NumericSlider label="RESONANCE" min={0.1} max={12} step={0.1}
-      disabled={!oscillator.filter.enabled} value={oscillator.filter.resonance} onChange={value => updateOscillator({...oscillator,filter:{...oscillator.filter,resonance:value}})}/></div><div className="oscillator-lfo"><div className="oscillator-title"><strong>INDEPENDENT LFO MODULATION</strong></div>{lowFrequencyOscillatorSettings.filter(item => item.targetOscillatorId === oscillator.id).map(modulation => <div className="lfo-destination" key={modulation.destination}><div className="oscillator-title"><strong>{modulation.destination === 'pitch' ? 'PITCH' : modulation.destination === 'filterCutoff' ? 'FILTER CUTOFF' : 'AMPLITUDE'}</strong><label className="switch"><input type="checkbox" checked={modulation.enabled} onChange={event => updateLowFrequencyOscillator({...modulation,enabled:event.target.checked})}/> ACTIVE</label></div><NumericSlider label="RATE" unit="Hz" min={0.01} max={20} step={0.01}
+      disabled={!oscillator.filter.enabled} value={oscillator.filter.resonance} onChange={value => updateOscillator({...oscillator,filter:{...oscillator.filter,resonance:value}})}/></div><div className="oscillator-lfo"><div className="oscillator-title"><strong>INDEPENDENT LFO MODULATION</strong></div>{lowFrequencyOscillatorSettings.filter(item => item.targetOscillatorId === oscillator.id).map(modulation => <div className="lfo-destination" key={modulation.destination}><div className="oscillator-title"><strong>{modulation.destination === 'pitch' ? 'PITCH' : modulation.destination === 'filterCutoff' ? 'FILTER CUTOFF' : 'AMPLITUDE'}</strong><label className="switch"><input type="checkbox" checked={modulation.enabled} onChange={event => updateLowFrequencyOscillator({...modulation,enabled:event.target.checked})}/> ACTIVE</label></div><NumericSlider label="RATE" unit="Hz" min={LFO_MINIMUM_RATE_HZ} max={LFO_MAXIMUM_RATE_HZ} step={0.01}
       disabled={!modulation.enabled} value={modulation.frequencyHz} onChange={value => updateLowFrequencyOscillator({...modulation,frequencyHz:value})}/>
-      {modulation.destination === 'pitch' && <span className="pitch-lfo-detail">1 cycle / {Number((1 / modulation.frequencyHz).toFixed(2))} s</span>}
+      {modulation.destination !== 'filterCutoff' && <LfoCycleInput rateHz={modulation.frequencyHz}
+        destination={modulation.destination === 'pitch' ? 'Pitch' : 'Amplitude'}
+        disabled={!modulation.enabled} onRateChange={frequencyHz => updateLowFrequencyOscillator({...modulation, frequencyHz})}/>}
       {modulation.destination === 'pitch' ? <>
         <NumericSlider label="DEPTH" unit="cents" min={0} max={300} step={0.1}
       disabled={!modulation.enabled} value={modulation.depthCents} onChange={value => updateLowFrequencyOscillator({...modulation,depthCents:value})}/>
         {modulation.depthCents >= 100 && <span className="pitch-lfo-detail">±{Number((modulation.depthCents / 100).toFixed(3))} semitones</span>}
-      </> : modulation.destination === 'amplitude' ? <NumericSlider label="DEPTH" unit="%" displayFactor={200} min={0} max={0.5} step={0.01}
+      </> : modulation.destination === 'amplitude' ? <NumericSlider label="DEPTH" unit="%" displayFactor={100 / AMPLITUDE_LFO_CENTER} min={0} max={AMPLITUDE_LFO_CENTER} step={0.01}
       disabled={!modulation.enabled} value={modulation.depthAmplitude} onChange={value => updateLowFrequencyOscillator({...modulation,depthAmplitude:value})}/> : <NumericSlider label="DEPTH" unit="Hz" min={0} max={5000} step={10}
       disabled={!modulation.enabled} value={modulation.depthHz} onChange={value => updateLowFrequencyOscillator({...modulation,depthHz:value})}/>}<label>WAVEFORM <select disabled={!modulation.enabled} value={modulation.waveform} onChange={event => updateLowFrequencyOscillator({...modulation,waveform:event.target.value as LowFrequencyOscillatorSettings['waveform']})}><option value="sine">Sine</option><option value="triangle">Triangle</option><option value="square">Square</option><option value="sawtooth">Sawtooth</option></select></label></div>)}</div></div></article>)}</section><section className="diagnostic"><h2>ANDROID AUDIO DIAGNOSTIC</h2><label><input type="checkbox" checked={renderingDiagnosticEnabled} onChange={event => setRenderingDiagnosticEnabled(event.target.checked)}/> Keep rendering active while playing (experiment)</label><div className="diagnostic-track"><div className="diagnostic-indicator" ref={renderingIndicator}/></div><p>Compare 30 seconds with this OFF and ON without touching the screen. This intentionally increases rendering work and battery use; it is not a permanent audio fix.</p><a href="./audio-diagnostic.html">Open standalone audio output test</a></section><footer>WEB AUDIO ENGINE · SOLAR 42 INSPIRED · USE LOW VOLUME</footer></main>;
 }

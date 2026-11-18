@@ -1,5 +1,5 @@
 import type { OscillatorSettings } from './drone';
-import { getFilterModulationLimits } from './modulation';
+import { AMPLITUDE_LFO_CENTER, getFilterModulationLimits } from './modulation';
 
 export const OSCILLATOR_MODULATION_PARAMETERS = {
   frequency: {label: 'FREQUENCY', unit: 'Hz', minimum: 40, maximum: 880, step: 1},
@@ -29,6 +29,10 @@ export function getOscillatorModulationRange(
     lower: Math.max(Math.min(minimum, base), base - depth),
     upper: Math.min(Math.max(maximum, base), base + depth)
   };
+}
+
+export function getAmplitudeModulationRange(lowerVolume: number, upperVolume: number, depth: number): readonly [number, number] {
+  return [lowerVolume * (AMPLITUDE_LFO_CENTER - depth), upperVolume * (AMPLITUDE_LFO_CENTER + depth)];
 }
 
 export function replaceOscillatorModulationRoute(routes: readonly OscillatorModulationRoute[], route: OscillatorModulationRoute) {

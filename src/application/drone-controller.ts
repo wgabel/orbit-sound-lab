@@ -41,6 +41,10 @@ export class DroneController implements SynthesizerController {
     return this.playing ? this.voice?.readOscillatorFrequency?.(oscillatorId) ?? null : null;
   }
 
+  readOscillatorVolume(oscillatorId: string): number | null {
+    return this.playing ? this.voice?.readOscillatorVolume?.(oscillatorId) ?? null : null;
+  }
+
   getWaveformAnalyser(oscillatorId: string): AnalyserNode | null {
     return this.voice?.getWaveformAnalyser?.(oscillatorId) ?? null;
   }
