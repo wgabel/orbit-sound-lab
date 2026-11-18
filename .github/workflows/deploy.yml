@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to build and publish to the live Pages site
+        required: true
+        default: main
+        type: string
 
 permissions:
   contents: read
@@ -20,6 +26,9 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/heads/{0}', inputs.branch) || '' }}
+          persist-credentials: false
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
