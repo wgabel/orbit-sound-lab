@@ -30,6 +30,9 @@ export class DroneController implements SynthesizerController {
   }
 
   get isPlaying(): boolean { return this.playing; }
+  getWaveformAnalyser(oscillatorId: string): AnalyserNode | null {
+    return this.voice?.getWaveformAnalyser?.(oscillatorId) ?? null;
+  }
 
   async start(): Promise<void> {
     if (this.disposed) throw new Error('Controller has been disposed.');
