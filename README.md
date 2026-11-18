@@ -29,7 +29,7 @@ Amplitude LFO also accepts a cycle duration in seconds. When it is active, Volum
 
 Cutoff sliders use a logarithmic scale, and oscillator Volume and Amplitude LFO Depth use a quadratic scale for finer low settings. The editable values and preset settings still use Hz and percentages.
 
-Each oscillator groups its LFO controls with the slider they affect. Amplitude LFO sits under Volume, Pitch LFO under Frequency, and Cutoff LFO in the low-pass filter controls.
+Each oscillator uses the same section layout for Volume & Pan, Frequency & Waveform, and Low-pass Filter. LFO controls sit with the slider they affect. Amplitude LFO sits under Volume, Pitch LFO under Frequency, and Cutoff LFO in the low-pass filter controls.
 
 Use **PRESETS** beside **COPY** on any oscillator to load a built-in sound into that slot. The list is bundled in `src/domain/built-in-oscillator-presets.json`.
 

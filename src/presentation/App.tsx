@@ -1,4 +1,5 @@
 import { builtInOscillatorPresets, createBuiltInOscillatorSnapshot } from '../domain/built-in-oscillator-presets';
+import { OscillatorControlSection } from './OscillatorControlSection';
 import { OscillatorLfoControls } from './OscillatorLfoControls';
 import { replaceOscillatorModulationRoute, validateOscillatorModulationRoutes } from '../domain/oscillator-modulation';
 import type { OscillatorModulationParameter, OscillatorModulationRoute } from '../domain/oscillator-modulation';
@@ -399,52 +400,48 @@ export function App() {
     </div>
       <OscillatorWaveform oscillatorId={oscillator.id} playing={playing && (layerEnabled || holdModes[activeLayer])}
         enabled={oscillator.enabled} getAnalyser={getWaveformAnalyser}/>
-      <div className="oscillator-always-visible">
-        <div className="oscillator-volume-group" role="group" aria-label="Volume and amplitude modulation">
-          <div className="oscillator-mix-controls">
-            {renderOscillatorModulationSlider(oscillator, index, 'volume')}
-            <OscillatorPanControl oscillatorId={oscillator.id} oscillatorNumber={index + 1} pan={oscillator.pan}
-              onChange={pan => updateOscillator({...oscillator, pan})}/>
-          </div>
-          {renderOscillatorLfo(oscillator.id, 'amplitude')}
-        </div>
+      <div className="oscillator-controls">
         <div className="oscillator-randomize-actions">
           <button type="button" className="randomize-button" onClick={() => randomizeOscillator(oscillator, 'random')}
             aria-label={`Randomize settings for oscillator ${index + 1}`}>⤨ RANDOM</button>
           <button type="button" className="randomize-button" onClick={() => randomizeOscillator(oscillator, 'variant')}
             aria-label={`Generate variant for oscillator ${index + 1}`} title="Vary each setting by up to 5% of its slider range">VARIANT</button>
         </div>
-      </div>
-      <div id={`${oscillator.id}-settings`} className="oscillator-panel-content" hidden={!expandedOscillators[`${activeLayer}:${oscillator.id}`]}>
-        <div role="group" aria-label="Frequency and pitch modulation">
-          {renderOscillatorModulationSlider(oscillator, index, 'frequency')}
-          {renderOscillatorLfo(oscillator.id, 'pitch')}
-        </div>
-        <NumericSlider label="DETUNE" unit="cents" min={-100} max={100} step={1} value={oscillator.detuneCents}
-          onChange={detuneCents => updateOscillator({...oscillator, detuneCents})}/>
-        <label>WAVEFORM
-          <select value={oscillator.waveform}
-            onChange={event => updateOscillator({...oscillator, waveform: event.target.value as OscillatorSettings['waveform']})}>
-            <option value="sine">Sine (diagnostic)</option>
-            <option value="triangle">Triangle</option>
-            <option value="sawtooth">Sawtooth</option>
-            <option value="square">Square</option>
-          </select>
-        </label>
-        <div className="oscillator-filter" role="group" aria-label="Low-pass filter">
-          <div className="oscillator-title">
-            <strong>LOW-PASS FILTER</strong>
-            <label className="switch">
-              <input type="checkbox" checked={oscillator.filter.enabled}
-                onChange={event => updateOscillator({...oscillator, filter: {...oscillator.filter, enabled: event.target.checked}})}/>
-              {' '}ACTIVE
-            </label>
+        <OscillatorControlSection title="Volume & Pan">
+          <div className="oscillator-mix-controls">
+            {renderOscillatorModulationSlider(oscillator, index, 'volume')}
+            <OscillatorPanControl oscillatorId={oscillator.id} oscillatorNumber={index + 1} pan={oscillator.pan}
+              onChange={pan => updateOscillator({...oscillator, pan})}/>
           </div>
-          {renderOscillatorModulationSlider(oscillator, index, 'cutoff')}
-          {renderOscillatorLfo(oscillator.id, 'filterCutoff')}
-          <NumericSlider label="RESONANCE" min={0.1} max={12} step={0.1}
-            disabled={!oscillator.filter.enabled} value={oscillator.filter.resonance}
-            onChange={resonance => updateOscillator({...oscillator, filter: {...oscillator.filter, resonance}})}/>
+          {renderOscillatorLfo(oscillator.id, 'amplitude')}
+        </OscillatorControlSection>
+        <div id={`${oscillator.id}-settings`} className="oscillator-panel-content" hidden={!expandedOscillators[`${activeLayer}:${oscillator.id}`]}>
+          <OscillatorControlSection title="Frequency & Waveform">
+            {renderOscillatorModulationSlider(oscillator, index, 'frequency')}
+            {renderOscillatorLfo(oscillator.id, 'pitch')}
+            <NumericSlider label="DETUNE" unit="cents" min={-100} max={100} step={1} value={oscillator.detuneCents}
+              onChange={detuneCents => updateOscillator({...oscillator, detuneCents})}/>
+            <label className="oscillator-waveform-control">WAVEFORM
+              <select value={oscillator.waveform}
+                onChange={event => updateOscillator({...oscillator, waveform: event.target.value as OscillatorSettings['waveform']})}>
+                <option value="sine">Sine (diagnostic)</option>
+                <option value="triangle">Triangle</option>
+                <option value="sawtooth">Sawtooth</option>
+                <option value="square">Square</option>
+              </select>
+            </label>
+          </OscillatorControlSection>
+          <OscillatorControlSection title="Low-pass filter" action={<label className="switch">
+            <input type="checkbox" checked={oscillator.filter.enabled}
+              onChange={event => updateOscillator({...oscillator, filter: {...oscillator.filter, enabled: event.target.checked}})}/>
+            {' '}ACTIVE
+          </label>}>
+            {renderOscillatorModulationSlider(oscillator, index, 'cutoff')}
+            {renderOscillatorLfo(oscillator.id, 'filterCutoff')}
+            <NumericSlider label="RESONANCE" min={0.1} max={12} step={0.1}
+              disabled={!oscillator.filter.enabled} value={oscillator.filter.resonance}
+              onChange={resonance => updateOscillator({...oscillator, filter: {...oscillator.filter, resonance}})}/>
+          </OscillatorControlSection>
         </div>
       </div>
     </article>)}</section><section className="diagnostic"><h2>ANDROID AUDIO DIAGNOSTIC</h2><label><input type="checkbox" checked={renderingDiagnosticEnabled} onChange={event => setRenderingDiagnosticEnabled(event.target.checked)}/> Keep rendering active while playing (experiment)</label><div className="diagnostic-track"><div className="diagnostic-indicator" ref={renderingIndicator}/></div><p>Compare 30 seconds with this OFF and ON without touching the screen. This intentionally increases rendering work and battery use; it is not a permanent audio fix.</p><a href="./audio-diagnostic.html">Open standalone audio output test</a></section><footer>WEB AUDIO ENGINE · SOLAR 42 INSPIRED · USE LOW VOLUME</footer></main>;
