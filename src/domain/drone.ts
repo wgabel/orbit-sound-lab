@@ -13,6 +13,7 @@ export interface OscillatorSettings {
   readonly fade: FadeSettings;
   readonly id: string;
   readonly frequencyHz: number;
+  readonly volume: number;
   readonly detuneCents: number;
   readonly enabled: boolean;
   readonly waveform: OscillatorWaveform;
@@ -21,7 +22,7 @@ export interface OscillatorSettings {
 export interface DroneSettings { readonly id: string; readonly name: string; readonly gain: number; readonly oscillators: readonly OscillatorSettings[]; }
 export function createDefaultDroneSettings(): DroneSettings {
   return { id: 'drone-1', name: 'Drone 1', gain: 0.12, oscillators: Array.from({length: OSCILLATORS_PER_DRONE}, (_, index) => ({
-    id: `oscillator-${index + 1}`, frequencyHz: 110, detuneCents: (index - 2) * 3,
+    id: `oscillator-${index + 1}`, frequencyHz: 110, volume: 1, detuneCents: (index - 2) * 3,
     enabled: true, waveform: 'sawtooth' as const,
     filter: {enabled: false, cutoffHz: 2400, resonance: 0.7}, fade: {fadeInSeconds: 1, fadeOutSeconds: 2}
   })) };
@@ -36,6 +37,7 @@ export function validateDroneSettings(settings: DroneSettings): void {
   if (new Set(settings.oscillators.map(oscillator => oscillator.id)).size !== OSCILLATORS_PER_DRONE) throw new Error('Oscillator identifiers must be unique.');
   for (const oscillator of settings.oscillators) {
     if (!Number.isFinite(oscillator.frequencyHz) || oscillator.frequencyHz < 20 || oscillator.frequencyHz > 20000) throw new Error('Invalid oscillator frequency.');
+    if (!Number.isFinite(oscillator.volume) || oscillator.volume < 0 || oscillator.volume > 1) throw new Error('Oscillator volume must be between 0 and 1.');
     if (!Number.isFinite(oscillator.detuneCents) || Math.abs(oscillator.detuneCents) > 2400) throw new Error('Invalid oscillator detune.');
     if (!['sine','triangle','sawtooth','square'].includes(oscillator.waveform)) throw new Error('Invalid oscillator waveform.');
     validateLowPassFilterSettings(oscillator.filter);
