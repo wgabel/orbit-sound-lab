@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { applyPitchOffset } from '../domain/modulation';
 import { getSliderPosition, getSliderValue } from './slider-scale';
 
 describe('slider scales', () => {
@@ -7,6 +8,12 @@ describe('slider scales', () => {
     expect(getSliderValue(0.5, 20, 20000, 'logarithmic')).toBeCloseTo(632.46, 2);
     expect(position(100) - position(50)).toBeCloseTo(position(1000) - position(500));
     expect(getSliderValue(position(43.2), 20, 20000, 'logarithmic')).toBeCloseTo(43.2);
+  });
+
+  it('gives a fixed pitch depth equal track width in different registers', () => {
+    const position = (frequency: number) => getSliderPosition(frequency, 40, 880, 'logarithmic');
+    const bandWidth = (base: number) => position(applyPitchOffset(base, 25)) - position(applyPitchOffset(base, -25));
+    expect(bandWidth(55)).toBeCloseTo(bandWidth(660), 12);
   });
 
   it('expands low values while keeping zero and full scale accessible', () => {

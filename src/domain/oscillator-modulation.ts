@@ -2,7 +2,7 @@ import type { OscillatorSettings } from './drone';
 import { AMPLITUDE_LFO_CENTER, getFilterModulationLimits } from './modulation';
 
 export const OSCILLATOR_MODULATION_PARAMETERS = {
-  frequency: {label: 'FREQUENCY', unit: 'Hz', minimum: 40, maximum: 880, step: 1},
+  frequency: {label: 'FREQUENCY', unit: 'Hz', minimum: 40, maximum: 880, step: 0.1},
   volume: {label: 'VOLUME', unit: '%', minimum: 0, maximum: 1, step: 0.01},
   cutoff: {label: 'CUTOFF', unit: 'Hz', minimum: 20, maximum: 20000, step: 1}
 } as const;

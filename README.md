@@ -23,7 +23,7 @@ Use the round wave button beside an oscillator’s frequency, volume or low-pass
 
 **Variant** varies oscillator and modulation values by up to 5% of each slider’s full range in either direction, within its limits.
 
-The Pitch LFO lets you edit the duration of one cycle in seconds beside Rate. Frequency follows the live pitch, including detune and any oscillator-to-oscillator frequency route. The editable number still sets the base frequency, and the live readout makes small vibrato excursions visible.
+The Pitch LFO lets you edit the duration of one cycle in seconds beside Rate. Frequency follows the live pitch, including detune and any oscillator-to-oscillator frequency route. Frequency uses a logarithmic scale so the same depth in cents spans the same distance at low and high frequencies. The editable number still sets the base frequency.
 
 Amplitude LFO also accepts a cycle duration in seconds. When it is active, Volume shows the live level from both the oscillator Volume route and the Amplitude LFO. A base Volume of 80% at full depth sweeps from 0% to 80%.
 
