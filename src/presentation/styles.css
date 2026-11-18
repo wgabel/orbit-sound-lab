@@ -79,3 +79,11 @@
 .harmony-preview span{padding:7px 9px;background:#223a32;border:1px solid #42574d;border-radius:4px;font-size:11px}
 .harmony-engine p{font-size:12px;color:#aabdb1;margin:14px 0 0}
 @media(max-width:650px){.harmony-controls{grid-template-columns:1fr}}
+
+.preset-morph-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.preset-morph-heading h3{margin:0}
+.preset-morph-toggle{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#d5e8d8;cursor:pointer}
+.preset-morph-toggle input{width:17px;height:17px;accent-color:#a6efab}
+.preset-morph-content{border:0;padding:0;margin:16px 0 0;min-width:0}
+.preset-morph-content:disabled{opacity:.45}
+.preset-morph-content:disabled select,.preset-morph-content:disabled input{cursor:not-allowed}
