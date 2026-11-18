@@ -16,3 +16,9 @@ export interface SynthesizerController {
   updateOscillator(settings: OscillatorSettings): void;
   dispose(): void;
 }
+
+/** Composition-level interface: effects belong to the instrument, not the drone voice controller. */
+export interface SoundLabController extends SynthesizerController {
+  readonly delaySettings: import('../domain/delay').DelaySettings;
+  updateDelay(settings: import('../domain/delay').DelaySettings): void;
+}
