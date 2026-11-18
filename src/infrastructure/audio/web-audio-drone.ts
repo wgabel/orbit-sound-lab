@@ -50,7 +50,7 @@ export class WebAudioDrone implements DroneVoice {
       secondFilter.Q.value = mapResonanceToStageQ(oscillatorSettings.filter.resonance);
       dryGain.gain.value = oscillatorSettings.filter.enabled ? 0 : 1;
       wetGain.gain.value = oscillatorSettings.filter.enabled ? 1 : 0;
-      gain.gain.value = 2 / settings.oscillators.length;
+      gain.gain.value = (2 / settings.oscillators.length) * oscillatorSettings.volume;
       fadeGain.gain.value = 0;
       amplitudeGain.gain.value = 0.5;
       source.connect(dryGain);
@@ -93,6 +93,7 @@ export class WebAudioDrone implements DroneVoice {
     oscillator.source.frequency.setTargetAtTime(settings.frequencyHz, now, 0.015);
     oscillator.source.detune.setTargetAtTime(settings.detuneCents, now, 0.015);
     oscillator.fadeSettings = settings.fade;
+    oscillator.gain.gain.setTargetAtTime((2 / this.oscillators.size) * settings.volume, now, 0.015);
     if (oscillator.enabled !== settings.enabled) {
       oscillator.enabled = settings.enabled;
       if (this.started && !this.stopped) this.scheduleFade(oscillator, settings.enabled ? 1 : 0, settings.enabled ? settings.fade.fadeInSeconds : settings.fade.fadeOutSeconds);
