@@ -1,7 +1,7 @@
 import { createDefaultDelaySettings } from '../domain/delay';
 import type { DelaySettings } from '../domain/delay';
 import { WebAudioDelay } from '../infrastructure/audio/web-audio-delay';
-import type { SynthesizerController } from '../application/audio-contracts';
+import type { SoundLabController } from '../application/audio-contracts';
 import { createDefaultLowFrequencyOscillators } from '../domain/modulation';
 import { WebAudioModulationMatrix } from '../infrastructure/audio/web-audio-modulation-matrix';
 import { WebAudioLowFrequencyOscillatorFactory } from '../infrastructure/audio/web-audio-low-frequency-oscillator';
@@ -10,7 +10,7 @@ import { createDefaultDroneSettings } from '../domain/drone';
 import { WebAudioDroneFactory } from '../infrastructure/audio/web-audio-drone-factory';
 import { WebAudioGraph } from '../infrastructure/audio/web-audio-graph';
 
-export function createSynthesizer(): SynthesizerController {
+export function createSynthesizer(): SoundLabController {
   const context = new AudioContext({latencyHint: 'playback'});
   const graph = new WebAudioGraph();
   const settings = createDefaultDroneSettings();
