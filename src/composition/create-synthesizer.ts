@@ -9,6 +9,7 @@ import { WebAudioOutputProtection } from '../infrastructure/audio/web-audio-outp
 import { WebAudioDelay } from '../infrastructure/audio/web-audio-delay';
 import type { SoundLabController } from '../application/audio-contracts';
 import { WebAudioModulationMatrix } from '../infrastructure/audio/web-audio-modulation-matrix';
+import { WebAudioSmoothRandomLfoFactory } from '../infrastructure/audio/web-audio-smooth-random-lfo';
 import { WebAudioLowFrequencyOscillatorFactory } from '../infrastructure/audio/web-audio-low-frequency-oscillator';
 import { DroneController } from '../application/drone-controller';
 import { WebAudioDroneFactory } from '../infrastructure/audio/web-audio-drone-factory';
@@ -16,6 +17,8 @@ import { WebAudioGraph } from '../infrastructure/audio/web-audio-graph';
 
 export function createSynthesizer(): SoundLabController {
   const context = new AudioContext({latencyHint: 'playback'});
+  const smoothRandom = new WebAudioSmoothRandomLfoFactory(context);
+  const modulationFactory = new WebAudioLowFrequencyOscillatorFactory(context, smoothRandom);
   const graph = new WebAudioGraph();
   let delaySettings: DelaySettings = createDefaultDelaySettings();
   const delay = new WebAudioDelay(context, delaySettings);
@@ -39,7 +42,7 @@ export function createSynthesizer(): SoundLabController {
   function createLayerController(id: DroneLayerId) {
     const {drone, modulation} = createDefaultDroneLayer(id);
     return new DroneController(context, new WebAudioDroneFactory(context), graph, new WebAudioModulationMatrix(),
-      new WebAudioLowFrequencyOscillatorFactory(context), drone, modulation, `drone-${id}`, {moduleId: 'performance', portId: id});
+      modulationFactory, drone, modulation, `drone-${id}`, {moduleId: 'performance', portId: id});
   }
 
   const layers = {A: createLayerController('A'), B: createLayerController('B')};
@@ -76,7 +79,7 @@ export function createSynthesizer(): SoundLabController {
       continuousPlayback = true;
       try {
         // Resume on Start even when both layers are disabled.
-        await context.resume();
+        await Promise.all([context.resume(), smoothRandom.prepare()]);
         await synchronizeLayers();
       } catch (error) {
         playing = false;
@@ -116,7 +119,7 @@ export function createSynthesizer(): SoundLabController {
       layers[id].setPitchBend(0);
       playing = true;
       try {
-        await context.resume();
+        await Promise.all([context.resume(), smoothRandom.prepare()]);
         if (pressedKeys.get(id) !== press) return;
         if (!layers[id].isPlaying) {
           armedLayers.add(id);
