@@ -187,6 +187,10 @@ export class WebAudioDrone implements DroneVoice {
     });
     return this.stopPromise;
   }
+  fadeSources(start: number, end: number): void {
+    this.mix.fadeSources(start, end);
+  }
+
   setGain(value: number): void {
     if (!Number.isFinite(value) || value < 0 || value > 1) throw new Error('Gain must be between 0 and 1.');
     this.output.gain.setTargetAtTime(value * MONO_PAN_GAIN_COMPENSATION, this.context.currentTime, 0.015);

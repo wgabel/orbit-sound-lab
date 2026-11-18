@@ -190,6 +190,10 @@ export class DroneController implements SynthesizerController {
     this.voice?.setPitchBend(cents);
   }
 
+  fadeSources(start: number, end: number): void {
+    this.voice?.fadeSources?.(start, end);
+  }
+
   setGain(value: number): void {
     if (!Number.isFinite(value) || value < 0 || value > 1) throw new Error('Invalid gain.');
     this.settings = {...this.settings, gain: value};
