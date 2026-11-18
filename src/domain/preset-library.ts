@@ -3,7 +3,7 @@ import type { HarmonySettings } from './harmony';
 import type { DroneSettings } from './drone';
 import { validateDroneSettings } from './drone';
 import type { LowFrequencyOscillatorSettings } from './modulation';
-import { validateLowFrequencyOscillatorSettings } from './modulation';
+import { createDefaultLowFrequencyOscillatorSettings, validateLowFrequencyOscillatorSettings } from './modulation';
 import type { DelaySettings } from './delay';
 import { validateDelaySettings } from './delay';
 
@@ -42,6 +42,12 @@ async function transact<T>(mode: IDBTransactionMode, execute: (store: IDBObjectS
     execute(store, value => { result = value; hasResult = true; }, reject);
   });
 }
+export function normalizePresetModulations(modulations: readonly LowFrequencyOscillatorSettings[], oscillatorIds: readonly string[]): readonly LowFrequencyOscillatorSettings[] {
+  const destinations = ['pitch', 'filterCutoff', 'amplitude'] as const;
+  return oscillatorIds.flatMap(id => destinations.map(destination =>
+    modulations.find(item => item.targetOscillatorId === id && item.destination === destination)
+      ?? {...createDefaultLowFrequencyOscillatorSettings(id), destination}));
+}
 export function validatePreset(value: unknown): SoundPreset {
   if (!value || typeof value !== 'object') throw new Error('Invalid preset file.');
   const preset = value as Partial<SoundPreset>;
@@ -52,12 +58,14 @@ export function validatePreset(value: unknown): SoundPreset {
   validateDelaySettings(preset.delay);
   if (preset.harmony !== undefined) validateHarmonySettings(preset.harmony);
   const ids = new Set(preset.drone.oscillators.map(oscillator => oscillator.id));
-  if (preset.modulation.length !== ids.size || new Set(preset.modulation.map(item => item.targetOscillatorId)).size !== ids.size) throw new Error('Preset LFO targets do not match oscillators.');
+  if (preset.modulation.length !== ids.size && preset.modulation.length !== ids.size * 3) throw new Error('Preset LFO targets do not match oscillators.');
+  const keys = preset.modulation.map(item => item.targetOscillatorId + ':' + item.destination);
+  if (new Set(keys).size !== keys.length) throw new Error('Duplicate preset LFO destinations.');
   for (const modulation of preset.modulation) {
     validateLowFrequencyOscillatorSettings(modulation);
     if (!ids.has(modulation.targetOscillatorId)) throw new Error('Unknown preset LFO target.');
   }
-  return preset as SoundPreset;
+  return {...preset, modulation: normalizePresetModulations(preset.modulation, preset.drone.oscillators.map(item => item.id))} as SoundPreset;
 }
 export function createPreset(name: string, drone: DroneSettings, modulation: readonly LowFrequencyOscillatorSettings[], delay: DelaySettings, harmony: HarmonySettings = DEFAULT_HARMONY_SETTINGS): SoundPreset {
   return validatePreset({schemaVersion: 1, id: crypto.randomUUID(), name: name.trim(), createdAt: new Date().toISOString(), drone, modulation, delay, harmony});
