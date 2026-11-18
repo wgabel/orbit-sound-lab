@@ -5,11 +5,12 @@ import { validateDroneSettings, validateLowPassFilterSettings } from '../../doma
 interface OscillatorNodes {
   readonly source: OscillatorNode;
   readonly filter: BiquadFilterNode;
+  readonly secondFilter: BiquadFilterNode;
   readonly dryGain: GainNode;
   readonly wetGain: GainNode;
   readonly gain: GainNode;
 }
-/** Native Web Audio signal path: oscillator → dry/filter paths → voice gain → master. */
+/** Native Web Audio signal path: oscillator → dry/two cascaded low-pass filters → voice gain → master. Two biquads yield a four-pole (24 dB/octave asymptotic) response; this is not a nonlinear analog ladder. */
 export class WebAudioDrone implements DroneVoice {
   readonly output: GainNode;
   private readonly oscillators = new Map<string, OscillatorNodes>();
@@ -23,6 +24,7 @@ export class WebAudioDrone implements DroneVoice {
     for (const oscillatorSettings of settings.oscillators) {
       const source = context.createOscillator();
       const filter = context.createBiquadFilter();
+      const secondFilter = context.createBiquadFilter();
       const dryGain = context.createGain();
       const wetGain = context.createGain();
       const gain = context.createGain();
@@ -30,18 +32,22 @@ export class WebAudioDrone implements DroneVoice {
       source.frequency.value = oscillatorSettings.frequencyHz;
       source.detune.value = oscillatorSettings.detuneCents;
       filter.type = 'lowpass';
+      secondFilter.type = 'lowpass';
       filter.frequency.value = oscillatorSettings.filter.cutoffHz;
       filter.Q.value = oscillatorSettings.filter.resonance;
+      secondFilter.frequency.value = oscillatorSettings.filter.cutoffHz;
+      secondFilter.Q.value = oscillatorSettings.filter.resonance;
       dryGain.gain.value = oscillatorSettings.filter.enabled ? 0 : 1;
       wetGain.gain.value = oscillatorSettings.filter.enabled ? 1 : 0;
       gain.gain.value = oscillatorSettings.enabled ? 1 / settings.oscillators.length : 0;
       source.connect(dryGain);
       source.connect(filter);
-      filter.connect(wetGain);
+      filter.connect(secondFilter);
+      secondFilter.connect(wetGain);
       dryGain.connect(gain);
       wetGain.connect(gain);
       gain.connect(this.output);
-      this.oscillators.set(oscillatorSettings.id, {source, filter, dryGain, wetGain, gain});
+      this.oscillators.set(oscillatorSettings.id, {source, filter, secondFilter, dryGain, wetGain, gain});
     }
   }
   start(): void {
@@ -71,6 +77,8 @@ export class WebAudioDrone implements DroneVoice {
     oscillator.gain.gain.setTargetAtTime(settings.enabled ? 1 / this.oscillators.size : 0, now, 0.015);
     oscillator.filter.frequency.setTargetAtTime(settings.filter.cutoffHz, now, 0.02);
     oscillator.filter.Q.setTargetAtTime(settings.filter.resonance, now, 0.02);
+    oscillator.secondFilter.frequency.setTargetAtTime(settings.filter.cutoffHz, now, 0.02);
+    oscillator.secondFilter.Q.setTargetAtTime(settings.filter.resonance, now, 0.02);
     // Short crossfade avoids discontinuities when switching filter bypass.
     oscillator.dryGain.gain.setTargetAtTime(settings.filter.enabled ? 0 : 1, now, 0.015);
     oscillator.wetGain.gain.setTargetAtTime(settings.filter.enabled ? 1 : 0, now, 0.015);
@@ -84,8 +92,8 @@ export class WebAudioDrone implements DroneVoice {
     if (this.disposed) return;
     this.stop();
     this.disposed = true;
-    for (const {source, filter, dryGain, wetGain, gain} of this.oscillators.values()) {
-      source.disconnect(); filter.disconnect(); dryGain.disconnect(); wetGain.disconnect(); gain.disconnect();
+    for (const {source, filter, secondFilter, dryGain, wetGain, gain} of this.oscillators.values()) {
+      source.disconnect(); filter.disconnect(); secondFilter.disconnect(); dryGain.disconnect(); wetGain.disconnect(); gain.disconnect();
     }
     this.oscillators.clear();
     this.output.disconnect();
