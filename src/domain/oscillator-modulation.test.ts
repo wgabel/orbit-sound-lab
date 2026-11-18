@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createDefaultDroneSettings, validateDroneSettings } from './drone';
 import { createDefaultDelaySettings } from './delay';
 import { createDefaultLowFrequencyOscillators } from './modulation';
-import { getOscillatorModulationRange, getOscillatorSliderSpan, replaceOscillatorModulationRoute } from './oscillator-modulation';
+import { getAmplitudeModulationRange, getOscillatorModulationRange, getOscillatorSliderSpan, replaceOscillatorModulationRoute } from './oscillator-modulation';
 import type { OscillatorModulationRoute } from './oscillator-modulation';
 import { createPreset, validatePreset } from './preset-library';
 
@@ -22,6 +22,13 @@ describe('oscillator slider modulation', () => {
       .toEqual({base: 1200, lower: 144, upper: 3198});
     expect(getOscillatorModulationRange({...first, volume: 1}, 'volume', 0.25))
       .toEqual({base: 1, lower: 0.75, upper: 1});
+  });
+
+  it('combines the oscillator volume sweep and the amplitude LFO gain limits', () => {
+    expect(getAmplitudeModulationRange(0.8, 0.8, 0.5)).toEqual([0, 0.8]);
+    const [lower, upper] = getAmplitudeModulationRange(0.7, 0.9, 0.25);
+    expect(lower).toBeCloseTo(0.175);
+    expect(upper).toBeCloseTo(0.675);
   });
 
   it('supports reciprocal routes using independent level signals and rejects self-routing', () => {

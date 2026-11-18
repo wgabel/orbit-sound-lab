@@ -4,13 +4,14 @@ import { LFO_MAXIMUM_RATE_HZ, LFO_MINIMUM_RATE_HZ } from '../domain/modulation';
 const MINIMUM_SECONDS = 1 / LFO_MAXIMUM_RATE_HZ;
 const MAXIMUM_SECONDS = 1 / LFO_MINIMUM_RATE_HZ;
 
-interface PitchLfoCycleInputProps {
+interface LfoCycleInputProps {
+  readonly destination: 'Pitch' | 'Amplitude';
   readonly rateHz: number;
   readonly disabled: boolean;
   readonly onRateChange: (rateHz: number) => void;
 }
 
-export function PitchLfoCycleInput({rateHz, disabled, onRateChange}: PitchLfoCycleInputProps) {
+export function LfoCycleInput({destination, rateHz, disabled, onRateChange}: LfoCycleInputProps) {
   const errorId = useId();
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
@@ -34,7 +35,7 @@ export function PitchLfoCycleInput({rateHz, disabled, onRateChange}: PitchLfoCyc
     <label className="pitch-lfo-cycle">
       <span aria-hidden="true">1 cycle /</span>
       <input className="numeric-slider-entry" type="text" inputMode="decimal" autoComplete="off"
-        aria-label="Pitch LFO cycle duration in seconds" aria-invalid={invalid && !disabled}
+        aria-label={`${destination} LFO cycle duration in seconds`} aria-invalid={invalid && !disabled}
         aria-describedby={invalid && !disabled ? errorId : undefined} disabled={disabled}
         value={disabled || draft === null ? Number((1 / rateHz).toFixed(4)) : draft}
         onFocus={event => event.currentTarget.select()}

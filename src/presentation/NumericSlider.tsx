@@ -71,7 +71,7 @@ export function NumericSlider({
     function draw(time: number) {
       if (time - previousTime >= 30) {
         const effective = readLiveValue?.();
-        setLiveValue(effective != null ? Number(effective.toFixed(2)) : null);
+        setLiveValue(effective != null ? Number((effective * displayFactor).toFixed(2)) / displayFactor : null);
         previousTime = time;
       }
       frame = requestAnimationFrame(draw);
@@ -81,7 +81,7 @@ export function NumericSlider({
       observer.disconnect();
       cancelAnimationFrame(frame);
     };
-  }, [readLiveValue]);
+  }, [readLiveValue, displayFactor]);
 
   function finishEditing(save: boolean, fromKeyboard: boolean) {
     if (draft === null) return;
@@ -168,7 +168,7 @@ export function NumericSlider({
     </span>}
     {slider}
     {showLiveValue && preview !== null && <span className="numeric-slider-live-value">
-      LIVE {numberDisplay.format(preview)}{unitSuffix}
+      LIVE {numberDisplay.format(preview * displayFactor)}{unitSuffix}
     </span>}
     {modulationRange && <span className="numeric-slider-modulation-range" id={rangeId}>
       {modulationRange.map(limit => numberDisplay.format(Number((limit * displayFactor).toFixed(2))) + unitSuffix).join(' – ')}
