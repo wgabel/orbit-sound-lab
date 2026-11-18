@@ -14,6 +14,8 @@ import { retargetOscillatorSnapshot } from '../domain/oscillator-clipboard';
 import type { OscillatorSnapshot } from '../domain/oscillator-clipboard';
 import { applyInitialSynthesizerSettings } from '../application/apply-initial-synthesizer-settings';
 import { createSynthesizer } from '../composition/create-synthesizer';
+import type { DroneEnvelope } from '../domain/drone-envelope';
+import { DroneKeyControls } from './DroneKeyControls';
 import { DroneMixControls } from './DroneMixControls';
 import { NumericSlider } from './NumericSlider';
 import { OscillatorPanControl } from './OscillatorPanControl';
@@ -30,6 +32,7 @@ export function App() {
   const [activeLayer, setActiveLayer] = useState<DroneLayerId>('A');
   const [layers, setLayers] = useState<Record<DroneLayerId, DroneLayer>>(() =>
     ({A: createDefaultDroneLayer('A'), B: createDefaultDroneLayer('B')}));
+  const [holdModes, setHoldModes] = useState({A: false, B: false});
   const [masterGain, setMasterGain] = useState(1);
   const performancePosition = useRef(NEUTRAL_PERFORMANCE_POSITION);
   const [playing, setPlaying] = useState(false);
@@ -47,6 +50,7 @@ export function App() {
       ...oscillator, frequencyHz: getEffectiveOscillatorFrequency(layer.harmony, oscillator.frequencyHz, index)
     }));
     applyInitialSynthesizerSettings(engine, {...layer.drone, oscillators}, layer.modulation);
+    controller.current?.setLayerEnvelope(id, layer.drone.envelope);
   }
   function applyLayersEnabled(next: Record<DroneLayerId, DroneLayer>) {
     void controller.current?.setLayersEnabled({A: next.A.enabled, B: next.B.enabled}).catch(reason => {
@@ -144,28 +148,62 @@ export function App() {
   const renderingIndicator = useRenderingActivityDiagnostic(renderingDiagnosticEnabled && playing);
   useEffect(() => () => { controller.current?.dispose(); controller.current = null; }, []);
   const [playbackTransition, setPlaybackTransition] = useState(false);
+  function ensureSynthesizer(): SoundLabController {
+    if (controller.current) return controller.current;
+    const engine = createSynthesizer();
+    controller.current = engine;
+    for (const id of DRONE_LAYER_IDS) {
+      applyLayer(id, layers[id]);
+      void engine.setLayerHoldMode(id, holdModes[id]);
+    }
+    engine.setMasterGain(masterGain);
+    engine.setPerformancePosition(performancePosition.current);
+    engine.updateDelay(delaySettings);
+    applyLayersEnabled(layers);
+    return engine;
+  }
+
+  function updateHoldMode(id: DroneLayerId, holding: boolean) {
+    setHoldModes(previous => ({...previous, [id]: holding}));
+    void controller.current?.setLayerHoldMode(id, holding).catch(reason => {
+      setError(reason instanceof Error ? reason.message : 'Cannot change drone key mode.');
+    });
+  }
+
+  function updateLayerEnvelope(id: DroneLayerId, envelope: DroneEnvelope) {
+    controller.current?.setLayerEnvelope(id, envelope);
+    setLayers(previous => ({...previous, [id]: {...previous[id], drone: {...previous[id].drone, envelope}}}));
+  }
+
+  async function pressLayerKey(id: DroneLayerId) {
+    try {
+      setError('');
+      const engine = ensureSynthesizer();
+      updateHoldMode(id, true);
+      const startKey = engine.pressLayerKey(id);
+      setPlaying(engine.isPlaying);
+      await startKey;
+    } catch (reason) {
+      setPlaying(controller.current?.isPlaying ?? false);
+      setError(reason instanceof Error ? reason.message : 'Cannot play drone key.');
+    }
+  }
+
   async function togglePlayback() {
     if (playbackTransition) return;
     setPlaybackTransition(true);
     try {
       setError('');
-      if (!controller.current) {
-        controller.current = createSynthesizer();
-        for (const id of DRONE_LAYER_IDS) applyLayer(id, layers[id]);
-        controller.current.setMasterGain(masterGain);
-        controller.current.setPerformancePosition(performancePosition.current);
-        controller.current.updateDelay(delaySettings);
-      }
-      const engine = controller.current;
+      const engine = ensureSynthesizer();
       if (engine.isPlaying) {
         await engine.stop();
       } else {
         await engine.setLayersEnabled({
-          A: layers.A.enabled || activeLayer === 'A',
-          B: layers.B.enabled || activeLayer === 'B'
+          A: layers.A.enabled || (activeLayer === 'A' && !holdModes.A),
+          B: layers.B.enabled || (activeLayer === 'B' && !holdModes.B)
         });
         await engine.start();
-        updateActiveLayer(layer => ({...layer, enabled: true}));
+        if (!holdModes[activeLayer]) updateActiveLayer(layer => ({...layer, enabled: true}));
       }
       setPlaying(engine.isPlaying);
     } catch (reason) {
@@ -249,12 +287,21 @@ export function App() {
         <div className="drone-layer-header">
           <button type="button" aria-pressed={activeLayer === id} onClick={() => setActiveLayer(id)}>DRONE {id}</button>
           <label className="switch">
-            <input type="checkbox" aria-label={`Enable Drone ${id}`} disabled={playbackTransition} checked={layers[id].enabled}
-              onChange={event => updateLayerEnabled(id, event.target.checked)}/> {layers[id].enabled ? 'ON' : 'OFF'}
+            <input type="checkbox" aria-label={`Enable Drone ${id}`} disabled={playbackTransition || holdModes[id]} checked={layers[id].enabled && !holdModes[id]}
+              onChange={event => updateLayerEnabled(id, event.target.checked)}/> {layers[id].enabled && !holdModes[id] ? 'ON' : 'OFF'}
           </label>
         </div>
         <NumericSlider label={`DRONE ${id} LEVEL`} unit="%" displayFactor={100} min={0} max={0.4} step={0.01}
           value={layers[id].drone.gain} onChange={gain => updateLayerGain(id, gain)}/>
+        <label className="switch drone-key-mode">
+          <input type="checkbox" aria-label={`Key mode for Drone ${id}`} checked={holdModes[id]}
+            onChange={event => updateHoldMode(id, event.target.checked)}/> KEY MODE
+        </label>
+        <DroneKeyControls id={id} envelope={layers[id].drone.envelope} disabled={playbackTransition}
+          onEnvelopeChange={envelope => updateLayerEnvelope(id, envelope)}
+          onPress={() => void pressLayerKey(id)}
+          onRelease={() => controller.current?.releaseLayerKey(id)}
+          onBend={cents => controller.current?.setLayerBend(id, cents)}/>
       </div>)}
     </section>
     <DroneMixControls key={activeLayer} layerId={activeLayer} settings={settings.mix} onChange={updateDroneMix}/>
@@ -281,7 +328,7 @@ export function App() {
           onClick={() => pasteOscillator(oscillator, index + 1)} aria-label={`Paste into oscillator ${index + 1}`}>PASTE</button>
       </div>
     </div>
-    <OscillatorWaveform oscillatorId={oscillator.id} playing={playing && layerEnabled} enabled={oscillator.enabled} getAnalyser={getWaveformAnalyser}/><div className="oscillator-always-visible"><div className="oscillator-mix-controls"><NumericSlider label="VOLUME" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+    <OscillatorWaveform oscillatorId={oscillator.id} playing={playing && (layerEnabled || holdModes[activeLayer])} enabled={oscillator.enabled} getAnalyser={getWaveformAnalyser}/><div className="oscillator-always-visible"><div className="oscillator-mix-controls"><NumericSlider label="VOLUME" unit="%" displayFactor={100} min={0} max={1} step={0.01}
       value={oscillator.volume} onChange={value => updateOscillator({...oscillator,volume:value})}/>
     <OscillatorPanControl
       oscillatorId={oscillator.id}

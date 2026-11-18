@@ -11,6 +11,7 @@ interface ActiveModulation { readonly source: ModulationSource; readonly destina
 /** Coordinates one independent routable LFO per drone oscillator. */
 export class DroneController implements SynthesizerController {
   private voice: DroneVoice | null = null;
+  private pitchBend = 0;
   private playing = false;
   private disposed = false;
   private stopping: Promise<void> | null = null;
@@ -50,6 +51,7 @@ export class DroneController implements SynthesizerController {
       for (const settings of this.lowFrequencyOscillatorSettings) {
         if (settings.enabled) this.attachModulation(voice, settings);
       }
+      if (this.pitchBend !== 0) voice.setPitchBend(this.pitchBend);
       voice.start();
       this.voice = voice;
       this.playing = true;
@@ -140,6 +142,11 @@ export class DroneController implements SynthesizerController {
     const oscillator = this.settings.oscillators.find(item => item.id === settings.targetOscillatorId);
     if (!oscillator) throw new Error('Unknown LFO target oscillator.');
     return {...settings, depthHz: limitFilterModulationDepth(settings.depthHz, oscillator.filter.cutoffHz, this.context.sampleRate)};
+  }
+
+  setPitchBend(cents: number): void {
+    this.pitchBend = cents;
+    this.voice?.setPitchBend(cents);
   }
 
   setGain(value: number): void {

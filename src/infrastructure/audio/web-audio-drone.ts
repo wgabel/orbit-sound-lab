@@ -29,6 +29,7 @@ interface OscillatorNodes {
 /** Panned oscillator paths and centered noise feed the layer mix, then the drone level. */
 export class WebAudioDrone implements DroneVoice {
   readonly output: GainNode;
+  private readonly pitchBend: ConstantSourceNode;
   private readonly mix: WebAudioDroneMix;
   private mixSettings: DroneMixSettings;
   private readonly oscillators = new Map<string, OscillatorNodes>();
@@ -39,12 +40,15 @@ export class WebAudioDrone implements DroneVoice {
   private finishStop: (() => void) | null = null;
   constructor(private readonly context: AudioContext, settings: DroneSettings) {
     validateDroneSettings(settings);
+    this.pitchBend = context.createConstantSource();
+    this.pitchBend.offset.value = 0;
     this.output = context.createGain();
     this.output.gain.value = settings.gain * MONO_PAN_GAIN_COMPENSATION;
     this.mixSettings = settings.mix;
     this.mix = new WebAudioDroneMix(context, settings.mix, this.output);
     for (const oscillatorSettings of settings.oscillators) {
       const source = new WebAudioWaveformSource(context, oscillatorSettings);
+      this.pitchBend.connect(source.detune);
       const filter = context.createBiquadFilter();
       const secondFilter = context.createBiquadFilter();
       const dryGain = context.createGain();
@@ -87,6 +91,7 @@ export class WebAudioDrone implements DroneVoice {
     if (this.disposed || this.stopped) throw new Error('Cannot restart a stopped drone.');
     if (this.started) return;
     this.started = true;
+    this.pitchBend.start();
     const now = this.context.currentTime;
     for (const oscillator of this.oscillators.values()) {
       oscillator.source.start(now);
@@ -176,10 +181,17 @@ export class WebAudioDrone implements DroneVoice {
     if (!oscillator) throw new Error('Unknown oscillator.');
     return [oscillator.filter.frequency, oscillator.secondFilter.frequency];
   }
+  setPitchBend(cents: number): void {
+    if (this.started) this.pitchBend.offset.setTargetAtTime(cents, this.context.currentTime, 0.008);
+    else this.pitchBend.offset.value = cents;
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     this.finishStop?.();
+    if (this.started) this.pitchBend.stop();
+    this.pitchBend.disconnect();
     for (const {source, filter, secondFilter, dryGain, wetGain, gain, fadeGain, panner, amplitudeGain, waveformAnalyser} of this.oscillators.values()) {
       source.dispose(); filter.disconnect(); secondFilter.disconnect(); dryGain.disconnect(); wetGain.disconnect(); gain.disconnect(); fadeGain.disconnect(); amplitudeGain.disconnect(); panner.disconnect(); waveformAnalyser.disconnect();
     }

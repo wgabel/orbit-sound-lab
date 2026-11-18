@@ -30,6 +30,12 @@ function morphLayerSound(start: LayerSound, end: LayerSound, position: number): 
   const drone: DroneSettings = {
     ...start.drone,
     gain: interpolate(start.drone.gain, end.drone.gain, position),
+    envelope: {
+      attack: interpolate(start.drone.envelope.attack, end.drone.envelope.attack, position),
+      decay: interpolate(start.drone.envelope.decay, end.drone.envelope.decay, position),
+      sustain: interpolate(start.drone.envelope.sustain, end.drone.envelope.sustain, position),
+      release: interpolate(start.drone.envelope.release, end.drone.envelope.release, position)
+    },
     mix: {
       noise: {
         enabled: choose(start.drone.mix.noise.enabled, end.drone.mix.noise.enabled, position),

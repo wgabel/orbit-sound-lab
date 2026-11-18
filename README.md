@@ -13,7 +13,11 @@ npm run build
 ```
 
 ## Current scope
-One continuous drone voice with five independent sawtooth oscillators, frequency, detune, mute and master level. Press START DRONE to unlock Web Audio; use low speaker volume. No effects or modulation implemented yet.
+Two drone layers with five oscillators each, modulation, effects and a stereo performance mix. Use **Start Drones** and each layer’s **On** switch for continuous playback.
+
+Each layer also has a **Hold to Play** key under its level control. Hold it with the mouse, a finger, or Space/Enter while focused. Drag up or down while holding to bend all five oscillators by up to one semitone from their current tuning. Releasing the key fades the layer out at its own **Release** setting. Both keys can be held with separate fingers.
+
+Pressing a key activates **Key Mode** for that layer. Turn **Key Mode** off to return to continuous playback controls. Each layer’s attack, decay, sustain and release are saved with its sound preset.
 
 ## Architecture
 Domain models in `src/domain`; orchestration and ports in `src/application`; Web Audio implementations and factory in `src/infrastructure/audio`; dependency assembly in `src/composition`; React UI in `src/presentation`. See `AGENTS.md`.
