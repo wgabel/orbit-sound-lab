@@ -31,3 +31,23 @@ export function getRandomHarmonicFrequency(settings: HarmonySettings): number {
   const index = Math.floor(Math.random()*5);
   return getHarmonicFrequency(settings,index);
 }
+
+/** Derive the audible pitch without modifying the oscillator's saved source frequency. */
+export function getEffectiveOscillatorFrequency(settings: HarmonySettings, sourceFrequencyHz: number, oscillatorIndex: number): number {
+  if (settings.mode === 'free') return sourceFrequencyHz;
+  if (!Number.isFinite(sourceFrequencyHz) || sourceFrequencyHz <= 0) throw new Error('Invalid source frequency.');
+  validateHarmonySettings(settings);
+  const root = settings.rootFrequencyHz;
+  const candidates: number[] = [];
+  for (const ratio of RATIOS[settings.chord]) {
+    const tunedRatio = settings.mode === 'piano' ? Math.pow(2, Math.round(12 * Math.log2(ratio)) / 12) : ratio;
+    for (let octave = -3; octave <= 5; octave++) {
+      const candidate = root * tunedRatio * Math.pow(2, octave);
+      if (candidate >= 20 && candidate <= 20000) candidates.push(candidate);
+    }
+  }
+  const closest = candidates.reduce((best, candidate) =>
+    Math.abs(Math.log2(candidate / sourceFrequencyHz)) < Math.abs(Math.log2(best / sourceFrequencyHz)) ? candidate : best);
+  const spread = settings.spreadCents * (oscillatorIndex - 2) / 2;
+  return Math.min(20000, Math.max(20, closest * Math.pow(2, spread / 1200)));
+}
