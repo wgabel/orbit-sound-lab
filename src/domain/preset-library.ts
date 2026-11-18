@@ -54,9 +54,11 @@ export function normalizePresetModulations(modulations: readonly LowFrequencyOsc
 }
 function validateLayerSound(settings: DroneSettings, modulationSettings: readonly LowFrequencyOscillatorSettings[]) {
   if (!settings || !Array.isArray(settings.oscillators) || !Array.isArray(modulationSettings)) throw new Error('Incomplete preset layer.');
+  const defaults = createDefaultDroneMix();
+  const mix = settings.mix === undefined ? defaults : settings.mix;
   const drone: DroneSettings = {
     ...settings,
-    mix: settings.mix === undefined ? createDefaultDroneMix() : settings.mix,
+    mix: mix && mix.reverb === undefined ? {...mix, reverb: defaults.reverb} : mix,
     oscillators: settings.oscillators.map(oscillator =>
       oscillator.pan === undefined ? {...oscillator, pan: 0} : oscillator)
   };

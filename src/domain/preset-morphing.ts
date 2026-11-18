@@ -38,6 +38,10 @@ function morphLayerSound(start: LayerSound, end: LayerSound, position: number): 
       filter: {
         enabled: choose(start.drone.mix.filter.enabled, end.drone.mix.filter.enabled, position),
         cutoffHz: interpolateFrequency(start.drone.mix.filter.cutoffHz, end.drone.mix.filter.cutoffHz, position)
+      },
+      reverb: {
+        enabled: choose(start.drone.mix.reverb.enabled, end.drone.mix.reverb.enabled, position),
+        mix: interpolate(start.drone.mix.reverb.mix, end.drone.mix.reverb.mix, position)
       }
     },
     oscillators: start.drone.oscillators.map(a => {

@@ -36,15 +36,16 @@ describe('preset morphing', () => {
     expect(middle.drone.gain).toBeCloseTo(0.20);
     expect(morphPresets(a, destination, 1).layerMix.secondLayer).toEqual(to);
   });
-  it('interpolates layer noise level and cutoff and switches both at the midpoint', () => {
+  it('interpolates layer noise, cutoff and reverb mix and switches effects at the midpoint', () => {
     const destination = {...b, drone: {...b.drone, mix: {
-      noise: {enabled: true, volume: 0.8}, filter: {enabled: true, cutoffHz: 600}
+      noise: {enabled: true, volume: 0.8}, filter: {enabled: true, cutoffHz: 600}, reverb: {enabled: true, mix: 0.75}
     }}};
     expect(morphPresets(a, destination, 0.49).drone.mix.noise.enabled).toBe(false);
     const middle = morphPresets(a, destination, 0.5).drone.mix;
     expect(middle.noise).toEqual({enabled: true, volume: 0.5});
     expect(middle.filter.enabled).toBe(true);
     expect(middle.filter.cutoffHz).toBeCloseTo(1200);
+    expect(middle.reverb).toEqual({enabled: true, mix: 0.5});
   });
   it('rejects invalid positions', () => {
     expect(() => morphPresets(a, b, Number.NaN)).toThrow();

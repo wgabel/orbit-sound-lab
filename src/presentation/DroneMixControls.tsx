@@ -9,7 +9,7 @@ interface DroneMixControlsProps {
 }
 
 export function DroneMixControls({layerId, settings, onChange}: DroneMixControlsProps) {
-  const {noise, filter} = settings;
+  const {noise, filter, reverb} = settings;
 
   return <section className="drone-mix" aria-label={`Drone ${layerId} mix`}>
     <h2>DRONE {layerId} MIX</h2>
@@ -31,6 +31,15 @@ export function DroneMixControls({layerId, settings, onChange}: DroneMixControls
         </label>
         <NumericSlider label="LAYER CUTOFF" unit="Hz" min={20} max={20000} step={1} disabled={!filter.enabled}
           value={filter.cutoffHz} onChange={cutoffHz => onChange({...settings, filter: {...filter, cutoffHz}})}/>
+      </div>
+      <div>
+        <label className="switch">
+          <input type="checkbox" checked={reverb.enabled}
+            onChange={event => onChange({...settings, reverb: {...reverb, enabled: event.target.checked}})}/>
+          REVERB
+        </label>
+        <NumericSlider label="REVERB MIX" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+          value={reverb.mix} onChange={mix => onChange({...settings, reverb: {...reverb, mix}})}/>
       </div>
     </div>
   </section>;
