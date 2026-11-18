@@ -5,7 +5,12 @@ export interface LowPassFilterSettings {
   readonly cutoffHz: number;
   readonly resonance: number;
 }
+export interface FadeSettings { readonly fadeInSeconds: number; readonly fadeOutSeconds: number; }
+export function validateFadeSettings(settings: FadeSettings): void {
+  if (![settings.fadeInSeconds, settings.fadeOutSeconds].every(value => Number.isFinite(value) && value >= 0.01 && value <= 30)) throw new Error('Fade durations must be between 0.01 and 30 seconds.');
+}
 export interface OscillatorSettings {
+  readonly fade: FadeSettings;
   readonly id: string;
   readonly frequencyHz: number;
   readonly detuneCents: number;
@@ -18,7 +23,7 @@ export function createDefaultDroneSettings(): DroneSettings {
   return { id: 'drone-1', name: 'Drone 1', gain: 0.12, oscillators: Array.from({length: OSCILLATORS_PER_DRONE}, (_, index) => ({
     id: `oscillator-${index + 1}`, frequencyHz: 110, detuneCents: (index - 2) * 3,
     enabled: true, waveform: 'sawtooth' as const,
-    filter: {enabled: false, cutoffHz: 2400, resonance: 0.7}
+    filter: {enabled: false, cutoffHz: 2400, resonance: 0.7}, fade: {fadeInSeconds: 1, fadeOutSeconds: 2}
   })) };
 }
 export function validateLowPassFilterSettings(settings: LowPassFilterSettings): void {
@@ -34,5 +39,6 @@ export function validateDroneSettings(settings: DroneSettings): void {
     if (!Number.isFinite(oscillator.detuneCents) || Math.abs(oscillator.detuneCents) > 2400) throw new Error('Invalid oscillator detune.');
     if (!['sine','triangle','sawtooth','square'].includes(oscillator.waveform)) throw new Error('Invalid oscillator waveform.');
     validateLowPassFilterSettings(oscillator.filter);
+    validateFadeSettings(oscillator.fade);
   }
 }
