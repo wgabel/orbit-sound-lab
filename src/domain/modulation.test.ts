@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyPitchOffset, limitFilterModulationDepth, createDefaultLowFrequencyOscillatorSettings, createDefaultLowFrequencyOscillators, validateLowFrequencyOscillatorSettings } from './modulation';
+import { applyPitchOffset, getEffectiveCutoffLfoDepth, limitFilterModulationDepth, createDefaultLowFrequencyOscillatorSettings, createDefaultLowFrequencyOscillators, validateLowFrequencyOscillatorSettings } from './modulation';
 describe('LFO settings', () => {
   it('creates three independent lanes for every oscillator', () => {
     const bank = createDefaultLowFrequencyOscillators(['a','b']);
@@ -25,4 +25,11 @@ it('converts the pitch LFO depth in cents to a frequency offset', () => {
   expect(applyPitchOffset(440, -25)).toBeCloseTo(433.69, 2);
   expect(applyPitchOffset(440, 25)).toBeCloseTo(446.4, 2);
   expect(applyPitchOffset(440, 1200)).toBe(880);
+});
+
+it('accounts for the oscillator route when limiting cutoff LFO depth', () => {
+  const sweep = {base: 1344, lower: 1244, upper: 1444};
+  expect(getEffectiveCutoffLfoDepth(50, sweep, 48000)).toBe(50);
+  expect(getEffectiveCutoffLfoDepth(4950, sweep, 48000)).toBeCloseTo(1082.72);
+  expect(getEffectiveCutoffLfoDepth(4950, {base: 20, lower: 20, upper: 20}, 48000)).toBe(0);
 });

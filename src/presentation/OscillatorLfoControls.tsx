@@ -32,9 +32,9 @@ export function OscillatorLfoControls({modulation, onChange}: OscillatorLfoContr
       </label>
       <NumericSlider label="RATE" unit="Hz" min={LFO_MINIMUM_RATE_HZ} max={LFO_MAXIMUM_RATE_HZ} step={0.01}
         disabled={!enabled} value={frequencyHz} onChange={value => onChange({...modulation, frequencyHz: value})}/>
-      {destination !== 'filterCutoff' && <LfoCycleInput rateHz={frequencyHz}
-        destination={destination === 'pitch' ? 'Pitch' : 'Amplitude'}
-        disabled={!enabled} onRateChange={value => onChange({...modulation, frequencyHz: value})}/>}
+      <LfoCycleInput rateHz={frequencyHz}
+        destination={destination === 'pitch' ? 'Pitch' : destination === 'amplitude' ? 'Amplitude' : 'Cutoff'}
+        disabled={!enabled} onRateChange={value => onChange({...modulation, frequencyHz: value})}/>
       {destination === 'pitch' ? <>
         <NumericSlider label="DEPTH" unit="cents" min={0} max={300} step={0.1}
           disabled={!enabled} value={depthCents} onChange={value => onChange({...modulation, depthCents: value})}/>
@@ -42,7 +42,7 @@ export function OscillatorLfoControls({modulation, onChange}: OscillatorLfoContr
       </> : destination === 'amplitude' ? <NumericSlider label="DEPTH" unit="%" displayFactor={100 / AMPLITUDE_LFO_CENTER}
         min={0} max={AMPLITUDE_LFO_CENTER} step={AMPLITUDE_LFO_CENTER / 10000} scale="quadratic"
         disabled={!enabled} value={depthAmplitude} onChange={value => onChange({...modulation, depthAmplitude: value})}/>
-      : <NumericSlider label="DEPTH" unit="Hz" min={0} max={5000} step={10}
+      : <NumericSlider label="DEPTH" unit="Hz" min={0} max={5000} step={0.1} scale="quadratic"
         disabled={!enabled} value={depthHz} onChange={value => onChange({...modulation, depthHz: value})}/>}
       <label>LFO WAVEFORM
         <select disabled={!enabled} value={waveform}
