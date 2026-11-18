@@ -32,6 +32,17 @@
 .oscillator-panel summary:focus-visible{outline:2px solid #a6efab;outline-offset:-3px}
 @media(max-width:650px){.oscillator-switches{grid-template-columns:repeat(auto-fit,minmax(100px,1fr))}}
 
+.preset-library{margin:0 0 26px;padding:22px;border:1px solid #35414c;border-radius:12px;background:#172029}
+.preset-library h2{font-size:13px;letter-spacing:.15em;color:#a6efab;margin:0 0 18px}
+.preset-actions{display:flex;gap:9px;flex-wrap:wrap}
+.preset-actions input:not([type=file]){flex:1;min-width:150px;padding:11px;background:#101820;color:#e8e9df;border:1px solid #455360;border-radius:5px}
+.preset-library button{background:#263b38;border:1px solid #a6efab;color:#a6efab;padding:10px 12px;border-radius:5px;font-weight:700;cursor:pointer}
+.preset-library button:hover{background:#35534b}.preset-library button:focus-visible{outline:2px solid #e8e9df;outline-offset:2px}
+.preset-list{margin-top:16px}.preset-list p{font-size:12px;color:#9dabb6}
+.preset-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid #35414c;flex-wrap:wrap}
+.preset-item strong{display:block;font-size:14px}.preset-item small{display:block;color:#9dabb6;margin-top:4px}
+.preset-item-actions{display:flex;gap:6px;flex-wrap:wrap}.preset-item-actions button{font-size:11px}
+
 .oscillators .oscillator-panel{padding:0}
 .oscillator-panel-toggle{width:100%;display:flex;align-items:center;gap:12px;padding:20px 22px;border:0;background:transparent;color:inherit;text-align:left;cursor:pointer}
 .oscillator-panel-toggle strong{font-size:20px}
