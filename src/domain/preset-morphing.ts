@@ -29,6 +29,7 @@ function morphLayerSound(start: LayerSound, end: LayerSound, position: number): 
   if (start.drone.oscillators.length !== endOscillators.size || startModulations.length !== endModulations.size) throw new Error('Presets have incompatible oscillator layouts.');
   const drone: DroneSettings = {
     ...start.drone,
+    oscillatorModulations: choose(start.drone.oscillatorModulations, end.drone.oscillatorModulations, position),
     gain: interpolate(start.drone.gain, end.drone.gain, position),
     envelope: {
       attack: interpolate(start.drone.envelope.attack, end.drone.envelope.attack, position),

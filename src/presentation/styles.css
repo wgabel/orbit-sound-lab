@@ -150,3 +150,36 @@
   gap:10px 14px;margin:0;padding:8px 0 0;border:0;border-top:1px solid #35414c
 }
 .drone-envelope legend{padding:0 8px 0 0;color:#b7c9c4;font-size:11px;font-weight:700}
+
+.oscillator-modulation-button{
+  display:grid;place-items:center;inline-size:27px;block-size:27px;flex:0 0 27px;padding:0;
+  border:1px solid #70828f;border-radius:50%;background:#172029;color:#c7d1d8;
+  font:600 17px/1 system-ui;cursor:pointer
+}
+.oscillator-modulation-button[data-active=true]{border-color:#77dcff;color:#77dcff}
+.oscillator-modulation-button:focus-visible,.oscillator-modulation-heading button:focus-visible{outline:2px solid #a5eaff;outline-offset:2px}
+.oscillator-modulation-dialog{
+  width:min(330px,calc(100% - 32px));max-height:calc(100% - 32px);padding:0;
+  border:1px solid #537384;border-radius:12px;background:#172029;color:#e8e9df
+}
+.oscillator-modulation-dialog::backdrop{background:#091017b5}
+.oscillator-modulation-panel{display:grid;gap:14px;padding:16px}
+.oscillator-modulation-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.oscillator-modulation-heading h3{margin:0;color:#a5eaff;font-size:13px;letter-spacing:.08em}
+.oscillator-modulation-heading button{border:1px solid #537384;border-radius:5px;background:#263542;color:#e8e9df;font-size:18px;cursor:pointer}
+.oscillator-modulation-panel select{display:block;width:100%;margin-top:5px}
+.oscillator-modulation-panel input[type=range]{margin:8px 0 0}
+.oscillator-modulation-panel p{margin:0;font-size:12px;color:#b7c9d4}
+.numeric-slider input.numeric-slider-modulated{
+  --modulation-track:linear-gradient(to right,#465463 var(--modulation-start),#77dcff var(--modulation-start),
+    #77dcff var(--modulation-end),#465463 var(--modulation-end));
+  appearance:none;background:transparent;height:20px;margin-bottom:0
+}
+.numeric-slider-modulated::-webkit-slider-runnable-track{background:var(--modulation-track);height:6px;border-radius:4px}
+.numeric-slider-modulated::-moz-range-track{background:var(--modulation-track);height:6px;border-radius:4px}
+.numeric-slider-modulated::-webkit-slider-thumb{
+  appearance:none;width:14px;height:14px;margin-top:-4px;border:1px solid #172029;border-radius:50%;background:#a6efab
+}
+.numeric-slider-modulated::-moz-range-thumb{width:14px;height:14px;border:1px solid #172029;border-radius:50%;background:#a6efab}
+.numeric-slider-modulated:disabled{opacity:.55}
+.numeric-slider-modulation-range{display:block;color:#a5eaff;font-size:11px;margin-bottom:8px}
