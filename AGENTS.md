@@ -139,3 +139,27 @@ Treat this as a software-inspired design, not a claim of exact SOLAR 42 internal
 - Update tests and documentation alongside behavior changes.
 - Document architectural decisions that are non-obvious, especially audio routing, scheduling, dependency ownership and state synchronization.
 - Do not claim an implementation is finished until it is committed and verification status is communicated.
+
+## Live per-oscillator waveform visualization (PR #26)
+
+### Behavior and signal ownership
+- Every oscillator panel has an always-visible, compact **LIVE WAVEFORM** oscilloscope, including when the oscillator settings are collapsed.
+- Visualize **real audio samples**, never a synthetic drawing inferred from waveform selection or oscillator parameters.
+- The analyser tap belongs to each individual oscillator **after its dry/wet filter mix, oscillator gain, amplitude modulation and fade**, but before the shared drone output, delay and master output protection. Clearly distinguish this per-oscillator signal from the final mixed output.
+- A passive `AnalyserNode` branch must not interrupt or reroute audible output. Create one analyser per oscillator and disconnect it during voice disposal.
+- `WebAudioDrone.getWaveformAnalyser(oscillatorId)` exposes the corresponding analyser; `DroneController` and the composition controller forward this through the application contract. While stopped, return `null` rather than a stale analyser. Keep Web Audio construction and node ownership in infrastructure, not React.
+
+### Rendering performance and lifecycle
+- `src/presentation/OscillatorWaveform.tsx` owns its canvas rendering lifecycle; `App.tsx` only supplies oscillator identity, playback/enabled state and a stable analyser accessor.
+- Read samples with `AnalyserNode.getFloatTimeDomainData()`, draw with Canvas 2D and limit rendering to roughly **30 FPS**. Do not put sample buffers or animation frames in React state.
+- Align frames to a positive-going zero crossing where possible to make the waveform visually stable. This is display-only: never alter the audible samples.
+- Respect device pixel ratio and resize the canvas drawing buffer to its actual dimensions. Show a static standby/off state when playback or the oscillator is disabled.
+- Cancel `requestAnimationFrame` and disconnect visibility observers on cleanup. Skip drawing when the document is hidden or the canvas is outside the viewport; avoid repeatedly allocating buffers in the animation loop.
+- Ensure the analyzer accessor has stable identity (e.g. `useCallback`) so unrelated UI changes do not restart animation effects.
+
+### Validation and known limitations
+- Test that the analyser is tapped **after** the oscillator's amplitude/fade path and does not modify the audio graph, and that start/stop/dispose never leaks nodes.
+- Test or inspect React mount/unmount, disabled oscillators, rapid playback toggles, browser audio suspension, resize and mobile performance.
+- The displayed window uses a finite FFT buffer; low-frequency waves may not show a full cycle, and zero-crossing alignment may not fully stabilize complex or noisy signals. Do not promise a calibrated oscilloscope.
+- Audio correctness and rendering quality require browser verification beyond TypeScript and unit tests.
+- PR #26 (`feature/live-oscillator-waveforms`) introduced this feature; recheck PR status before modifying it and do not claim CI passed without checking its actual run.

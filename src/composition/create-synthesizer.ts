@@ -29,6 +29,7 @@ export function createSynthesizer(): SoundLabController {
     get delaySettings() { return delaySettings; },
     updateDelay: settings => { delay.update(settings); delaySettings = settings; },
     get isPlaying() { return controller.isPlaying; },
+    getWaveformAnalyser: oscillatorId => controller.getWaveformAnalyser(oscillatorId),
     get lowFrequencyOscillatorSettings() { return controller.lowFrequencyOscillatorSettings; },
     updateLowFrequencyOscillator: settings => controller.updateLowFrequencyOscillator(settings),
     start: () => controller.start(),

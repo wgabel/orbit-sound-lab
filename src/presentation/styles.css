@@ -87,3 +87,10 @@
 .preset-morph-content{border:0;padding:0;margin:16px 0 0;min-width:0}
 .preset-morph-content:disabled{opacity:.45}
 .preset-morph-content:disabled select,.preset-morph-content:disabled input{cursor:not-allowed}
+
+/* Always-visible per-voice oscilloscope, including collapsed oscillator panels. */
+.oscillator-waveform{position:relative;height:76px;margin:0 22px 16px;border:1px solid #304e51;border-radius:6px;background:#0b171c;overflow:hidden}
+.oscillator-waveform canvas{display:block;width:100%;height:100%}
+.oscillator-waveform-label{position:absolute;left:10px;top:7px;color:#7d9e9e;font:10px monospace;letter-spacing:.1em;pointer-events:none}
+.oscillator-waveform-idle{position:absolute;right:10px;top:7px;color:#6d8588;font:10px monospace;pointer-events:none}
+@media(max-width:420px){.oscillator-waveform{margin:0 14px 12px;height:64px}}

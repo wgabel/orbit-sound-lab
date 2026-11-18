@@ -16,6 +16,7 @@ interface OscillatorNodes {
   readonly gain: GainNode;
   readonly fadeGain: GainNode;
   readonly amplitudeGain: GainNode;
+  readonly waveformAnalyser: AnalyserNode;
   fadeSettings: OscillatorSettings['fade'];
   enabled: boolean;
 }
@@ -39,6 +40,9 @@ export class WebAudioDrone implements DroneVoice {
       const gain = context.createGain();
       const fadeGain = context.createGain();
       const amplitudeGain = context.createGain();
+      const waveformAnalyser = context.createAnalyser();
+      waveformAnalyser.fftSize = 2048;
+      waveformAnalyser.smoothingTimeConstant = 0;
       source.type = oscillatorSettings.waveform;
       source.frequency.value = oscillatorSettings.frequencyHz;
       source.detune.value = oscillatorSettings.detuneCents;
@@ -62,7 +66,9 @@ export class WebAudioDrone implements DroneVoice {
       gain.connect(amplitudeGain);
       amplitudeGain.connect(fadeGain);
       fadeGain.connect(this.output);
-      this.oscillators.set(oscillatorSettings.id, {source, filter, secondFilter, dryGain, wetGain, gain, fadeGain, amplitudeGain, fadeSettings: oscillatorSettings.fade, enabled: oscillatorSettings.enabled});
+      // Passive analysis branch: reads the audible voice after filters, LFO and fades.
+      fadeGain.connect(waveformAnalyser);
+      this.oscillators.set(oscillatorSettings.id, {source, filter, secondFilter, dryGain, wetGain, gain, fadeGain, amplitudeGain, waveformAnalyser, fadeSettings: oscillatorSettings.fade, enabled: oscillatorSettings.enabled});
     }
   }
   start(): void {
@@ -117,6 +123,9 @@ export class WebAudioDrone implements DroneVoice {
     }
     parameter.linearRampToValueAtTime(target, now + duration);
   }
+  getWaveformAnalyser(oscillatorId: string): AnalyserNode | null {
+    return this.oscillators.get(oscillatorId)?.waveformAnalyser ?? null;
+  }
   getAmplitudeParameter(oscillatorId: string): AudioParam {
     const oscillator = this.oscillators.get(oscillatorId);
     if (!oscillator) throw new Error('Unknown oscillator.');
@@ -136,8 +145,8 @@ export class WebAudioDrone implements DroneVoice {
     if (this.disposed) return;
     this.stop();
     this.disposed = true;
-    for (const {source, filter, secondFilter, dryGain, wetGain, gain, fadeGain, amplitudeGain} of this.oscillators.values()) {
-      source.disconnect(); filter.disconnect(); secondFilter.disconnect(); dryGain.disconnect(); wetGain.disconnect(); gain.disconnect(); fadeGain.disconnect(); amplitudeGain.disconnect();
+    for (const {source, filter, secondFilter, dryGain, wetGain, gain, fadeGain, amplitudeGain, waveformAnalyser} of this.oscillators.values()) {
+      source.disconnect(); filter.disconnect(); secondFilter.disconnect(); dryGain.disconnect(); wetGain.disconnect(); gain.disconnect(); fadeGain.disconnect(); amplitudeGain.disconnect(); waveformAnalyser.disconnect();
     }
     this.oscillators.clear();
     this.output.disconnect();
