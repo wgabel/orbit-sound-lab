@@ -36,7 +36,9 @@ export function NumericSlider({
   const [invalid, setInvalid] = useState(false);
   const editInput = useRef<HTMLInputElement>(null);
   const editButton = useRef<HTMLButtonElement>(null);
-  const modulationMarker = useRef<HTMLSpanElement>(null);
+  const sliderRef = useRef<HTMLInputElement>(null);
+  const [liveValue, setLiveValue] = useState<number | null>(null);
+  const [adjusting, setAdjusting] = useState(false);
   const returnFocus = useRef(false);
   const editing = draft !== null && !disabled;
   const displayedValue = numberDisplay.format(value * displayFactor);
@@ -55,8 +57,11 @@ export function NumericSlider({
   }, [editing]);
 
   useEffect(() => {
-    const marker = modulationMarker.current;
-    if (!marker || !getModulationAnalyser) return;
+    const slider = sliderRef.current;
+    if (!slider || !getModulationAnalyser) {
+      setLiveValue(null);
+      return;
+    }
     const samples = new Float32Array(32);
     let frame = 0;
     let previousTime = -Infinity;
@@ -65,27 +70,26 @@ export function NumericSlider({
       if (entry.isIntersecting) frame = requestAnimationFrame(draw);
     });
     function draw(time: number) {
-      if (!marker) return;
       if (time - previousTime >= 30) {
         const analyser = getModulationAnalyser?.();
-        marker.hidden = !analyser;
         if (analyser) {
           analyser.getFloatTimeDomainData(samples);
           const offset = samples.reduce((total, sample) => total + sample, 0) / samples.length;
-          const fraction = Math.max(0, Math.min(1, (modulationBase + offset - min) / (max - min)));
-          marker.style.setProperty('--modulation-position', `${fraction * 100}%`);
+          const effective = Math.max(min, Math.min(max, modulationBase + offset));
+          setLiveValue(min + Math.round((effective - min) / step) * step);
+        } else {
+          setLiveValue(null);
         }
         previousTime = time;
       }
       frame = requestAnimationFrame(draw);
     }
-    if (marker.parentElement) observer.observe(marker.parentElement);
+    observer.observe(slider);
     return () => {
       observer.disconnect();
       cancelAnimationFrame(frame);
-      marker.hidden = true;
     };
-  }, [getModulationAnalyser, modulationBase, min, max]);
+  }, [getModulationAnalyser, modulationBase, min, max, step]);
 
   function finishEditing(save: boolean, fromKeyboard: boolean) {
     if (draft === null) return;
@@ -112,10 +116,24 @@ export function NumericSlider({
     '--modulation-end': trackPosition(modulationRange[1])
   } as CSSProperties | undefined;
 
-  const slider = <input type="range" id={sliderId} min={min} max={max} step={step}
+  const shownValue = getModulationAnalyser && !adjusting ? liveValue ?? value : value;
+  const shownValueText = shownValue === value ? displayedValue : numberDisplay.format(shownValue * displayFactor);
+  const slider = <input type="range" id={sliderId} ref={sliderRef} min={min} max={max} step={step}
     className={modulationRange ? 'numeric-slider-modulated' : undefined} style={rangeStyle}
-    value={value} disabled={disabled} aria-valuetext={`${displayedValue}${unitSuffix}`}
+    value={shownValue} disabled={disabled} aria-valuetext={`${shownValueText}${unitSuffix}`}
     aria-describedby={modulationRange ? rangeId : undefined}
+    onPointerDown={event => {
+      if (!getModulationAnalyser) return;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setAdjusting(true);
+    }}
+    onLostPointerCapture={() => setAdjusting(false)}
+    onKeyDown={event => {
+      if (getModulationAnalyser && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(event.key)) {
+        setAdjusting(true);
+      }
+    }}
+    onKeyUp={() => setAdjusting(false)} onBlur={() => setAdjusting(false)}
     onChange={event => onChange(event.target.valueAsNumber)}/>;
 
   return <div className={className ? `numeric-slider ${className}` : 'numeric-slider'}>
@@ -154,10 +172,7 @@ export function NumericSlider({
     {invalid && editing && <span className="numeric-slider-error" role="alert" id={errorId}>
       Enter {numberDisplay.format(displayMinimum)} to {numberDisplay.format(displayMaximum)}{unitSuffix}.
     </span>}
-    {modulationRange ? <div className="numeric-slider-track">
-      {slider}
-      <span className="numeric-slider-live-marker" aria-hidden="true" hidden ref={modulationMarker}/>
-    </div> : slider}
+    {slider}
     {modulationRange && <span className="numeric-slider-modulation-range" id={rangeId}>
       {modulationRange.map(limit => numberDisplay.format(Number((limit * displayFactor).toFixed(2))) + unitSuffix).join(' – ')}
     </span>}

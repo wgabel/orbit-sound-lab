@@ -19,7 +19,7 @@ Each layer also has a **Hold to Play** key under its level control. Hold it with
 
 Pressing a key activates **Key Mode** for that layer. Turn **Key Mode** off to return to continuous playback controls. Each layer’s attack, decay, sustain and release are saved with its sound preset.
 
-Use the round wave button beside an oscillator’s frequency, volume or low-pass cutoff to follow the level of another oscillator in the same drone. The source’s volume and amplitude LFO determine the normalized level. A source level of zero leaves the destination at its base setting, and full level applies the configured depth in the selected direction. The blue range shows the limits, and the white marker shows the live value while the drone plays. For a five-second sweep, select a sine amplitude LFO on the source and set its rate to 0.2 Hz and depth to 100%. Routes are stored in presets.
+Use the round wave button beside an oscillator’s frequency, volume or low-pass cutoff to follow the level of another oscillator in the same drone. Depth is a percentage of the target slider’s full span. For Volume at 50% with Depth at 10%, source levels of 0%, 50% and 100% produce 40%, 50% and 60% respectively. The slider thumb follows this value during playback, and the editable number above it sets the base value. For a five-second sweep, use a sine amplitude LFO at 0.2 Hz and 100% depth on a source whose volume is 100%.
 
 **Variant** varies oscillator and modulation values by up to 5% of each slider’s full range in either direction, within its limits.
 

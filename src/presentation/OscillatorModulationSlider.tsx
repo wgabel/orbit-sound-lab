@@ -1,9 +1,9 @@
 import { useCallback, useId, useRef } from 'react';
 import type { OscillatorSettings } from '../domain/drone';
 import {
-  defaultModulationDirection, getOscillatorModulationRange, OSCILLATOR_MODULATION_PARAMETERS
+  getOscillatorModulationRange, getOscillatorSliderSpan, OSCILLATOR_MODULATION_PARAMETERS
 } from '../domain/oscillator-modulation';
-import type { OscillatorModulationDirection, OscillatorModulationParameter, OscillatorModulationRoute } from '../domain/oscillator-modulation';
+import type { OscillatorModulationParameter, OscillatorModulationRoute } from '../domain/oscillator-modulation';
 import { NumericSlider } from './NumericSlider';
 
 interface OscillatorModulationSliderProps {
@@ -25,17 +25,17 @@ export function OscillatorModulationSlider({
 }: OscillatorModulationSliderProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const dialogId = useId();
-  const {label, unit, minimum, maximum, step, maximumDepth, defaultDepth} = OSCILLATOR_MODULATION_PARAMETERS[parameter];
+  const {label, unit, minimum, maximum, step} = OSCILLATOR_MODULATION_PARAMETERS[parameter];
+  const span = getOscillatorSliderSpan(parameter);
   const factor = unit === '%' ? 100 : 1;
   const sources = oscillators.map((item, index) => ({id: item.id, name: `OSC ${String(index + 1).padStart(2, '0')}`}))
     .filter(source => source.id !== oscillator.id);
   const route = routes.find(item => item.targetId === oscillator.id && item.parameter === parameter) ?? {
-    targetId: oscillator.id, parameter, sourceId: sources[0].id, depth: defaultDepth, enabled: false
+    targetId: oscillator.id, parameter, sourceId: sources[0].id, depth: span / 10, enabled: false
   };
-  const direction = route.direction ?? defaultModulationDirection(parameter);
   const baseRange = getOscillatorModulationRange(oscillator, parameter, 0);
   const range = getOscillatorModulationRange({...oscillator, frequencyHz: effectiveFrequency}, parameter, route.depth,
-    sampleRate, direction);
+    sampleRate);
   const getAnalyser = useCallback(() => getModulationAnalyser(oscillator.id, parameter),
     [getModulationAnalyser, oscillator.id, parameter]);
 
@@ -61,14 +61,8 @@ export function OscillatorModulationSlider({
             {sources.map(source => <option key={source.id} value={source.id}>{source.name}</option>)}
           </select>
         </label>
-        <label>DIRECTION
-          <select value={direction} onChange={event => onRouteChange({...route, direction: event.target.value as OscillatorModulationDirection})}>
-            <option value="increase">Increase (+)</option>
-            <option value="decrease">Decrease (−)</option>
-          </select>
-        </label>
-        <NumericSlider label="DEPTH" unit={unit} displayFactor={factor} min={0} max={maximumDepth} step={step}
-          value={route.depth} onChange={depth => onRouteChange({...route, depth})}/>
+        <NumericSlider label="DEPTH ±" unit="%" displayFactor={100} min={0} max={1} step={0.001}
+          value={route.depth / span} onChange={depth => onRouteChange({...route, depth: depth * span})}/>
         {disabled && <p>Enable the low-pass filter to hear this modulation.</p>}
         <p>Follows the source’s volume and amplitude LFO.</p>
       </div>
