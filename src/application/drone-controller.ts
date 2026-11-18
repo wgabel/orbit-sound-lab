@@ -56,7 +56,10 @@ export class DroneController implements SynthesizerController {
       this.graph.register({id: this.moduleId, inputs: [], outputs: [{id: 'audio', node: voice.output}]});
       this.graph.connect({sourceModuleId: this.moduleId, sourcePortId: 'audio', destinationModuleId: this.outputRoute.moduleId, destinationPortId: this.outputRoute.portId});
       for (const settings of this.lowFrequencyOscillatorSettings) {
-        if (settings.enabled) this.attachModulation(voice, settings);
+        if (settings.enabled) {
+          this.attachModulation(voice, settings);
+          if (settings.destination === 'amplitude') voice.setAmplitudeModulationEnabled?.(settings.targetOscillatorId, true);
+        }
       }
       if (this.pitchBend !== 0) voice.setPitchBend(this.pitchBend);
       voice.start();
@@ -140,6 +143,9 @@ export class DroneController implements SynthesizerController {
       if (!settings.enabled) this.detachModulation(key);
       else if (active) active.source.update(this.getEffectiveModulation(settings));
       else if (this.voice) this.attachModulation(this.voice, settings);
+      if (settings.destination === 'amplitude') {
+        this.voice?.setAmplitudeModulationEnabled?.(settings.targetOscillatorId, settings.enabled);
+      }
     }
     this.lowFrequencyOscillatorSettings = this.lowFrequencyOscillatorSettings.map((item, itemIndex) => itemIndex === index ? settings : item);
   }
@@ -152,7 +158,7 @@ export class DroneController implements SynthesizerController {
     const route = this.settings.oscillatorModulations?.find(item =>
       item.enabled && item.parameter === 'cutoff' && item.targetId === oscillator.id);
     const maximumDepth = limitFilterModulationDepth(Infinity, cutoff, this.context.sampleRate);
-    const range = getOscillatorModulationRange(oscillator, 'cutoff', route?.depth ?? 0, this.context.sampleRate, route?.direction);
+    const range = getOscillatorModulationRange(oscillator, 'cutoff', route?.depth ?? 0, this.context.sampleRate);
     const occupiedDepth = Math.max(cutoff - range.lower, range.upper - cutoff);
     return {...settings, depthHz: Math.min(settings.depthHz, Math.max(0, maximumDepth - occupiedDepth))};
   }

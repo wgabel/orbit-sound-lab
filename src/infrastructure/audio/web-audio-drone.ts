@@ -15,6 +15,8 @@ export function mapResonanceToStageQ(resonance: number): number {
 
 // Restore the previous unity-gain mono upmix at the panner's center.
 const MONO_PAN_GAIN_COMPENSATION = Math.SQRT2;
+// The level lane is unipolar (0–1); zero modulation corresponds to its midpoint.
+const BIPOLAR_LEVEL_CURVE = new Float32Array([-1, -1, 1]);
 
 interface OscillatorNodes {
   readonly source: WebAudioWaveformSource;
@@ -27,9 +29,12 @@ interface OscillatorNodes {
   readonly panner: StereoPannerNode;
   readonly amplitudeGain: GainNode;
   readonly amplitudeControl: ConstantSourceNode;
+  readonly modulationVolume: GainNode;
+  readonly bipolarLevel: WaveShaperNode;
   readonly modulationLevel: GainNode;
   readonly waveformAnalyser: AnalyserNode;
   settings: OscillatorSettings;
+  amplitudeModulated: boolean;
 }
 /** Panned oscillator paths and centered noise feed the layer mix, then the drone level. */
 export class WebAudioDrone implements DroneVoice {
@@ -82,11 +87,15 @@ export class WebAudioDrone implements DroneVoice {
       amplitudeGain.gain.value = 0;
       const amplitudeControl = context.createConstantSource();
       amplitudeControl.offset.value = 0.5;
+      const modulationVolume = context.createGain();
+      modulationVolume.gain.value = oscillatorSettings.volume * 2;
+      const bipolarLevel = context.createWaveShaper();
+      bipolarLevel.curve = BIPOLAR_LEVEL_CURVE;
       const modulationLevel = context.createGain();
       modulationLevel.gain.value = 0;
       // Follow the source volume and amplitude LFO upstream of incoming slider routes.
       amplitudeControl.connect(amplitudeGain.gain);
-      amplitudeControl.connect(modulationLevel);
+      amplitudeControl.connect(modulationVolume).connect(bipolarLevel).connect(modulationLevel);
       source.output.connect(dryGain);
       source.output.connect(filter);
       filter.connect(secondFilter);
@@ -99,7 +108,7 @@ export class WebAudioDrone implements DroneVoice {
       panner.connect(this.mix.input);
       // Passive analysis branch: reads the audible voice after filters, LFO and fades.
       fadeGain.connect(waveformAnalyser);
-      this.oscillators.set(oscillatorSettings.id, {source, filter, secondFilter, dryGain, wetGain, gain, fadeGain, panner, amplitudeGain, amplitudeControl, modulationLevel, waveformAnalyser, settings: oscillatorSettings});
+      this.oscillators.set(oscillatorSettings.id, {source, filter, secondFilter, dryGain, wetGain, gain, fadeGain, panner, amplitudeGain, amplitudeControl, modulationVolume, bipolarLevel, modulationLevel, waveformAnalyser, settings: oscillatorSettings, amplitudeModulated: false});
     }
     this.setOscillatorModulations(settings.oscillatorModulations ?? []);
   }
@@ -114,7 +123,7 @@ export class WebAudioDrone implements DroneVoice {
       oscillator.amplitudeControl.start(now);
       if (oscillator.settings.enabled) {
         fadeGain(oscillator.fadeGain.gain, 1, now);
-        fadeGain(oscillator.modulationLevel.gain, oscillator.settings.volume, now);
+        fadeGain(oscillator.modulationLevel.gain, 1, now);
       }
     }
     this.mix.update(this.mixSettings, now);
@@ -172,13 +181,12 @@ export class WebAudioDrone implements DroneVoice {
     oscillator.source.detune.setTargetAtTime(settings.detuneCents, now, 0.015);
     oscillator.panner.pan.setTargetAtTime(settings.pan, now, 0.015);
     oscillator.gain.gain.setTargetAtTime((2 / this.oscillators.size) * settings.volume, now, 0.015);
+    oscillator.modulationVolume.gain.setTargetAtTime(settings.volume * (oscillator.amplitudeModulated ? 1 : 2), now, 0.015);
     if (oscillator.settings.enabled !== settings.enabled) {
       if (this.started && !this.stopped) {
         fadeGain(oscillator.fadeGain.gain, settings.enabled ? 1 : 0, now);
-        fadeGain(oscillator.modulationLevel.gain, settings.enabled ? settings.volume : 0, now);
+        fadeGain(oscillator.modulationLevel.gain, settings.enabled ? 1 : 0, now);
       }
-    } else if (settings.enabled && this.started && !this.stopped && settings.volume !== oscillator.settings.volume) {
-      oscillator.modulationLevel.gain.setTargetAtTime(settings.volume, now, 0.015);
     }
     oscillator.filter.frequency.setTargetAtTime(settings.filter.cutoffHz, now, 0.02);
     oscillator.filter.Q.setTargetAtTime(mapResonanceToStageQ(settings.filter.resonance), now, 0.02);
@@ -238,9 +246,8 @@ export class WebAudioDrone implements DroneVoice {
   private updateModulationDepth(route: OscillatorModulationRoute): void {
     const target = this.oscillators.get(route.targetId);
     if (!target) return;
-    const {base, endpoint} = getOscillatorModulationRange(target.settings, route.parameter, route.depth,
-      this.context.sampleRate, route.direction);
-    this.modulationRoutes.get(this.routeKey(route))?.update(endpoint - base);
+    const {base, lower, upper} = getOscillatorModulationRange(target.settings, route.parameter, route.depth, this.context.sampleRate);
+    this.modulationRoutes.get(this.routeKey(route))?.update(base - lower, upper - base);
   }
 
   setMix(settings: DroneMixSettings): void {
@@ -253,6 +260,16 @@ export class WebAudioDrone implements DroneVoice {
   getOscillatorModulationAnalyser(targetId: string, parameter: OscillatorModulationParameter): AnalyserNode | null {
     return this.modulationRoutes.get(`${targetId}:${parameter}`)?.analyser ?? null;
   }
+  setAmplitudeModulationEnabled(oscillatorId: string, enabled: boolean): void {
+    const oscillator = this.oscillators.get(oscillatorId);
+    if (!oscillator || oscillator.amplitudeModulated === enabled) return;
+    oscillator.amplitudeModulated = enabled;
+    // The audible amplitude stage rests at 0.5 with no LFO. Normalize that state to full source volume.
+    const scaledVolume = oscillator.settings.volume * (enabled ? 1 : 2);
+    if (this.started) oscillator.modulationVolume.gain.setTargetAtTime(scaledVolume, this.context.currentTime, 0.015);
+    else oscillator.modulationVolume.gain.value = scaledVolume;
+  }
+
   getAmplitudeParameter(oscillatorId: string): AudioParam {
     const oscillator = this.oscillators.get(oscillatorId);
     if (!oscillator) throw new Error('Unknown oscillator.');
@@ -282,9 +299,11 @@ export class WebAudioDrone implements DroneVoice {
     for (const node of this.modulationRoutes.values()) node.dispose();
     for (const node of this.fadingRoutes) this.disposeFadingRoute(node);
     this.modulationRoutes.clear();
-    for (const {source, filter, secondFilter, dryGain, wetGain, gain, fadeGain, panner, amplitudeGain, amplitudeControl, modulationLevel, waveformAnalyser} of this.oscillators.values()) {
+    for (const {source, filter, secondFilter, dryGain, wetGain, gain, fadeGain, panner, amplitudeGain, amplitudeControl, modulationVolume, bipolarLevel, modulationLevel, waveformAnalyser} of this.oscillators.values()) {
       if (this.started && !this.stopped) amplitudeControl.stop();
       amplitudeControl.disconnect();
+      modulationVolume.disconnect();
+      bipolarLevel.disconnect();
       modulationLevel.disconnect();
       source.dispose(); filter.disconnect(); secondFilter.disconnect(); dryGain.disconnect(); wetGain.disconnect(); gain.disconnect(); fadeGain.disconnect(); amplitudeGain.disconnect(); panner.disconnect(); waveformAnalyser.disconnect();
     }
