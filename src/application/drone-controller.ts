@@ -110,7 +110,6 @@ export class DroneController implements SynthesizerController {
     const active = this.activeModulations.get(key);
     if (!settings.enabled) this.detachModulation(key);
     else if (active) active.source.update(settings);
-    else if (active && this.voice) { this.detachModulation(settings.targetOscillatorId); this.attachModulation(this.voice, settings); }
     else if (this.voice) this.attachModulation(this.voice, settings);
     this.lowFrequencyOscillatorSettings = this.lowFrequencyOscillatorSettings.map((item, itemIndex) => itemIndex === index ? settings : item);
   }
