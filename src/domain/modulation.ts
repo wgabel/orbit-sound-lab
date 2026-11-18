@@ -13,6 +13,8 @@ export interface LowFrequencyOscillatorSettings {
   readonly frequencyHz: number;
   readonly depthCents: number;
   readonly waveform: LowFrequencyOscillatorWaveform;
+  readonly sync?: boolean;
+  readonly phaseDegrees?: number;
   readonly targetOscillatorId: string;
 }
 export function createDefaultLowFrequencyOscillatorSettings(targetOscillatorId = 'oscillator-1'): LowFrequencyOscillatorSettings {
@@ -28,6 +30,11 @@ export function validateLowFrequencyOscillatorSettings(settings: LowFrequencyOsc
   if (!Number.isFinite(settings.depthAmplitude) || settings.depthAmplitude < 0 || settings.depthAmplitude > AMPLITUDE_LFO_CENTER) throw new Error('Amplitude depth must be between 0 and 0.5.');
   if (settings.destination !== 'pitch' && settings.destination !== 'filterCutoff' && settings.destination !== 'amplitude') throw new Error('Invalid LFO destination.');
   if (!LOW_FREQUENCY_OSCILLATOR_WAVEFORMS.includes(settings.waveform)) throw new Error('Invalid LFO waveform.');
+  if (settings.sync !== undefined && typeof settings.sync !== 'boolean') throw new Error('Invalid LFO sync setting.');
+  if (settings.phaseDegrees !== undefined &&
+    (!Number.isFinite(settings.phaseDegrees) || settings.phaseDegrees < 0 || settings.phaseDegrees > 360)) {
+    throw new Error('LFO phase must be between 0 and 360 degrees.');
+  }
   if (!settings.targetOscillatorId) throw new Error('LFO target is required.');
 }
 
