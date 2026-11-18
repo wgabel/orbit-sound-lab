@@ -10,7 +10,7 @@ function randomStep(_current: number, minimum: number, maximum: number, step: nu
 }
 
 function varyValue(current: number, minimum: number, maximum: number): number {
-  const radius = Math.abs(current) * VARIANT_FRACTION;
+  const radius = (maximum - minimum) * VARIANT_FRACTION;
   // Older presets can contain valid values outside the slider range. Only vary them toward that range.
   const lower = Math.max(Math.min(minimum, current), current - radius);
   const upper = Math.min(Math.max(maximum, current), current + radius);
