@@ -3,8 +3,8 @@ import type { ModulationMatrix, ModulationSource, ModulationSourceFactory, Modul
 import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
 import { validateLowFrequencyOscillatorSettings } from '../domain/modulation';
 import type { AudioGraph } from './audio-graph-contracts';
-import type { DroneSettings, OscillatorSettings } from '../domain/drone';
-import { validateDroneSettings } from '../domain/drone';
+import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../domain/drone';
+import { validateDroneMix, validateDroneSettings } from '../domain/drone';
 
 interface ActiveModulation { readonly source: ModulationSource; readonly destinations: readonly ModulationDestination[]; readonly target: LowFrequencyOscillatorSettings['destination']; }
 
@@ -138,6 +138,12 @@ export class DroneController implements SynthesizerController {
     if (!Number.isFinite(value) || value < 0 || value > 1) throw new Error('Invalid gain.');
     this.settings = {...this.settings, gain: value};
     if (this.playing) this.voice?.setGain(value);
+  }
+
+  setMix(mix: DroneMixSettings): void {
+    validateDroneMix(mix);
+    if (this.playing) this.voice?.setMix(mix);
+    this.settings = {...this.settings, mix};
   }
 
   updateOscillator(settings: OscillatorSettings): void {

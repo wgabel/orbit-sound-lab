@@ -20,19 +20,41 @@ export interface OscillatorSettings {
   readonly waveform: OscillatorWaveform;
   readonly filter: LowPassFilterSettings;
 }
-export interface DroneSettings { readonly id: string; readonly name: string; readonly gain: number; readonly oscillators: readonly OscillatorSettings[]; }
+export interface DroneMixSettings {
+  readonly noise: {readonly enabled: boolean; readonly volume: number};
+  readonly filter: {readonly enabled: boolean; readonly cutoffHz: number};
+}
+export interface DroneSettings {
+  readonly id: string;
+  readonly name: string;
+  readonly gain: number;
+  readonly oscillators: readonly OscillatorSettings[];
+  readonly mix: DroneMixSettings;
+}
+export function createDefaultDroneMix(): DroneMixSettings {
+  return {noise: {enabled: false, volume: 0.2}, filter: {enabled: false, cutoffHz: 2400}};
+}
 export function createDefaultDroneSettings(): DroneSettings {
-  return { id: 'drone-1', name: 'Drone 1', gain: 0.12, oscillators: Array.from({length: OSCILLATORS_PER_DRONE}, (_, index) => ({
+  return { id: 'drone-1', name: 'Drone 1', gain: 0.12, mix: createDefaultDroneMix(), oscillators: Array.from({length: OSCILLATORS_PER_DRONE}, (_, index) => ({
     id: `oscillator-${index + 1}`, frequencyHz: 110, volume: 1, pan: 0, detuneCents: (index - 2) * 3,
     enabled: true, waveform: 'sawtooth' as const,
     filter: {enabled: false, cutoffHz: 2400, resonance: 0.7}, fade: {fadeInSeconds: 1, fadeOutSeconds: 2}
   })) };
 }
+function validateCutoffFrequency(cutoffHz: number): void {
+  if (!Number.isFinite(cutoffHz) || cutoffHz < 20 || cutoffHz > 20000) throw new Error('Filter cutoff must be between 20 and 20000 Hz.');
+}
+export function validateDroneMix(settings: DroneMixSettings): void {
+  if (typeof settings?.noise?.enabled !== 'boolean' || typeof settings?.filter?.enabled !== 'boolean') throw new Error('Invalid drone mix.');
+  if (!Number.isFinite(settings.noise.volume) || settings.noise.volume < 0 || settings.noise.volume > 1) throw new Error('Noise level must be between 0 and 1.');
+  validateCutoffFrequency(settings.filter.cutoffHz);
+}
 export function validateLowPassFilterSettings(settings: LowPassFilterSettings): void {
-  if (!Number.isFinite(settings.cutoffHz) || settings.cutoffHz < 20 || settings.cutoffHz > 20000) throw new Error('Filter cutoff must be between 20 and 20000 Hz.');
+  validateCutoffFrequency(settings.cutoffHz);
   if (!Number.isFinite(settings.resonance) || settings.resonance < 0.1 || settings.resonance > 20) throw new Error('Filter resonance must be between 0.1 and 20.');
 }
 export function validateDroneSettings(settings: DroneSettings): void {
+  validateDroneMix(settings.mix);
   if (settings.oscillators.length !== OSCILLATORS_PER_DRONE) throw new Error('A drone must contain exactly five oscillators.');
   if (!Number.isFinite(settings.gain) || settings.gain < 0 || settings.gain > 1) throw new Error('Invalid drone gain.');
   if (new Set(settings.oscillators.map(oscillator => oscillator.id)).size !== OSCILLATORS_PER_DRONE) throw new Error('Oscillator identifiers must be unique.');

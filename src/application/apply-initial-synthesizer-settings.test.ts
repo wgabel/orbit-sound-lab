@@ -8,11 +8,12 @@ describe('initial synthesizer settings', () => {
   it('applies five oscillator and fifteen independent LFO settings before playback', () => {
     const drone = createDefaultDroneSettings();
     const settings = {...drone, gain: 0.08, oscillators: drone.oscillators.map((oscillator,index) => ({...oscillator, enabled: index === 0, waveform: 'sine' as const}))};
-    const controller = {updateOscillator: vi.fn(),setGain: vi.fn(),updateLowFrequencyOscillator: vi.fn()} as unknown as SynthesizerController;
+    const controller = {updateOscillator: vi.fn(),setGain: vi.fn(),setMix: vi.fn(),updateLowFrequencyOscillator: vi.fn()} as unknown as SynthesizerController;
     const modulations = createDefaultLowFrequencyOscillators(settings.oscillators.map(item => item.id));
     applyInitialSynthesizerSettings(controller,settings,modulations);
     expect(controller.updateOscillator).toHaveBeenCalledTimes(5);
     expect(controller.updateOscillator).toHaveBeenNthCalledWith(2,expect.objectContaining({enabled:false,waveform:'sine'}));
+    expect(controller.setMix).toHaveBeenCalledWith(settings.mix);
     expect(controller.setGain).toHaveBeenCalledWith(0.08);
     expect(controller.updateLowFrequencyOscillator).toHaveBeenCalledTimes(15);
     expect(controller.updateLowFrequencyOscillator).toHaveBeenNthCalledWith(15, expect.objectContaining({targetOscillatorId:'oscillator-5'}));

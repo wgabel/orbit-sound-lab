@@ -5,5 +5,6 @@ import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
 export function applyInitialSynthesizerSettings(controller: SynthesizerController, drone: DroneSettings, modulations: readonly LowFrequencyOscillatorSettings[]): void {
   for (const oscillator of drone.oscillators) controller.updateOscillator(oscillator);
   controller.setGain(drone.gain);
+  controller.setMix(drone.mix);
   for (const modulation of modulations) controller.updateLowFrequencyOscillator(modulation);
 }
