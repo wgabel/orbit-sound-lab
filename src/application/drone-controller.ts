@@ -1,7 +1,7 @@
 import type { DroneVoice, DroneVoiceFactory, SynthesizerController } from './audio-contracts';
 import type { ModulationMatrix, ModulationSource, ModulationSourceFactory, ModulationDestination } from './modulation-contracts';
 import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
-import { validateLowFrequencyOscillatorSettings } from '../domain/modulation';
+import { limitFilterModulationDepth, validateLowFrequencyOscillatorSettings } from '../domain/modulation';
 import type { AudioGraph } from './audio-graph-contracts';
 import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../domain/drone';
 import { validateDroneMix, validateDroneSettings } from '../domain/drone';
@@ -72,7 +72,7 @@ export class DroneController implements SynthesizerController {
   }
 
   private attachModulation(voice: DroneVoice, settings: LowFrequencyOscillatorSettings): void {
-    const source = this.modulationFactory.create(settings);
+    const source = this.modulationFactory.create(this.getEffectiveModulation(settings));
     const parameters = settings.destination === 'pitch' ? [voice.getDetuneParameter(settings.targetOscillatorId)] : settings.destination === 'amplitude' ? [voice.getAmplitudeParameter(settings.targetOscillatorId)] : voice.getFilterCutoffParameters(settings.targetOscillatorId);
     const destinations: ModulationDestination[] = parameters.map((parameter, index) => ({id: settings.destination === 'pitch' ? settings.targetOscillatorId : `${settings.targetOscillatorId}-cutoff-${index}`, parameter}));
     const connected: ModulationDestination[] = [];
@@ -128,10 +128,17 @@ export class DroneController implements SynthesizerController {
     const active = this.activeModulations.get(key);
     if (this.playing) {
       if (!settings.enabled) this.detachModulation(key);
-      else if (active) active.source.update(settings);
+      else if (active) active.source.update(this.getEffectiveModulation(settings));
       else if (this.voice) this.attachModulation(this.voice, settings);
     }
     this.lowFrequencyOscillatorSettings = this.lowFrequencyOscillatorSettings.map((item, itemIndex) => itemIndex === index ? settings : item);
+  }
+
+  private getEffectiveModulation(settings: LowFrequencyOscillatorSettings): LowFrequencyOscillatorSettings {
+    if (settings.destination !== 'filterCutoff') return settings;
+    const oscillator = this.settings.oscillators.find(item => item.id === settings.targetOscillatorId);
+    if (!oscillator) throw new Error('Unknown LFO target oscillator.');
+    return {...settings, depthHz: limitFilterModulationDepth(settings.depthHz, oscillator.filter.cutoffHz, this.context.sampleRate)};
   }
 
   setGain(value: number): void {
@@ -150,8 +157,14 @@ export class DroneController implements SynthesizerController {
     if (!this.settings.oscillators.some(item => item.id === settings.id)) throw new Error('Unknown oscillator.');
     const next = {...this.settings, oscillators: this.settings.oscillators.map(item => item.id === settings.id ? settings : item)};
     validateDroneSettings(next);
+    const previous = this.settings.oscillators.find(item => item.id === settings.id);
     if (this.playing) this.voice?.updateOscillator(settings);
     this.settings = next;
+    if (this.playing && previous?.filter.cutoffHz !== settings.filter.cutoffHz) {
+      const modulation = this.lowFrequencyOscillatorSettings.find(item =>
+        item.targetOscillatorId === settings.id && item.destination === 'filterCutoff');
+      if (modulation) this.activeModulations.get(this.modulationKey(modulation))?.source.update(this.getEffectiveModulation(modulation));
+    }
   }
 
   dispose(): void {
