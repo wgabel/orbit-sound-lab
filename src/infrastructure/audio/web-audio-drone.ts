@@ -93,6 +93,11 @@ export class WebAudioDrone implements DroneVoice {
     if (!oscillator) throw new Error('Unknown oscillator.');
     return oscillator.source.detune;
   }
+  getFilterCutoffParameters(oscillatorId: string): readonly AudioParam[] {
+    const oscillator = this.oscillators.get(oscillatorId);
+    if (!oscillator) throw new Error('Unknown oscillator.');
+    return [oscillator.filter.frequency, oscillator.secondFilter.frequency];
+  }
   dispose(): void {
     if (this.disposed) return;
     this.stop();
