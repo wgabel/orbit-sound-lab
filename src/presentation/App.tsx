@@ -10,6 +10,8 @@ import { DRONE_LAYER_IDS, createDefaultDroneLayer } from '../domain/drone-layers
 import type { DroneLayer, DroneLayerId } from '../domain/drone-layers';
 import { randomizeOscillatorSettings } from '../domain/randomize-oscillator-settings';
 import type { OscillatorRandomizationMode } from '../domain/randomize-oscillator-settings';
+import { retargetOscillatorSnapshot } from '../domain/oscillator-clipboard';
+import type { OscillatorSnapshot } from '../domain/oscillator-clipboard';
 import { applyInitialSynthesizerSettings } from '../application/apply-initial-synthesizer-settings';
 import { createSynthesizer } from '../composition/create-synthesizer';
 import { DroneMixControls } from './DroneMixControls';
@@ -188,22 +190,39 @@ export function App() {
         item.targetOscillatorId === settings.targetOscillatorId && item.destination === settings.destination ? settings : item)}));
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot update LFO.'); }
   }
+  const [oscillatorClipboard, setOscillatorClipboard] = useState<OscillatorSnapshot | null>(null);
+  const [clipboardStatus, setClipboardStatus] = useState('');
+  function applyOscillatorSnapshot({oscillator, modulations}: OscillatorSnapshot) {
+    const engine = controller.current?.layers[activeLayer];
+    engine?.updateOscillator({...oscillator,
+      frequencyHz: getEffectiveOscillatorFrequency(harmony, oscillator.frequencyHz, settings.oscillators.findIndex(item => item.id === oscillator.id))});
+    for (const modulation of modulations) engine?.updateLowFrequencyOscillator(modulation);
+    updateActiveLayer(layer => ({...layer,
+      drone: {...layer.drone, oscillators: layer.drone.oscillators.map(item => item.id === oscillator.id ? oscillator : item)},
+      modulation: layer.modulation.map(item => modulations.find(modulation =>
+        modulation.targetOscillatorId === item.targetOscillatorId && modulation.destination === item.destination) ?? item)
+    }));
+    setError('');
+  }
   function randomizeOscillator(oscillator: OscillatorSettings, mode: OscillatorRandomizationMode) {
-    const currentModulations = lowFrequencyOscillatorSettings.filter(item => item.targetOscillatorId === oscillator.id);
-    const {oscillator: sourceOscillator, modulations: randomizedModulations} =
-      randomizeOscillatorSettings(oscillator, currentModulations, mode);
+    const modulations = lowFrequencyOscillatorSettings.filter(item => item.targetOscillatorId === oscillator.id);
     try {
-      const engine = controller.current?.layers[activeLayer];
-      engine?.updateOscillator({...sourceOscillator,
-        frequencyHz: getEffectiveOscillatorFrequency(harmony, sourceOscillator.frequencyHz, settings.oscillators.findIndex(item => item.id === oscillator.id))});
-      for (const modulation of randomizedModulations) engine?.updateLowFrequencyOscillator(modulation);
-      updateActiveLayer(layer => ({...layer,
-        drone: {...layer.drone, oscillators: layer.drone.oscillators.map(item => item.id === oscillator.id ? sourceOscillator : item)},
-        modulation: layer.modulation.map(item => randomizedModulations.find(modulation =>
-          modulation.targetOscillatorId === item.targetOscillatorId && modulation.destination === item.destination) ?? item)
-      }));
-      setError('');
+      applyOscillatorSnapshot(randomizeOscillatorSettings(oscillator, modulations, mode));
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot randomize oscillator.'); }
+  }
+  function copyOscillator(oscillator: OscillatorSettings, number: number) {
+    setOscillatorClipboard({
+      oscillator,
+      modulations: lowFrequencyOscillatorSettings.filter(item => item.targetOscillatorId === oscillator.id)
+    });
+    setClipboardStatus(`Drone ${activeLayer} · Oscillator ${number} copied`);
+  }
+  function pasteOscillator(oscillator: OscillatorSettings, number: number) {
+    if (!oscillatorClipboard) return;
+    try {
+      applyOscillatorSnapshot(retargetOscillatorSnapshot(oscillatorClipboard, oscillator));
+      setClipboardStatus(`Drone ${activeLayer} · Oscillator ${number} pasted`);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot paste oscillator settings.'); }
   }
   function updateDelay(next: DelaySettings) {
     try { controller.current?.updateDelay(next); setDelaySettings(next); }
@@ -245,7 +264,24 @@ export function App() {
       value={morphPosition} disabled={!morphEnabled || !morphStartId || !morphEndId || morphStartId === morphEndId || !presets.some(preset => preset.id === morphStartId) || !presets.some(preset => preset.id === morphEndId)} onChange={value => updateMorphPosition(value)}/><p>Continuous parameters interpolate; waveform and ON/OFF switch at 50%. Moving the slider changes the current sound, not saved presets. Disabling morph keeps the current sound.</p></fieldset></div><div className="preset-list">{presets.length === 0 ? <p>No saved presets yet. Presets stay in this browser; export JSON for backup.</p> : presets.map(preset => <div className="preset-item" key={preset.id}><div><strong>{preset.name}</strong><small>{new Date(preset.createdAt).toLocaleString()}</small></div><div className="preset-item-actions"><button type="button" aria-label={`Load ${preset.name} into Drone ${activeLayer}`} onClick={() => loadPreset(preset)}>LOAD TO {activeLayer}</button><button type="button" onClick={() => exportPreset(preset)}>EXPORT</button><button type="button" onClick={() => void removePreset(preset)}>DELETE</button></div></div>)}</div></section><section className="oscillator-switchboard" aria-label="Oscillator activation" key={`switches-${activeLayer}`}><h2>OSCILLATOR SWITCHES</h2><div className="oscillator-switches">{settings.oscillators.map((oscillator,index) => <label key={oscillator.id} className={`oscillator-quick-switch ${oscillator.enabled ? "is-active" : ""}`}><span>OSC {String(index+1).padStart(2,"0")}</span><input type="checkbox" checked={oscillator.enabled} onChange={event => updateOscillator({...oscillator,enabled:event.target.checked})}/><span className="oscillator-switch-state">{oscillator.enabled ? "ON" : "OFF"}</span></label>)}</div></section>{error && <p role="alert" className="error">{error}</p>}<section className="master-delay"><div className="oscillator-title"><strong>MASTER ECHO / DELAY</strong><label className="switch"><input type="checkbox" checked={delaySettings.enabled} onChange={event => updateDelay({...delaySettings,enabled:event.target.checked})}/> ACTIVE</label></div><div className="delay-controls"><NumericSlider label="TIME" unit="s" min={0.05} max={2} step={0.01}
       disabled={!delaySettings.enabled} value={delaySettings.timeSeconds} onChange={value => updateDelay({...delaySettings,timeSeconds:value})}/><NumericSlider label="FEEDBACK" unit="%" displayFactor={100} min={0} max={0.85} step={0.01}
       disabled={!delaySettings.enabled} value={delaySettings.feedback} onChange={value => updateDelay({...delaySettings,feedback:value})}/><NumericSlider label="WET MIX" unit="%" displayFactor={100} min={0} max={1} step={0.01}
-      disabled={!delaySettings.enabled} value={delaySettings.mix} onChange={value => updateDelay({...delaySettings,mix:value})}/></div><p>Echo repeats the combined drone. Start with low feedback and mix.</p></section><section className="oscillators" key={`oscillators-${activeLayer}`}><h2>DRONE {activeLayer} OSCILLATORS</h2>{settings.oscillators.map((oscillator,index) => <article key={oscillator.id} className={`oscillator-panel ${oscillator.enabled ? "" : "muted"}`}><button type="button" className="oscillator-panel-toggle" aria-expanded={Boolean(expandedOscillators[`${activeLayer}:${oscillator.id}`])} aria-controls={`${oscillator.id}-settings`} onClick={() => setExpandedOscillators(previous => ({...previous,[`${activeLayer}:${oscillator.id}`]: !previous[`${activeLayer}:${oscillator.id}`]}))}><strong>OSC {String(index+1).padStart(2,"0")}</strong><span className="oscillator-summary-status">{oscillator.enabled ? "ACTIVE" : "OFF"}</span><span className="oscillator-expand-hint">{expandedOscillators[`${activeLayer}:${oscillator.id}`] ? "HIDE DETAILS" : "DETAILS"}</span></button><OscillatorWaveform oscillatorId={oscillator.id} playing={playing && layerEnabled} enabled={oscillator.enabled} getAnalyser={getWaveformAnalyser}/><div className="oscillator-always-visible"><div className="oscillator-mix-controls"><NumericSlider label="VOLUME" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+      disabled={!delaySettings.enabled} value={delaySettings.mix} onChange={value => updateDelay({...delaySettings,mix:value})}/></div><p>Echo repeats the combined drone. Start with low feedback and mix.</p></section><section className="oscillators" key={`oscillators-${activeLayer}`}><h2>DRONE {activeLayer} OSCILLATORS <span className="oscillator-clipboard-status" role="status">{clipboardStatus}</span></h2>{settings.oscillators.map((oscillator,index) => <article key={oscillator.id} className={`oscillator-panel ${oscillator.enabled ? "" : "muted"}`}><div className="oscillator-card-header">
+      <button type="button" className="oscillator-panel-toggle"
+        aria-expanded={Boolean(expandedOscillators[`${activeLayer}:${oscillator.id}`])}
+        aria-controls={`${oscillator.id}-settings`}
+        onClick={() => setExpandedOscillators(previous => ({...previous,
+          [`${activeLayer}:${oscillator.id}`]: !previous[`${activeLayer}:${oscillator.id}`]}))}>
+        <strong>OSC {String(index + 1).padStart(2, '0')}</strong>
+        <span className="oscillator-summary-status">{oscillator.enabled ? 'ACTIVE' : 'OFF'}</span>
+        <span className="oscillator-expand-hint" aria-hidden="true"/>
+      </button>
+      <div className="oscillator-clipboard-actions">
+        <button type="button" className="randomize-button"
+          onClick={() => copyOscillator(oscillator, index + 1)} aria-label={`Copy oscillator ${index + 1}`}>COPY</button>
+        <button type="button" className="randomize-button" disabled={!oscillatorClipboard}
+          onClick={() => pasteOscillator(oscillator, index + 1)} aria-label={`Paste into oscillator ${index + 1}`}>PASTE</button>
+      </div>
+    </div>
+    <OscillatorWaveform oscillatorId={oscillator.id} playing={playing && layerEnabled} enabled={oscillator.enabled} getAnalyser={getWaveformAnalyser}/><div className="oscillator-always-visible"><div className="oscillator-mix-controls"><NumericSlider label="VOLUME" unit="%" displayFactor={100} min={0} max={1} step={0.01}
       value={oscillator.volume} onChange={value => updateOscillator({...oscillator,volume:value})}/>
     <OscillatorPanControl
       oscillatorId={oscillator.id}
