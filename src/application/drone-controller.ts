@@ -38,7 +38,7 @@ export class DroneController implements SynthesizerController {
     const voice = this.factory.create(this.settings);
     try {
       this.graph.register({id: 'drone', inputs: [], outputs: [{id: 'audio', node: voice.output}]});
-      this.graph.connect({sourceModuleId: 'drone', sourcePortId: 'audio', destinationModuleId: 'master', destinationPortId: 'audio'});
+      this.graph.connect({sourceModuleId: 'drone', sourcePortId: 'audio', destinationModuleId: 'effects', destinationPortId: 'audio'});
       for (const settings of this.lowFrequencyOscillatorSettings) {
         if (settings.enabled) this.attachModulation(voice, settings);
       }
