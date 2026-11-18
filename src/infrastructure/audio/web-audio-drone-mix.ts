@@ -1,5 +1,6 @@
 import type { DroneMixSettings } from '../../domain/drone';
 import { fadeGain } from './web-audio-fade';
+import { WebAudioReverb } from './web-audio-reverb';
 
 const NOISE_BUFFER_SECONDS = 4;
 // Match the maximum per-channel peak of one full-level centered oscillator.
@@ -12,6 +13,7 @@ export class WebAudioDroneMix {
   private readonly filter: BiquadFilterNode;
   private readonly dryGain: GainNode;
   private readonly wetGain: GainNode;
+  private readonly reverb: WebAudioReverb;
   private noiseSource: AudioBufferSourceNode | null = null;
 
   constructor(private readonly context: AudioContext, settings: DroneMixSettings, output: AudioNode) {
@@ -27,14 +29,16 @@ export class WebAudioDroneMix {
     this.dryGain.gain.value = settings.filter.enabled ? 0 : 1;
     this.wetGain = context.createGain();
     this.wetGain.gain.value = settings.filter.enabled ? 1 : 0;
-    this.input.connect(this.dryGain).connect(output);
-    this.input.connect(this.filter).connect(this.wetGain).connect(output);
+    this.reverb = new WebAudioReverb(context, settings.reverb, output);
+    this.input.connect(this.dryGain).connect(this.reverb.input);
+    this.input.connect(this.filter).connect(this.wetGain).connect(this.reverb.input);
   }
 
   update(settings: DroneMixSettings, now: number): void {
     this.filter.frequency.setTargetAtTime(settings.filter.cutoffHz, now, 0.02);
     this.dryGain.gain.setTargetAtTime(settings.filter.enabled ? 0 : 1, now, 0.015);
     this.wetGain.gain.setTargetAtTime(settings.filter.enabled ? 1 : 0, now, 0.015);
+    this.reverb.update(settings.reverb, now);
     if (settings.noise.enabled && !this.noiseSource) this.startNoise(now);
     fadeGain(this.noiseGain.gain, settings.noise.enabled ? settings.noise.volume * MAX_NOISE_GAIN : 0, now);
   }
@@ -66,5 +70,6 @@ export class WebAudioDroneMix {
     this.dryGain.disconnect();
     this.filter.disconnect();
     this.wetGain.disconnect();
+    this.reverb.dispose();
   }
 }

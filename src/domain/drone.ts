@@ -20,9 +20,11 @@ export interface OscillatorSettings {
   readonly waveform: OscillatorWaveform;
   readonly filter: LowPassFilterSettings;
 }
+export interface DroneReverbSettings {readonly enabled: boolean; readonly mix: number}
 export interface DroneMixSettings {
   readonly noise: {readonly enabled: boolean; readonly volume: number};
   readonly filter: {readonly enabled: boolean; readonly cutoffHz: number};
+  readonly reverb: DroneReverbSettings;
 }
 export interface DroneSettings {
   readonly id: string;
@@ -32,7 +34,11 @@ export interface DroneSettings {
   readonly mix: DroneMixSettings;
 }
 export function createDefaultDroneMix(): DroneMixSettings {
-  return {noise: {enabled: false, volume: 0.2}, filter: {enabled: false, cutoffHz: 2400}};
+  return {
+    noise: {enabled: false, volume: 0.2},
+    filter: {enabled: false, cutoffHz: 2400},
+    reverb: {enabled: false, mix: 0.25}
+  };
 }
 export function createDefaultDroneSettings(): DroneSettings {
   return { id: 'drone-1', name: 'Drone 1', gain: 0.12, mix: createDefaultDroneMix(), oscillators: Array.from({length: OSCILLATORS_PER_DRONE}, (_, index) => ({
@@ -48,6 +54,9 @@ export function validateDroneMix(settings: DroneMixSettings): void {
   if (typeof settings?.noise?.enabled !== 'boolean' || typeof settings?.filter?.enabled !== 'boolean') throw new Error('Invalid drone mix.');
   if (!Number.isFinite(settings.noise.volume) || settings.noise.volume < 0 || settings.noise.volume > 1) throw new Error('Noise level must be between 0 and 1.');
   validateCutoffFrequency(settings.filter.cutoffHz);
+  if (typeof settings.reverb?.enabled !== 'boolean' || !Number.isFinite(settings.reverb.mix) || settings.reverb.mix < 0 || settings.reverb.mix > 1) {
+    throw new Error('Reverb mix must be between 0 and 1.');
+  }
 }
 export function validateLowPassFilterSettings(settings: LowPassFilterSettings): void {
   validateCutoffFrequency(settings.cutoffHz);

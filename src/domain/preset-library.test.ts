@@ -60,7 +60,7 @@ describe('preset schema', () => {
     expect(loadPresetSound(normalized, createDefaultDroneLayer('A'))).toEqual({...secondLayer, enabled: true});
     expect(() => validatePreset({...preset, sourceLayer: 'C'})).toThrow('Invalid preset source layer');
   });
-  it('defaults legacy mix fields and preserves noise and filter in both layers', () => {
+  it('defaults legacy mix fields and preserves noise, filter and reverb in both layers', () => {
     const preset = createPreset('Layer texture', drone, modulation, delay);
     const {mix: _firstMix, ...legacyDrone} = drone;
     const {mix: _secondMix, ...legacySecondDrone} = preset.layerMix.secondLayer.drone;
@@ -69,7 +69,10 @@ describe('preset schema', () => {
     expect(validatePreset(legacy).drone.mix).toEqual(createDefaultDroneMix());
     expect(validatePreset(legacy).layerMix.secondLayer.drone.mix).toEqual(createDefaultDroneMix());
 
-    const mix = {noise: {enabled: true, volume: 0.37}, filter: {enabled: true, cutoffHz: 840}};
+    const legacyMix = {noise: {enabled: true, volume: 0.37}, filter: {enabled: true, cutoffHz: 840}};
+    expect(validatePreset({...preset, drone: {...drone, mix: legacyMix}}).drone.mix)
+      .toEqual({...legacyMix, reverb: createDefaultDroneMix().reverb});
+    const mix = {...legacyMix, reverb: {enabled: true, mix: 0.41}};
     const withNoise = {...preset, drone: {...drone, mix}, layerMix: {...preset.layerMix,
       secondLayer: {...preset.layerMix.secondLayer, drone: {...legacySecondDrone, mix}}}};
     const roundTrip = validatePreset(JSON.parse(JSON.stringify(withNoise)));
