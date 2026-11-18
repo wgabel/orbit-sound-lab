@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createDefaultDelaySettings } from '../domain/delay';
 import type { DelaySettings } from '../domain/delay';
-import type { SynthesizerController } from '../application/audio-contracts';
+import type { SoundLabController } from '../application/audio-contracts';
 import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
 import { createDefaultLowFrequencyOscillators } from '../domain/modulation';
 import type { DroneSettings, OscillatorSettings } from '../domain/drone';
@@ -11,7 +11,7 @@ import { createSynthesizer } from '../composition/create-synthesizer';
 import { useRenderingActivityDiagnostic } from './use-rendering-activity-diagnostic';
 import './styles.css';
 export function App() {
-  const controller = useRef<SynthesizerController | null>(null);
+  const controller = useRef<SoundLabController | null>(null);
   const [settings, setSettings] = useState<DroneSettings>(createDefaultDroneSettings);
   const [lowFrequencyOscillatorSettings, setLowFrequencyOscillatorSettings] = useState<readonly LowFrequencyOscillatorSettings[]>(() => createDefaultLowFrequencyOscillators(createDefaultDroneSettings().oscillators.map(oscillator => oscillator.id)));
   const [playing, setPlaying] = useState(false);
