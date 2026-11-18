@@ -29,7 +29,7 @@ The **Performance** section has the XY pad and both layers’ **Hold to Play** k
 
 Pressing a key activates **Key Mode** for that layer. Turn **Key Mode** off to return to continuous playback controls. Each layer’s attack, decay, sustain and release are saved with its sound preset.
 
-Use the round wave button beside an oscillator’s frequency, volume or low-pass cutoff to follow the level of another oscillator in the same drone. Depth is a percentage of the target slider’s full span. For Volume at 50% with Depth at 10%, source levels of 0%, 50% and 100% produce 40%, 50% and 60% respectively. The slider thumb edits the base value. A separate dot and Live readout follow the modulated value during playback. For a five-second sweep, use a sine amplitude LFO at 0.2 Hz and 100% depth on a source whose volume is 100%.
+Use **Route** next to Frequency, Volume, or Cutoff to pick a source oscillator in the same drone. **Waveform** applies the source waveform before its own filter and volume. Turn down the source volume to hear only the effect on the target, or switch the source oscillator off to stop its modulation. **Level and Amplitude LFO** follows the slower level signal and is the mode used by routes in older presets. Depth is in Hz for Frequency and Cutoff and percentage points for Volume. The active button shows which oscillator feeds the route.
 
 **Variant** varies oscillator and modulation values by up to 5% of each slider’s full range in either direction, within its limits.
 
@@ -56,7 +56,7 @@ Domain models in `src/domain`; orchestration and ports in `src/application`; Web
 
 Choose **Sine ↔ Triangle** under **Frequency & Waveform** to reveal **Shape**. At 0% the oscillator is a sine, and at 100% it is a triangle. The blend changes the tone at the same pitch and passes through the oscillator's existing filter, volume and pan.
 
-Expand **Shape LFO** to automate the blend independently of the other LFOs. Depth is in percentage points, so a base Shape of 35% and a depth of 20 pp give a 15–55% sweep. The sweep is bounded by 0% and 100%. The slider thumb edits the base blend. The blue band shows its modulation range, and a separate dot and Live readout follow the actual blend during playback. Presets and oscillator copy/paste retain the Shape and its LFO settings.
+Expand **Shape LFO** to automate the blend independently of the other LFOs. Depth is in percentage points, so a base Shape of 35% and a depth of 20 pp give a 15–55% sweep. The sweep is bounded by 0% and 100%. The live readout shows the actual blend during playback. Presets and oscillator copy/paste retain the Shape and its LFO settings.
 
 ## Preset Morph and Scene Timeline
 

@@ -27,7 +27,7 @@ export function OscillatorShapeControls({
       <NumericSlider label="Shape" unit="%" displayFactor={100} min={0} max={1} step={0.001}
         value={shape} onChange={onChange}
         modulationRange={modulation?.enabled ? [Math.max(0, shape - depth), Math.min(1, shape + depth)] : undefined}
-        readLiveValue={playing && modulation?.enabled ? readLiveValue : undefined}/>
+        readLiveValue={playing && modulation?.enabled ? readLiveValue : undefined} showLiveValue/>
       <div className="oscillator-shape-endpoints" aria-hidden="true"><span>Sine</span><span>Triangle</span></div>
     </div>
     {modulation && <OscillatorLfoControls modulation={modulation} onChange={onModulationChange}/>}

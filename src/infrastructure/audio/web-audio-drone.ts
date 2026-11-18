@@ -1,5 +1,5 @@
 import { AMPLITUDE_LFO_CENTER } from '../../domain/modulation';
-import { getOscillatorModulationRange } from '../../domain/oscillator-modulation';
+import { getOscillatorModulationRange, usesWaveformFrequency } from '../../domain/oscillator-modulation';
 import type { OscillatorModulationParameter, OscillatorModulationRoute } from '../../domain/oscillator-modulation';
 import { WebAudioOscillatorModulation } from './web-audio-oscillator-modulation';
 import type { DroneVoice } from '../../application/audio-contracts';
@@ -35,6 +35,7 @@ interface OscillatorNodes {
   readonly modulationVolume: GainNode;
   readonly bipolarLevel: WaveShaperNode;
   readonly modulationLevel: GainNode;
+  readonly modulationWaveform: GainNode;
   readonly waveformAnalyser: AnalyserNode;
   settings: OscillatorSettings;
   amplitudeModulated: boolean;
@@ -107,6 +108,9 @@ export class WebAudioDrone implements DroneVoice {
       bipolarLevel.curve = BIPOLAR_LEVEL_CURVE;
       const modulationLevel = context.createGain();
       modulationLevel.gain.value = 0;
+      const modulationWaveform = context.createGain();
+      modulationWaveform.gain.value = 0;
+      source.output.connect(modulationWaveform);
       // Follow the source volume and amplitude LFO upstream of incoming slider routes.
       amplitudeControl.connect(amplitudeGain.gain);
       amplitudeControl.connect(modulationVolume).connect(bipolarLevel).connect(modulationLevel);
@@ -122,7 +126,7 @@ export class WebAudioDrone implements DroneVoice {
       panner.connect(this.mix.input);
       // Passive analysis branch: reads the audible voice after filters, LFO and fades.
       fadeGain.connect(waveformAnalyser);
-      this.oscillators.set(oscillatorSettings.id, {source, filter, secondFilter, cutoffControl, dryGain, wetGain, gain, volumeControl, fadeGain, panner, amplitudeGain, amplitudeControl, modulationVolume, bipolarLevel, modulationLevel, waveformAnalyser, settings: oscillatorSettings, amplitudeModulated: false});
+      this.oscillators.set(oscillatorSettings.id, {source, filter, secondFilter, cutoffControl, dryGain, wetGain, gain, volumeControl, fadeGain, panner, amplitudeGain, amplitudeControl, modulationVolume, bipolarLevel, modulationLevel, modulationWaveform, waveformAnalyser, settings: oscillatorSettings, amplitudeModulated: false});
     }
     this.setOscillatorModulations(settings.oscillatorModulations ?? []);
   }
@@ -140,6 +144,7 @@ export class WebAudioDrone implements DroneVoice {
       if (oscillator.settings.enabled) {
         fadeGain(oscillator.fadeGain.gain, 1, now);
         fadeGain(oscillator.modulationLevel.gain, 1, now);
+        fadeGain(oscillator.modulationWaveform.gain, 1, now);
       }
     }
     this.mix.update(this.mixSettings, now);
@@ -179,6 +184,7 @@ export class WebAudioDrone implements DroneVoice {
       for (const oscillator of this.oscillators.values()) {
         fadeGain(oscillator.fadeGain.gain, 0, now);
         fadeGain(oscillator.modulationLevel.gain, 0, now);
+        fadeGain(oscillator.modulationWaveform.gain, 0, now);
         oscillator.source.stop(end);
         oscillator.amplitudeControl.stop(end);
         oscillator.volumeControl.stop(end);
@@ -210,6 +216,7 @@ export class WebAudioDrone implements DroneVoice {
       if (this.started && !this.stopped) {
         fadeGain(oscillator.fadeGain.gain, settings.enabled ? 1 : 0, now);
         fadeGain(oscillator.modulationLevel.gain, settings.enabled ? 1 : 0, now);
+        fadeGain(oscillator.modulationWaveform.gain, settings.enabled ? 1 : 0, now);
       }
     }
     oscillator.cutoffControl.offset.setTargetAtTime(settings.filter.cutoffHz, now, 0.02);
@@ -226,16 +233,23 @@ export class WebAudioDrone implements DroneVoice {
   setOscillatorModulations(routes: readonly OscillatorModulationRoute[]): void {
     const enabled = new Map(routes.filter(route => route.enabled).map(route => [this.routeKey(route), route]));
 
+    const hasNewWaveformPitchEdge = [...enabled].some(([key, route]) => {
+      const previous = this.modulationRoutes.get(key)?.route;
+      return usesWaveformFrequency(route) && (previous?.sourceId !== route.sourceId || previous.signal !== route.signal);
+    });
     for (const node of this.fadingRoutes) {
-      if (enabled.has(this.routeKey(node.route))) {
+      if (enabled.has(this.routeKey(node.route)) || (hasNewWaveformPitchEdge && usesWaveformFrequency(node.route))) {
         this.disposeFadingRoute(node);
       }
     }
     for (const [key, node] of this.modulationRoutes) {
       const replacement = enabled.get(key);
-      if (replacement?.sourceId === node.route.sourceId) continue;
+      if (replacement?.sourceId === node.route.sourceId &&
+          (replacement.signal ?? 'level') === (node.route.signal ?? 'level')) continue;
       this.modulationRoutes.delete(key);
-      if (replacement || !this.started) {
+      // Disconnect old waveform pitch edges before installing new ones so an acyclic
+      // replacement never creates a transient cycle with an outgoing edge.
+      if (replacement || !this.started || (hasNewWaveformPitchEdge && usesWaveformFrequency(node.route))) {
         node.dispose();
       } else {
         this.fadingRoutes.add(node);
@@ -250,7 +264,8 @@ export class WebAudioDrone implements DroneVoice {
         if (!source || !target) throw new Error('Unknown oscillator modulation source or target.');
         const destinations = route.parameter === 'frequency' ? [target.source.frequency] :
           route.parameter === 'volume' ? [target.volumeControl.offset] : [target.cutoffControl.offset];
-        this.modulationRoutes.set(key, new WebAudioOscillatorModulation(this.context, route, source.modulationLevel, destinations,
+        this.modulationRoutes.set(key, new WebAudioOscillatorModulation(this.context, route,
+          route.signal === 'waveform' ? source.modulationWaveform : source.modulationLevel, destinations,
           route.parameter === 'volume' ? this.oscillatorVolumeScale : 1));
       }
       this.updateModulationDepth(route);
@@ -373,7 +388,7 @@ export class WebAudioDrone implements DroneVoice {
     for (const node of this.modulationRoutes.values()) node.dispose();
     for (const node of this.fadingRoutes) this.disposeFadingRoute(node);
     this.modulationRoutes.clear();
-    for (const {source, filter, secondFilter, cutoffControl, dryGain, wetGain, gain, volumeControl, fadeGain, panner, amplitudeGain, amplitudeControl, modulationVolume, bipolarLevel, modulationLevel, waveformAnalyser, volumePreview} of this.oscillators.values()) {
+    for (const {source, filter, secondFilter, cutoffControl, dryGain, wetGain, gain, volumeControl, fadeGain, panner, amplitudeGain, amplitudeControl, modulationVolume, bipolarLevel, modulationLevel, modulationWaveform, waveformAnalyser, volumePreview} of this.oscillators.values()) {
       if (this.started && !this.stopped) {
         amplitudeControl.stop();
         volumeControl.stop();
@@ -386,6 +401,7 @@ export class WebAudioDrone implements DroneVoice {
       modulationVolume.disconnect();
       bipolarLevel.disconnect();
       modulationLevel.disconnect();
+      modulationWaveform.disconnect();
       source.dispose(); filter.disconnect(); secondFilter.disconnect(); dryGain.disconnect(); wetGain.disconnect(); gain.disconnect(); fadeGain.disconnect(); amplitudeGain.disconnect(); panner.disconnect(); waveformAnalyser.disconnect();
     }
     this.oscillators.clear();
