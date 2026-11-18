@@ -67,7 +67,7 @@ export class DroneController implements SynthesizerController {
   private attachModulation(voice: DroneVoice, settings: LowFrequencyOscillatorSettings): void {
     const source = this.modulationFactory.create(settings);
     const parameters = settings.destination === 'pitch' ? [voice.getDetuneParameter(settings.targetOscillatorId)] : voice.getFilterCutoffParameters(settings.targetOscillatorId);
-    const destinations: ModulationDestination[] = parameters.map((parameter, index) => ({id: `${settings.targetOscillatorId}-${settings.destination}-${index}`, parameter}));
+    const destinations: ModulationDestination[] = parameters.map((parameter, index) => ({id: settings.destination === 'pitch' ? settings.targetOscillatorId : `${settings.targetOscillatorId}-cutoff-${index}`, parameter}));
     const connected: ModulationDestination[] = [];
     try {
       for (const destination of destinations) { this.modulationMatrix.connect(source, destination); connected.push(destination); }
