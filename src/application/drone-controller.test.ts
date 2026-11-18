@@ -9,7 +9,7 @@ import type { ModulationMatrix, ModulationSourceFactory } from './modulation-con
 function createHarness() {
   const settings = createDefaultDroneSettings();
   const parameters = new Map(settings.oscillators.map(item => [item.id, {} as AudioParam]));
-  const voice = {output: {} as AudioNode, start: vi.fn(), dispose: vi.fn(), getDetuneParameter: vi.fn((id: string) => parameters.get(id)!)} as unknown as DroneVoice;
+  const voice = {output: {} as AudioNode, start: vi.fn(), dispose: vi.fn(), getDetuneParameter: vi.fn((id: string) => parameters.get(id)!), getAmplitudeParameter: vi.fn((id: string) => parameters.get(id)!), getFilterCutoffParameters: vi.fn((id: string) => [parameters.get(id)!, {} as AudioParam])} as unknown as DroneVoice;
   const factory = {create: vi.fn(() => voice)} as DroneVoiceFactory;
   const graph = {register: vi.fn(), connect: vi.fn(), unregister: vi.fn(), dispose: vi.fn()} as unknown as AudioGraph;
   const matrix = {connect: vi.fn(), disconnect: vi.fn(), dispose: vi.fn()} as unknown as ModulationMatrix;
@@ -47,7 +47,7 @@ describe('independent oscillator LFOs', () => {
 
   it('starts each pre-enabled LFO and disposes them on stop', async () => {
     const {controller, modulationFactory, matrix} = createHarness();
-    const [first, second] = controller.lowFrequencyOscillatorSettings;
+    const [first, , , second] = controller.lowFrequencyOscillatorSettings;
     controller.updateLowFrequencyOscillator({...first, enabled: true});
     controller.updateLowFrequencyOscillator({...second, enabled: true});
     await controller.start();
