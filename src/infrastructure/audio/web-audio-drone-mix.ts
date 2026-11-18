@@ -9,6 +9,7 @@ const BUTTERWORTH_RESONANCE_DECIBELS = 20 * Math.log10(Math.SQRT1_2);
 
 export class WebAudioDroneMix {
   readonly input: GainNode;
+  private readonly sourceLevel: GainNode;
   private readonly noiseGain: GainNode;
   private readonly filter: BiquadFilterNode;
   private readonly dryGain: GainNode;
@@ -18,6 +19,8 @@ export class WebAudioDroneMix {
 
   constructor(private readonly context: AudioContext, settings: DroneMixSettings, output: AudioNode) {
     this.input = context.createGain();
+    this.sourceLevel = context.createGain();
+    this.input.connect(this.sourceLevel);
     this.noiseGain = context.createGain();
     this.noiseGain.gain.value = 0;
     this.noiseGain.connect(this.input);
@@ -30,8 +33,13 @@ export class WebAudioDroneMix {
     this.wetGain = context.createGain();
     this.wetGain.gain.value = settings.filter.enabled ? 1 : 0;
     this.reverb = new WebAudioReverb(context, settings.reverb, output);
-    this.input.connect(this.dryGain).connect(this.reverb.input);
-    this.input.connect(this.filter).connect(this.wetGain).connect(this.reverb.input);
+    this.sourceLevel.connect(this.dryGain).connect(this.reverb.input);
+    this.sourceLevel.connect(this.filter).connect(this.wetGain).connect(this.reverb.input);
+  }
+
+  fadeSources(start: number, end: number): void {
+    this.sourceLevel.gain.setValueAtTime(1, start);
+    this.sourceLevel.gain.linearRampToValueAtTime(0, end);
   }
 
   update(settings: DroneMixSettings, now: number): void {
@@ -67,6 +75,7 @@ export class WebAudioDroneMix {
     this.noiseSource = null;
     this.noiseGain.disconnect();
     this.input.disconnect();
+    this.sourceLevel.disconnect();
     this.dryGain.disconnect();
     this.filter.disconnect();
     this.wetGain.disconnect();

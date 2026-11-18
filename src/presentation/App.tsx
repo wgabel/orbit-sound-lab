@@ -29,7 +29,9 @@ import { OscillatorPanControl } from './OscillatorPanControl';
 import { useRenderingActivityDiagnostic } from './use-rendering-activity-diagnostic';
 import { createPreset, deletePreset, exportPreset, importPreset, listPresets, loadPresetSound, savePreset } from '../domain/preset-library';
 import type { SoundPreset } from '../domain/preset-library';
-import { morphPresets } from '../domain/preset-morphing';
+import { sceneFromPreset, tuneSceneLayer } from '../domain/sound-scene';
+import type { ArrangementScene, SoundScene } from '../domain/sound-scene';
+import { SceneTimeline } from './SceneTimeline';
 import { getEffectiveOscillatorFrequency } from '../domain/harmony';
 import type { HarmonySettings } from '../domain/harmony';
 import { OscillatorWaveform } from './OscillatorWaveform';
@@ -43,6 +45,10 @@ export function App() {
   const [masterGain, setMasterGain] = useState(1);
   const performancePosition = useRef(NEUTRAL_PERFORMANCE_POSITION);
   const [playing, setPlaying] = useState(false);
+  const [previewMode, setPreviewMode] = useState<'morph' | 'arrangement' | null>(null);
+  const previewSession = useRef<{kind: 'morph' | 'arrangement'} | null>(null);
+  const [sceneIndex, setSceneIndex] = useState<number | null>(null);
+  const playingOutput = playing || previewMode !== null;
   const {drone: settings, modulation: lowFrequencyOscillatorSettings, harmony, enabled: layerEnabled} = layers[activeLayer];
   const getWaveformAnalyser = useCallback((oscillatorId: string) =>
     controller.current?.layers[activeLayer].getWaveformAnalyser(oscillatorId) ?? null, [activeLayer]);
@@ -65,26 +71,14 @@ export function App() {
   function applyLayer(id: DroneLayerId, layer: DroneLayer) {
     const engine = controller.current?.layers[id];
     if (!engine) return;
-    const oscillators = layer.drone.oscillators.map((oscillator, index) => ({
-      ...oscillator, frequencyHz: getEffectiveOscillatorFrequency(layer.harmony, oscillator.frequencyHz, index)
-    }));
     engine.setOscillatorModulations(layer.drone.oscillatorModulations ?? []);
-    applyInitialSynthesizerSettings(engine, {...layer.drone, oscillators}, layer.modulation);
+    applyInitialSynthesizerSettings(engine, tuneSceneLayer(layer), layer.modulation);
     controller.current?.setLayerEnvelope(id, layer.drone.envelope);
   }
   function applyLayersEnabled(next: Record<DroneLayerId, DroneLayer>) {
     void controller.current?.setLayersEnabled({A: next.A.enabled, B: next.B.enabled}).catch(reason => {
       setError(reason instanceof Error ? reason.message : 'Cannot change drone playback.');
     });
-  }
-  function applyScene(next: Record<DroneLayerId, DroneLayer>, gain: number, delay: DelaySettings) {
-    for (const id of DRONE_LAYER_IDS) applyLayer(id, next[id]);
-    controller.current?.setMasterGain(gain);
-    controller.current?.updateDelay(delay);
-    applyLayersEnabled(next);
-    setLayers(next);
-    setMasterGain(gain);
-    setDelaySettings(delay);
   }
   function updateLayerEnabled(id: DroneLayerId, enabled: boolean) {
     const next = {...layers, [id]: {...layers[id], enabled}};
@@ -112,22 +106,69 @@ export function App() {
   const [morphEndId, setMorphEndId] = useState('');
   const [morphPosition, setMorphPosition] = useState(0);
   const [morphEnabled, setMorphEnabled] = useState(false);
-  function updateMorphPosition(position: number) {
-    if (!morphEnabled) return;
-    const start = presets.find(preset => preset.id === morphStartId);
-    const end = presets.find(preset => preset.id === morphEndId);
-    if (!start || !end || start.id === end.id) return;
-    try {
-      const morphed = morphPresets(start, end, position);
-      applyScene({
-        A: {drone: morphed.drone, modulation: morphed.modulation, harmony: layers.A.harmony,
-          enabled: morphed.layerMix.firstLayerEnabled},
-        B: morphed.layerMix.secondLayer
-      }, morphed.layerMix.masterGain, morphed.delay);
-      setMorphPosition(position);
-      setError('');
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot morph presets.'); }
+  const morphStart = presets.find(preset => preset.id === morphStartId);
+  const morphEnd = presets.find(preset => preset.id === morphEndId);
+  const canMorph = morphEnabled && morphStart && morphEnd && morphStart.id !== morphEnd.id;
+
+  function captureSound(): SoundScene {
+    return {layers, masterGain, delay: delaySettings, performancePosition: performancePosition.current};
   }
+
+  function stopScenePlayback() {
+    previewSession.current = null;
+    setPreviewMode(null);
+    setSceneIndex(null);
+    controller.current?.scenePlayback.stop();
+  }
+
+  function resetMorph() {
+    if (previewSession.current?.kind === 'morph') stopScenePlayback();
+    setMorphPosition(0);
+  }
+
+  async function updateMorphPosition(position: number) {
+    if (!canMorph || previewSession.current?.kind === 'arrangement') return;
+    setMorphPosition(position);
+    if (previewSession.current?.kind === 'morph') {
+      controller.current?.scenePlayback.setMorphPosition(position);
+      return;
+    }
+    const session = {kind: 'morph'} as const;
+    previewSession.current = session;
+    setPreviewMode(session.kind);
+    try {
+      setError('');
+      await ensureSynthesizer().scenePlayback.startMorph(sceneFromPreset(morphStart), sceneFromPreset(morphEnd), position);
+    } catch (reason) {
+      if (previewSession.current !== session) return;
+      stopScenePlayback();
+      setError(reason instanceof Error ? reason.message : 'Cannot preview the preset blend.');
+    }
+  }
+
+  async function playArrangement(scenes: readonly ArrangementScene[]) {
+    if (previewSession.current || playbackTransition) return;
+    const session = {kind: 'arrangement'} as const;
+    previewSession.current = session;
+    setPreviewMode(session.kind);
+    try {
+      setError('');
+      const engine = ensureSynthesizer();
+      if (engine.isPlaying) {
+        await engine.stop();
+        setPlaying(engine.isPlaying);
+      }
+      if (previewSession.current !== session) return;
+      await engine.scenePlayback.playArrangement(scenes, setSceneIndex);
+    } catch (reason) {
+      if (previewSession.current === session) {
+        setError(reason instanceof Error ? reason.message : 'Cannot play the arrangement.');
+      }
+    } finally {
+      if (previewSession.current === session) stopScenePlayback();
+    }
+  }
+
   useEffect(() => { void listPresets().then(setPresets).catch(reason => setError(String(reason))); }, []);
   async function saveCurrentPreset(snapshot: boolean) {
     try {
@@ -153,6 +194,7 @@ export function App() {
     try {
       if (!window.confirm(`Delete preset "${preset.name}"?`)) return;
       await deletePreset(preset.id);
+      if (preset.id === morphStartId || preset.id === morphEndId) resetMorph();
       setPresets(await listPresets());
       setError('');
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot delete preset.'); }
@@ -215,7 +257,10 @@ export function App() {
     try {
       setError('');
       const engine = ensureSynthesizer();
-      if (engine.isPlaying) {
+      if (previewSession.current) {
+        stopScenePlayback();
+        if (engine.isPlaying) await engine.stop();
+      } else if (engine.isPlaying) {
         await engine.stop();
       } else {
         await engine.setLayersEnabled({
@@ -343,10 +388,10 @@ export function App() {
   return <main className="instrument">
     <section className="master" aria-label="Playback">
       <h1>Orbit <span>Sound Lab</span></h1>
-      <button type="button" className={playing ? 'playing' : ''} disabled={playbackTransition}
-        onClick={() => void togglePlayback()}>{playing ? '■ Stop drones' : '▶ Start drones'}</button>
+      <button type="button" className={playingOutput ? 'playing' : ''} disabled={playbackTransition}
+        onClick={() => void togglePlayback()}>{previewMode ? '■ Stop playback' : playing ? '■ Stop drones' : '▶ Start drones'}</button>
       <NumericSlider label="MASTER LEVEL" unit="%" displayFactor={100} min={0} max={1} step={0.01}
-        value={masterGain} onChange={gain => {controller.current?.setMasterGain(gain); setMasterGain(gain);}}/>
+        disabled={previewMode !== null} value={masterGain} onChange={gain => {controller.current?.setMasterGain(gain); setMasterGain(gain);}}/>
     </section>
     {error && <p role="alert" className="error">{error}</p>}
     <section className="drone-picker" aria-label="Drone layers">
@@ -458,7 +503,7 @@ export function App() {
               <input type="checkbox" aria-label={`Key mode for Drone ${id}`} checked={holdModes[id]}
                 onChange={event => updateHoldMode(id, event.target.checked)}/> KEY MODE
             </label>
-            <DroneKeyControls id={id} envelope={layers[id].drone.envelope} disabled={playbackTransition}
+            <DroneKeyControls id={id} envelope={layers[id].drone.envelope} disabled={playbackTransition || previewMode !== null}
               onEnvelopeChange={envelope => updateLayerEnvelope(id, envelope)}
               onPress={() => void pressLayerKey(id)}
               onRelease={() => controller.current?.releaseLayerKey(id)}
@@ -475,7 +520,36 @@ export function App() {
       disabled={!delaySettings.enabled} value={delaySettings.timeSeconds} onChange={value => updateDelay({...delaySettings,timeSeconds:value})}/><NumericSlider label="FEEDBACK" unit="%" displayFactor={100} min={0} max={0.85} step={0.01}
       disabled={!delaySettings.enabled} value={delaySettings.feedback} onChange={value => updateDelay({...delaySettings,feedback:value})}/><NumericSlider label="WET MIX" unit="%" displayFactor={100} min={0} max={1} step={0.01}
       disabled={!delaySettings.enabled} value={delaySettings.mix} onChange={value => updateDelay({...delaySettings,mix:value})}/></div><p>Echo repeats the combined drone. Start with low feedback and mix.</p></section>
-    <section className="preset-library"><h2>PRESET LIBRARY</h2><div className="preset-actions"><input aria-label="Preset name" placeholder="Preset name" maxLength={120} value={presetName} onChange={event => setPresetName(event.target.value)}/><button type="button" onClick={() => void saveCurrentPreset(false)}>SAVE PRESET</button><button type="button" onClick={() => void saveCurrentPreset(true)}>SAVE SNAPSHOT</button><button type="button" onClick={() => importInput.current?.click()}>IMPORT JSON</button><input ref={importInput} type="file" accept=".json,application/json" hidden onChange={event => { const file = event.target.files?.[0]; if (file) void handlePresetImport(file); event.target.value = ''; }}/></div><div className="preset-morph"><div className="preset-morph-heading"><h3>PRESET MORPH</h3><label className="preset-morph-toggle"><input type="checkbox" checked={morphEnabled} onChange={event => setMorphEnabled(event.target.checked)}/> ENABLE MORPH</label></div><fieldset className="preset-morph-content" disabled={!morphEnabled}><div className="preset-morph-selectors"><label>PRESET A<select aria-label="Morph preset A" value={morphStartId} onChange={event => { setMorphStartId(event.target.value); setMorphPosition(0); }}><option value="">Select preset A</option>{presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></label><label>PRESET B<select aria-label="Morph preset B" value={morphEndId} onChange={event => { setMorphEndId(event.target.value); setMorphPosition(0); }}><option value="">Select preset B</option>{presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></label></div><NumericSlider label="MORPH POSITION" className="preset-morph-slider" unit="%" displayFactor={100} min={0} max={1} step={0.01}
-      value={morphPosition} disabled={!morphEnabled || !morphStartId || !morphEndId || morphStartId === morphEndId || !presets.some(preset => preset.id === morphStartId) || !presets.some(preset => preset.id === morphEndId)} onChange={value => updateMorphPosition(value)}/><p>Continuous parameters interpolate; waveform and ON/OFF switch at 50%. Moving the slider changes the current sound, not saved presets. Disabling morph keeps the current sound.</p></fieldset></div><div className="preset-list">{presets.length === 0 ? <p>No saved presets yet. Presets stay in this browser; export JSON for backup.</p> : presets.map(preset => <div className="preset-item" key={preset.id}><div><strong>{preset.name}</strong><small>{new Date(preset.createdAt).toLocaleString()}</small></div><div className="preset-item-actions"><button type="button" aria-label={`Load ${preset.name} into Drone ${activeLayer}`} onClick={() => loadPreset(preset)}>LOAD TO {activeLayer}</button><button type="button" onClick={() => exportPreset(preset)}>EXPORT</button><button type="button" onClick={() => void removePreset(preset)}>DELETE</button></div></div>)}</div></section>
+    <section className="preset-library"><h2>PRESET LIBRARY</h2><div className="preset-actions"><input aria-label="Preset name" placeholder="Preset name" maxLength={120} value={presetName} onChange={event => setPresetName(event.target.value)}/><button type="button" onClick={() => void saveCurrentPreset(false)}>SAVE PRESET</button><button type="button" onClick={() => void saveCurrentPreset(true)}>SAVE SNAPSHOT</button><button type="button" onClick={() => importInput.current?.click()}>IMPORT JSON</button><input ref={importInput} type="file" accept=".json,application/json" hidden onChange={event => { const file = event.target.files?.[0]; if (file) void handlePresetImport(file); event.target.value = ''; }}/></div><div className="preset-morph">
+      <div className="preset-morph-heading">
+        <h3>Preset Morph</h3>
+        <label className="preset-morph-toggle"><input type="checkbox" checked={morphEnabled}
+          disabled={previewMode === 'arrangement'}
+          onChange={event => { setMorphEnabled(event.target.checked); if (!event.target.checked) resetMorph(); }}/> Enable Morph</label>
+      </div>
+      <fieldset className="preset-morph-content" disabled={!morphEnabled || previewMode === 'arrangement'}>
+        <div className="preset-morph-selectors">
+          <label>Preset A<select aria-label="Morph preset A" value={morphStartId}
+            onChange={event => { setMorphStartId(event.target.value); resetMorph(); }}>
+            <option value="">Select preset A</option>
+            {presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+          </select></label>
+          <label>Preset B<select aria-label="Morph preset B" value={morphEndId}
+            onChange={event => { setMorphEndId(event.target.value); resetMorph(); }}>
+            <option value="">Select preset B</option>
+            {presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+          </select></label>
+        </div>
+        <NumericSlider label="Morph position" className="preset-morph-slider" unit="%" displayFactor={100} min={0} max={1} step={0.001}
+          value={morphPosition} disabled={!canMorph || playbackTransition} onChange={position => void updateMorphPosition(position)}/>
+        {previewMode !== 'morph' && <button type="button" disabled={!canMorph || playbackTransition}
+          onClick={() => void updateMorphPosition(morphPosition)}>Preview blend</button>}
+        <p>The slider crossfades both saved sounds. Turn Morph off to return to the editor sound.</p>
+      </fieldset>
+    </div>
+    <SceneTimeline captureSound={captureSound} onPlay={scenes => void playArrangement(scenes)}
+      onStop={stopScenePlayback} playing={previewMode === 'arrangement'}
+      blocked={previewMode === 'morph' || playbackTransition} sceneIndex={sceneIndex}/>
+    <div className="preset-list">{presets.length === 0 ? <p>No saved presets yet. Presets stay in this browser; export JSON for backup.</p> : presets.map(preset => <div className="preset-item" key={preset.id}><div><strong>{preset.name}</strong><small>{new Date(preset.createdAt).toLocaleString()}</small></div><div className="preset-item-actions"><button type="button" aria-label={`Load ${preset.name} into Drone ${activeLayer}`} onClick={() => loadPreset(preset)}>LOAD TO {activeLayer}</button><button type="button" onClick={() => exportPreset(preset)}>EXPORT</button><button type="button" onClick={() => void removePreset(preset)}>DELETE</button></div></div>)}</div></section>
     <section className="diagnostic"><h2>ANDROID AUDIO DIAGNOSTIC</h2><label><input type="checkbox" checked={renderingDiagnosticEnabled} onChange={event => setRenderingDiagnosticEnabled(event.target.checked)}/> Keep rendering active while playing (experiment)</label><div className="diagnostic-track"><div className="diagnostic-indicator" ref={renderingIndicator}/></div><p>Compare 30 seconds with this OFF and ON without touching the screen. This intentionally increases rendering work and battery use; it is not a permanent audio fix.</p><a href="./audio-diagnostic.html">Open standalone audio output test</a></section><footer>WEB AUDIO ENGINE · SOLAR 42 INSPIRED · USE LOW VOLUME</footer></main>;
 }
