@@ -142,7 +142,7 @@ Treat this as a software-inspired design, not a claim of exact SOLAR 42 internal
 
 ## Two drone layers
 
-- Each layer owns five oscillators, harmony, modulation and its level. The shared transport only starts enabled layers, and disabling one fades out its own voice; both feed the shared echo, master level and output protection.
+- Each layer owns five oscillators, harmony, modulation and its level. Start enables the selected layer and starts all enabled layers. Stop stops both; layer switches control their own voice. Both layers feed the shared echo, master level and output protection.
 - Layer A maps to the original version 1 preset fields. Optional serialized layer mix data stores A's enable state, layer B and the master level. Older presets load with A enabled, B disabled and master at unity.
 - Load the saved sound into the layer selected in the UI, preserving its enable state, the other layer and the shared effects. Save the source layer with the preset; older presets use A as their source.
 - Morph both layers' continuous sound controls and master level; discrete layer enable states switch at the midpoint.

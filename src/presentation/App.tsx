@@ -147,10 +147,19 @@ export function App() {
         for (const id of DRONE_LAYER_IDS) applyLayer(id, layers[id]);
         controller.current.setMasterGain(masterGain);
         controller.current.updateDelay(delaySettings);
-        await controller.current.setLayersEnabled({A: layers.A.enabled, B: layers.B.enabled});
       }
-      if (controller.current.isPlaying) { await controller.current.stop(); setPlaying(false); }
-      else { await controller.current.start(); setPlaying(true); }
+      const engine = controller.current;
+      if (engine.isPlaying) {
+        await engine.stop();
+      } else {
+        await engine.setLayersEnabled({
+          A: layers.A.enabled || activeLayer === 'A',
+          B: layers.B.enabled || activeLayer === 'B'
+        });
+        await engine.start();
+        updateActiveLayer(layer => ({...layer, enabled: true}));
+      }
+      setPlaying(engine.isPlaying);
     } catch (reason) {
       setPlaying(controller.current?.isPlaying ?? false);
       setError(reason instanceof Error ? reason.message : 'Cannot change playback.');
@@ -198,15 +207,15 @@ export function App() {
     controller.current?.layers[id].setGain(gain);
     setLayers(previous => ({...previous, [id]: {...previous[id], drone: {...previous[id].drone, gain}}}));
   }
-  return <main className="instrument"><header><span className="eyebrow">ORBIT / SOUND LAB</span><h1>DRONE ENGINE</h1></header><section className="master"><button className={playing ? 'playing' : ''} disabled={playbackTransition} onClick={() => void togglePlayback()}>{playing ? '■ STOP DRONE' : '▶ START DRONE'}</button><NumericSlider label="MASTER LEVEL" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+  return <main className="instrument"><header><span className="eyebrow">ORBIT / SOUND LAB</span><h1>DRONE ENGINE</h1></header><section className="master"><button className={playing ? 'playing' : ''} disabled={playbackTransition} onClick={() => void togglePlayback()}>{playing ? '■ STOP ALL DRONES' : '▶ START DRONES'}</button><NumericSlider label="MASTER LEVEL" unit="%" displayFactor={100} min={0} max={1} step={0.01}
       value={masterGain} onChange={gain => {controller.current?.setMasterGain(gain); setMasterGain(gain);}}/></section>
     <section className="drone-layers" aria-label="Drone layers">
       {DRONE_LAYER_IDS.map(id => <div key={id} className={activeLayer === id ? 'drone-layer selected' : 'drone-layer'}>
         <div className="drone-layer-header">
           <button type="button" aria-pressed={activeLayer === id} onClick={() => setActiveLayer(id)}>DRONE {id}</button>
           <label className="switch">
-            <input type="checkbox" aria-label={`Enable Drone ${id}`} checked={layers[id].enabled}
-              onChange={event => updateLayerEnabled(id, event.target.checked)}/> ON
+            <input type="checkbox" aria-label={`Enable Drone ${id}`} disabled={playbackTransition} checked={layers[id].enabled}
+              onChange={event => updateLayerEnabled(id, event.target.checked)}/> {layers[id].enabled ? 'ON' : 'OFF'}
           </label>
         </div>
         <NumericSlider label={`DRONE ${id} LEVEL`} unit="%" displayFactor={100} min={0} max={0.4} step={0.01}
