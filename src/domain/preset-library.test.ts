@@ -15,8 +15,22 @@ describe('preset schema', () => {
     const preset = createPreset('Ambient', stereoDrone, modulation, delay);
     expect(preset.schemaVersion).toBe(1);
     expect(preset.drone.oscillators).toHaveLength(5);
-    expect(preset.modulation).toHaveLength(15);
+    expect(preset.modulation).toHaveLength(20);
     expect(validatePreset(JSON.parse(JSON.stringify(preset)))).toEqual(preset);
+  });
+  it('loads older modulation banks and round-trips oscillator shape and its LFO', () => {
+    const preset = createPreset('Texture', drone, modulation, delay);
+    for (const destinations of [['pitch'], ['pitch', 'filterCutoff', 'amplitude']]) {
+      const legacy = modulation.filter(item => destinations.includes(item.destination));
+      expect(validatePreset({...preset, modulation: legacy}).modulation).toEqual(modulation);
+    }
+    const oscillators = [{...drone.oscillators[0], waveform: 'sineTriangle' as const, shape: 0.35}, ...drone.oscillators.slice(1)];
+    const modulations = modulation.map(item => item.destination === 'shape' && item.targetOscillatorId === oscillators[0].id
+      ? {...item, enabled: true, depthShape: 0.18} : item);
+    const shaped = createPreset('Shaped', {...drone, oscillators}, modulations, delay);
+    expect(validatePreset(JSON.parse(JSON.stringify(shaped)))).toEqual(shaped);
+    expect(() => validatePreset({...shaped, drone: {...shaped.drone,
+      oscillators: [{...oscillators[0], shape: 1.1}, ...oscillators.slice(1)]}})).toThrow('Oscillator shape');
   });
   it('centers legacy oscillators and rejects invalid pan values', () => {
     const preset = createPreset('Ambient', drone, modulation, delay);

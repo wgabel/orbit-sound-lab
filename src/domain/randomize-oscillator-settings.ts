@@ -1,4 +1,6 @@
-import type { OscillatorSettings, OscillatorWaveform } from './drone';
+import { DEFAULT_OSCILLATOR_SHAPE, OSCILLATOR_WAVEFORMS } from './drone';
+import type { OscillatorSettings } from './drone';
+import { DEFAULT_SHAPE_LFO_DEPTH } from './modulation';
 import type { LowFrequencyOscillatorSettings, LowFrequencyOscillatorWaveform } from './modulation';
 
 export type OscillatorRandomizationMode = 'random' | 'variant';
@@ -29,7 +31,7 @@ export function randomizeOscillatorSettings(
 ): {oscillator: OscillatorSettings; modulations: readonly LowFrequencyOscillatorSettings[]} {
   const isVariant = mode === 'variant';
   const randomizeValue = isVariant ? varyValue : randomStep;
-  const waveforms: readonly OscillatorWaveform[] = ['sine', 'triangle', 'sawtooth', 'square'];
+  const waveform = isVariant ? oscillator.waveform : randomChoice(OSCILLATOR_WAVEFORMS);
   const modulationWaveforms: readonly LowFrequencyOscillatorWaveform[] = ['sine', 'triangle', 'square', 'sawtooth'];
   return {
     oscillator: {
@@ -37,7 +39,8 @@ export function randomizeOscillatorSettings(
       frequencyHz: randomizeValue(oscillator.frequencyHz, 40, 880, 1),
       volume: randomizeValue(oscillator.volume, 0, 1, 0.01),
       detuneCents: randomizeValue(oscillator.detuneCents, -100, 100, 1),
-      waveform: isVariant ? oscillator.waveform : randomChoice(waveforms),
+      waveform,
+      ...(waveform === 'sineTriangle' ? {shape: randomizeValue(oscillator.shape ?? DEFAULT_OSCILLATOR_SHAPE, 0, 1, 0.01)} : {}),
       filter: {
         enabled: isVariant ? oscillator.filter.enabled : Math.random() < 0.5,
         cutoffHz: randomizeValue(oscillator.filter.cutoffHz, 20, 20000, 1),
@@ -46,11 +49,12 @@ export function randomizeOscillatorSettings(
     },
     modulations: modulations.map(modulation => ({
       ...modulation,
-      enabled: isVariant ? modulation.enabled : Math.random() < 0.5,
+      enabled: isVariant ? modulation.enabled : (modulation.destination !== 'shape' || waveform === 'sineTriangle') && Math.random() < 0.5,
       frequencyHz: randomizeValue(modulation.frequencyHz, 0.01, 20, 0.01),
       depthCents: randomizeValue(modulation.depthCents, 0, 300, 1),
       depthHz: randomizeValue(modulation.depthHz, 0, 5000, 10),
       depthAmplitude: randomizeValue(modulation.depthAmplitude, 0, 0.5, 0.01),
+      ...(modulation.destination === 'shape' ? {depthShape: randomizeValue(modulation.depthShape ?? DEFAULT_SHAPE_LFO_DEPTH, 0, 1, 0.01)} : {}),
       waveform: isVariant ? modulation.waveform : randomChoice(modulationWaveforms)
     }))
   };

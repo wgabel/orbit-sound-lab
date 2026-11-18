@@ -201,7 +201,7 @@ export class WebAudioDrone implements DroneVoice {
     const oscillator = this.oscillators.get(settings.id);
     if (!oscillator) throw new Error('Unknown oscillator.');
     const now = this.context.currentTime;
-    oscillator.source.update(settings.waveform, settings.frequencyHz, now);
+    oscillator.source.update(settings, now);
     oscillator.source.detune.setTargetAtTime(settings.detuneCents, now, 0.015);
     oscillator.panner.pan.setTargetAtTime(settings.pan, now, 0.015);
     oscillator.volumeControl.offset.setTargetAtTime(this.oscillatorVolumeScale * settings.volume, now, 0.015);
@@ -298,6 +298,16 @@ export class WebAudioDrone implements DroneVoice {
     if (!oscillator) throw new Error('Unknown oscillator.');
     return oscillator.amplitudeControl.offset;
   }
+  getShapeParameter(oscillatorId: string): AudioParam {
+    const oscillator = this.oscillators.get(oscillatorId);
+    if (!oscillator) throw new Error('Unknown oscillator.');
+    return oscillator.source.shape;
+  }
+
+  readOscillatorShape(oscillatorId: string): number | null {
+    return this.oscillators.get(oscillatorId)?.source.readEffectiveShape() ?? null;
+  }
+
   readOscillatorFrequency(oscillatorId: string): number | null {
     return this.oscillators.get(oscillatorId)?.source.readEffectiveFrequency() ?? null;
   }

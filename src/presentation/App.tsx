@@ -1,6 +1,7 @@
 import { builtInOscillatorPresets, createBuiltInOscillatorSnapshot } from '../domain/built-in-oscillator-presets';
 import { OscillatorControlSection } from './OscillatorControlSection';
 import { OscillatorLfoControls } from './OscillatorLfoControls';
+import { OscillatorShapeControls } from './OscillatorShapeControls';
 import { replaceOscillatorModulationRoute, validateOscillatorModulationRoutes } from '../domain/oscillator-modulation';
 import type { OscillatorModulationParameter, OscillatorModulationRoute } from '../domain/oscillator-modulation';
 import { OscillatorModulationSlider } from './OscillatorModulationSlider';
@@ -55,6 +56,9 @@ export function App() {
 
   const getOscillatorModulationAnalyser = useCallback((targetId: string, parameter: OscillatorModulationParameter) =>
     controller.current?.layers[activeLayer].getOscillatorModulationAnalyser(targetId, parameter) ?? null, [activeLayer]);
+
+  const readOscillatorShape = useCallback((oscillatorId: string) =>
+    controller.current?.layers[activeLayer].readOscillatorShape(oscillatorId) ?? null, [activeLayer]);
 
   const readOscillatorFrequency = useCallback((oscillatorId: string) =>
     controller.current?.layers[activeLayer].readOscillatorFrequency(oscillatorId) ?? null, [activeLayer]);
@@ -470,8 +474,14 @@ export function App() {
                   <option value="triangle">Triangle</option>
                   <option value="sawtooth">Sawtooth</option>
                   <option value="square">Square</option>
+                  <option value="sineTriangle">Sine ↔ Triangle</option>
                 </select>
               </label>
+              {oscillator.waveform === 'sineTriangle' && <OscillatorShapeControls oscillator={oscillator}
+                modulation={lowFrequencyOscillatorSettings.find(item =>
+                  item.targetOscillatorId === oscillator.id && item.destination === 'shape')}
+                readShape={readOscillatorShape} playing={playing && (layerEnabled || holdModes[activeLayer])}
+                onChange={shape => updateOscillator({...oscillator, shape})} onModulationChange={updateLowFrequencyOscillator}/>}
             </OscillatorControlSection>
             <OscillatorControlSection title="Low-pass filter" action={<label className="switch">
               <input type="checkbox" checked={oscillator.filter.enabled}

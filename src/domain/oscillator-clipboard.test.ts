@@ -4,7 +4,7 @@ import { createDefaultLowFrequencyOscillators } from './modulation';
 import { retargetOscillatorSnapshot } from './oscillator-clipboard';
 
 describe('oscillator clipboard', () => {
-  it('copies the sound and three LFOs into the target slot', () => {
+  it('copies the sound and four LFOs into the target slot', () => {
     const [first, second] = createDefaultDroneSettings().oscillators;
     const oscillator = {...first, frequencyHz: 154, pan: -0.25, waveform: 'triangle' as const};
     const target = {...second, enabled: false};

@@ -18,7 +18,8 @@ describe('oscillator randomization', () => {
       filter: {...oscillator.filter, cutoffHz: 1401, resonance: 0.105}
     });
     expect(result.modulations).toEqual(modulations.map(modulation => ({
-      ...modulation, frequencyHz: 0.01, depthCents: 0, depthHz: 150, depthAmplitude: 0.325
+      ...modulation, frequencyHz: 0.01, depthCents: 0, depthHz: 150, depthAmplitude: 0.325,
+      ...(modulation.destination === 'shape' ? {depthShape: expect.closeTo(0.15)} : {})
     })));
   });
 
@@ -48,10 +49,10 @@ describe('oscillator randomization', () => {
     expect(upper.detuneCents).toBe(-140.01);
   });
 
-  it('keeps all three LFO destinations when fully randomizing', () => {
+  it('keeps all four LFO destinations when fully randomizing', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.9);
     const result = randomizeOscillatorSettings(original, modulations, 'random');
-    expect(result.modulations.map(item => item.destination)).toEqual(['pitch', 'filterCutoff', 'amplitude']);
+    expect(result.modulations.map(item => item.destination)).toEqual(['pitch', 'filterCutoff', 'amplitude', 'shape']);
     expect(result.modulations.every(item => item.targetOscillatorId === original.id)).toBe(true);
   });
 });

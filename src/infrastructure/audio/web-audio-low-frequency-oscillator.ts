@@ -1,6 +1,6 @@
 import type { ModulationSource, ModulationSourceFactory } from '../../application/modulation-contracts';
 import type { LowFrequencyOscillatorSettings } from '../../domain/modulation';
-import { validateLowFrequencyOscillatorSettings } from '../../domain/modulation';
+import { DEFAULT_SHAPE_LFO_DEPTH, validateLowFrequencyOscillatorSettings } from '../../domain/modulation';
 import type { LfoWorkletConfiguration, WebAudioLfoWorkletFactory } from './web-audio-lfo-worklet';
 
 export class WebAudioLowFrequencyOscillator implements ModulationSource {
@@ -76,7 +76,8 @@ export class WebAudioLowFrequencyOscillator implements ModulationSource {
     this.periodicGain.gain.setTargetAtTime(useWorklet ? 0 : 1, now, 0.02);
     this.workletGain.gain.setTargetAtTime(useWorklet ? 1 : 0, now, 0.02);
     const depth = settings.destination === 'pitch' ? settings.depthCents :
-      settings.destination === 'amplitude' ? settings.depthAmplitude : settings.depthHz;
+      settings.destination === 'amplitude' ? settings.depthAmplitude :
+      settings.destination === 'shape' ? settings.depthShape ?? DEFAULT_SHAPE_LFO_DEPTH : settings.depthHz;
     this.output.gain.setTargetAtTime(settings.enabled ? depth : 0, now, 0.02);
   }
 
