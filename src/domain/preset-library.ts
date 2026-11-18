@@ -31,7 +31,7 @@ async function transact<T>(mode: IDBTransactionMode, execute: (store: IDBObjectS
   return new Promise<T>((resolve, reject) => {
     const transaction = database.transaction(STORE_NAME, mode);
     const store = transaction.objectStore(STORE_NAME);
-    let result: T;
+    let result!: T;
     let hasResult = false;
     transaction.oncomplete = () => { database.close(); if (hasResult) resolve(result); else reject(new Error('Preset operation did not complete.')); };
     transaction.onerror = () => { database.close(); reject(transaction.error ?? new Error('Preset operation failed.')); };
