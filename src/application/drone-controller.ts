@@ -1,3 +1,5 @@
+import { getOscillatorModulationRange, validateOscillatorModulationRoutes } from '../domain/oscillator-modulation';
+import type { OscillatorModulationRoute } from '../domain/oscillator-modulation';
 import type { DroneVoice, DroneVoiceFactory, SynthesizerController } from './audio-contracts';
 import type { ModulationMatrix, ModulationSource, ModulationSourceFactory, ModulationDestination } from './modulation-contracts';
 import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
@@ -33,6 +35,7 @@ export class DroneController implements SynthesizerController {
     this.validateModulationBank(lowFrequencyOscillatorSettings);
   }
 
+  get sampleRate(): number { return this.context.sampleRate; }
   get isPlaying(): boolean { return this.playing; }
   getWaveformAnalyser(oscillatorId: string): AnalyserNode | null {
     return this.voice?.getWaveformAnalyser?.(oscillatorId) ?? null;
@@ -141,7 +144,26 @@ export class DroneController implements SynthesizerController {
     if (settings.destination !== 'filterCutoff') return settings;
     const oscillator = this.settings.oscillators.find(item => item.id === settings.targetOscillatorId);
     if (!oscillator) throw new Error('Unknown LFO target oscillator.');
-    return {...settings, depthHz: limitFilterModulationDepth(settings.depthHz, oscillator.filter.cutoffHz, this.context.sampleRate)};
+    const cutoff = oscillator.filter.cutoffHz;
+    const route = this.settings.oscillatorModulations?.find(item =>
+      item.enabled && item.parameter === 'cutoff' && item.targetId === oscillator.id);
+    const maximumDepth = limitFilterModulationDepth(Infinity, cutoff, this.context.sampleRate);
+    const range = getOscillatorModulationRange(oscillator, 'cutoff', route?.depth ?? 0, this.context.sampleRate);
+    const occupiedDepth = Math.max(cutoff - range.lower, range.upper - cutoff);
+    return {...settings, depthHz: Math.min(settings.depthHz, Math.max(0, maximumDepth - occupiedDepth))};
+  }
+
+  setOscillatorModulations(routes: readonly OscillatorModulationRoute[]): void {
+    validateOscillatorModulationRoutes(routes, this.settings.oscillators);
+    if (this.playing) this.voice?.setOscillatorModulations(routes);
+    this.settings = {...this.settings, oscillatorModulations: routes};
+    if (this.playing) {
+      for (const modulation of this.lowFrequencyOscillatorSettings) {
+        if (modulation.destination === 'filterCutoff') {
+          this.activeModulations.get(this.modulationKey(modulation))?.source.update(this.getEffectiveModulation(modulation));
+        }
+      }
+    }
   }
 
   setPitchBend(cents: number): void {

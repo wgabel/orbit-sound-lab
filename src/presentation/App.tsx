@@ -1,3 +1,6 @@
+import { replaceOscillatorModulationRoute, validateOscillatorModulationRoutes } from '../domain/oscillator-modulation';
+import type { OscillatorModulationParameter, OscillatorModulationRoute } from '../domain/oscillator-modulation';
+import { OscillatorModulationSlider } from './OscillatorModulationSlider';
 import { NEUTRAL_PERFORMANCE_POSITION } from '../domain/performance-pad';
 import { PerformancePad } from './PerformancePad';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -49,6 +52,7 @@ export function App() {
     const oscillators = layer.drone.oscillators.map((oscillator, index) => ({
       ...oscillator, frequencyHz: getEffectiveOscillatorFrequency(layer.harmony, oscillator.frequencyHz, index)
     }));
+    engine.setOscillatorModulations(layer.drone.oscillatorModulations ?? []);
     applyInitialSynthesizerSettings(engine, {...layer.drone, oscillators}, layer.modulation);
     controller.current?.setLayerEnvelope(id, layer.drone.envelope);
   }
@@ -221,6 +225,25 @@ export function App() {
         oscillators: layer.drone.oscillators.map(item => item.id === oscillator.id ? oscillator : item)}}));
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot update oscillator.'); }
   }
+  function updateOscillatorModulation(route: OscillatorModulationRoute) {
+    try {
+      const oscillatorModulations = replaceOscillatorModulationRoute(settings.oscillatorModulations ?? [], route);
+      validateOscillatorModulationRoutes(oscillatorModulations, settings.oscillators);
+      controller.current?.layers[activeLayer].setOscillatorModulations(oscillatorModulations);
+      updateActiveLayer(layer => ({...layer, drone: {...layer.drone, oscillatorModulations}}));
+      setError('');
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot update oscillator modulation.'); }
+  }
+
+  function renderOscillatorModulationSlider(oscillator: OscillatorSettings, index: number, parameter: OscillatorModulationParameter) {
+    return <OscillatorModulationSlider oscillator={oscillator} oscillators={settings.oscillators}
+      effectiveFrequency={getEffectiveOscillatorFrequency(harmony, oscillator.frequencyHz, index)}
+      parameter={parameter} routes={settings.oscillatorModulations ?? []} sampleRate={controller.current?.layers[activeLayer].sampleRate}
+      disabled={parameter === 'cutoff' && !oscillator.filter.enabled} onRouteChange={updateOscillatorModulation}
+      onChange={value => updateOscillator(parameter === 'cutoff' ? {...oscillator, filter: {...oscillator.filter, cutoffHz: value}} :
+        parameter === 'frequency' ? {...oscillator, frequencyHz: value} : {...oscillator, volume: value})}/>;
+  }
+
   function updateLowFrequencyOscillator(settings: LowFrequencyOscillatorSettings) {
     try {
       controller.current?.layers[activeLayer].updateLowFrequencyOscillator(settings);
@@ -330,8 +353,7 @@ export function App() {
           onClick={() => pasteOscillator(oscillator, index + 1)} aria-label={`Paste into oscillator ${index + 1}`}>PASTE</button>
       </div>
     </div>
-    <OscillatorWaveform oscillatorId={oscillator.id} playing={playing && (layerEnabled || holdModes[activeLayer])} enabled={oscillator.enabled} getAnalyser={getWaveformAnalyser}/><div className="oscillator-always-visible"><div className="oscillator-mix-controls"><NumericSlider label="VOLUME" unit="%" displayFactor={100} min={0} max={1} step={0.01}
-      value={oscillator.volume} onChange={value => updateOscillator({...oscillator,volume:value})}/>
+    <OscillatorWaveform oscillatorId={oscillator.id} playing={playing && (layerEnabled || holdModes[activeLayer])} enabled={oscillator.enabled} getAnalyser={getWaveformAnalyser}/><div className="oscillator-always-visible"><div className="oscillator-mix-controls">{renderOscillatorModulationSlider(oscillator, index, 'volume')}
     <OscillatorPanControl
       oscillatorId={oscillator.id}
       oscillatorNumber={index + 1}
@@ -344,10 +366,8 @@ export function App() {
         aria-label={`Randomize settings for oscillator ${index + 1}`}>⤨ RANDOM</button>
       <button type="button" className="randomize-button" onClick={() => randomizeOscillator(oscillator, 'variant')}
         aria-label={`Generate variant for oscillator ${index + 1}`} title="Vary each setting by up to 5% of its slider range">VARIANT</button>
-    </div></div><div id={`${oscillator.id}-settings`} className="oscillator-panel-content" hidden={!expandedOscillators[`${activeLayer}:${oscillator.id}`]}><NumericSlider label="FREQUENCY" unit="Hz" min={40} max={880} step={1}
-      value={oscillator.frequencyHz} onChange={value => updateOscillator({...oscillator,frequencyHz:value})}/><NumericSlider label="DETUNE" unit="cents" min={-100} max={100} step={1}
-      value={oscillator.detuneCents} onChange={value => updateOscillator({...oscillator,detuneCents:value})}/><label>WAVEFORM <select value={oscillator.waveform} onChange={event => updateOscillator({...oscillator,waveform:event.target.value as OscillatorSettings['waveform']})}><option value="sine">Sine (diagnostic)</option><option value="triangle">Triangle</option><option value="sawtooth">Sawtooth</option><option value="square">Square</option></select></label><div className="oscillator-filter"><div className="oscillator-title"><strong>LOW-PASS FILTER</strong><label className="switch"><input type="checkbox" checked={oscillator.filter.enabled} onChange={event => updateOscillator({...oscillator,filter:{...oscillator.filter,enabled:event.target.checked}})}/> ACTIVE</label></div><NumericSlider label="CUTOFF" unit="Hz" min={20} max={20000} step={1}
-      disabled={!oscillator.filter.enabled} value={oscillator.filter.cutoffHz} onChange={value => updateOscillator({...oscillator,filter:{...oscillator.filter,cutoffHz:value}})}/><NumericSlider label="RESONANCE" min={0.1} max={12} step={0.1}
+    </div></div><div id={`${oscillator.id}-settings`} className="oscillator-panel-content" hidden={!expandedOscillators[`${activeLayer}:${oscillator.id}`]}>{renderOscillatorModulationSlider(oscillator, index, 'frequency')}<NumericSlider label="DETUNE" unit="cents" min={-100} max={100} step={1}
+      value={oscillator.detuneCents} onChange={value => updateOscillator({...oscillator,detuneCents:value})}/><label>WAVEFORM <select value={oscillator.waveform} onChange={event => updateOscillator({...oscillator,waveform:event.target.value as OscillatorSettings['waveform']})}><option value="sine">Sine (diagnostic)</option><option value="triangle">Triangle</option><option value="sawtooth">Sawtooth</option><option value="square">Square</option></select></label><div className="oscillator-filter"><div className="oscillator-title"><strong>LOW-PASS FILTER</strong><label className="switch"><input type="checkbox" checked={oscillator.filter.enabled} onChange={event => updateOscillator({...oscillator,filter:{...oscillator.filter,enabled:event.target.checked}})}/> ACTIVE</label></div>{renderOscillatorModulationSlider(oscillator, index, 'cutoff')}<NumericSlider label="RESONANCE" min={0.1} max={12} step={0.1}
       disabled={!oscillator.filter.enabled} value={oscillator.filter.resonance} onChange={value => updateOscillator({...oscillator,filter:{...oscillator.filter,resonance:value}})}/></div><div className="oscillator-lfo"><div className="oscillator-title"><strong>INDEPENDENT LFO MODULATION</strong></div>{lowFrequencyOscillatorSettings.filter(item => item.targetOscillatorId === oscillator.id).map(modulation => <div className="lfo-destination" key={modulation.destination}><div className="oscillator-title"><strong>{modulation.destination === 'pitch' ? 'PITCH' : modulation.destination === 'filterCutoff' ? 'FILTER CUTOFF' : 'AMPLITUDE'}</strong><label className="switch"><input type="checkbox" checked={modulation.enabled} onChange={event => updateLowFrequencyOscillator({...modulation,enabled:event.target.checked})}/> ACTIVE</label></div><NumericSlider label="RATE" unit="Hz" min={0.01} max={20} step={0.01}
       disabled={!modulation.enabled} value={modulation.frequencyHz} onChange={value => updateLowFrequencyOscillator({...modulation,frequencyHz:value})}/>{modulation.destination === 'pitch' ? <NumericSlider label="DEPTH" unit="cents" min={0} max={300} step={1}
       disabled={!modulation.enabled} value={modulation.depthCents} onChange={value => updateLowFrequencyOscillator({...modulation,depthCents:value})}/> : modulation.destination === 'amplitude' ? <NumericSlider label="DEPTH" unit="%" displayFactor={200} min={0} max={0.5} step={0.01}

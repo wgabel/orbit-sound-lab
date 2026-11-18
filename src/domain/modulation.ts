@@ -26,9 +26,12 @@ export function validateLowFrequencyOscillatorSettings(settings: LowFrequencyOsc
   if (!settings.targetOscillatorId) throw new Error('LFO target is required.');
 }
 
+export function getFilterModulationLimits(cutoffHz: number, sampleRate: number) {
+  return {minimum: Math.max(20, cutoffHz * 0.12), maximum: Math.min(20000, sampleRate / 2)};
+}
+
 /** Keep a symmetric cutoff sweep away from DC and below the filter's upper limit. */
 export function limitFilterModulationDepth(depthHz: number, cutoffHz: number, sampleRate: number): number {
-  const minimum = Math.max(20, cutoffHz * 0.12);
-  const maximum = Math.min(20000, sampleRate / 2);
+  const {minimum, maximum} = getFilterModulationLimits(cutoffHz, sampleRate);
   return Math.max(0, Math.min(depthHz, cutoffHz - minimum, maximum - cutoffHz));
 }

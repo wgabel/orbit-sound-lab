@@ -1,6 +1,9 @@
 import { DEFAULT_DRONE_ENVELOPE, validateDroneEnvelope } from './drone-envelope';
 import type { DroneEnvelope } from './drone-envelope';
 
+import { validateOscillatorModulationRoutes } from './oscillator-modulation';
+import type { OscillatorModulationRoute } from './oscillator-modulation';
+
 export const OSCILLATORS_PER_DRONE = 5 as const;
 export type OscillatorWaveform = 'sawtooth' | 'sine' | 'square' | 'triangle';
 export interface LowPassFilterSettings {
@@ -34,6 +37,7 @@ export interface DroneSettings {
   readonly name: string;
   readonly gain: number;
   readonly envelope: DroneEnvelope;
+  readonly oscillatorModulations?: readonly OscillatorModulationRoute[];
   readonly oscillators: readonly OscillatorSettings[];
   readonly mix: DroneMixSettings;
 }
@@ -81,4 +85,5 @@ export function validateDroneSettings(settings: DroneSettings): void {
     validateLowPassFilterSettings(oscillator.filter);
     validateFadeSettings(oscillator.fade);
   }
+  if (settings.oscillatorModulations !== undefined) validateOscillatorModulationRoutes(settings.oscillatorModulations, settings.oscillators);
 }

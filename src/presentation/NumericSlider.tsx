@@ -1,5 +1,5 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 interface NumericSliderProps {
   readonly label: string;
@@ -14,6 +14,7 @@ interface NumericSliderProps {
   readonly className?: string;
   readonly id?: string;
   readonly action?: ReactNode;
+  readonly modulationRange?: readonly [number, number];
 }
 
 const numberDisplay = new Intl.NumberFormat('en', {
@@ -23,10 +24,11 @@ const numberDisplay = new Intl.NumberFormat('en', {
 
 export function NumericSlider({
   label, value, min, max, step, onChange, unit, displayFactor = 1,
-  disabled = false, className, id, action
+  disabled = false, className, id, action, modulationRange
 }: NumericSliderProps) {
   const generatedId = useId();
   const sliderId = id ?? generatedId;
+  const rangeId = `${sliderId}-modulation-range`;
   const errorId = `${sliderId}-error`;
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
@@ -66,6 +68,14 @@ export function NumericSlider({
     setInvalid(false);
   }
 
+  function trackPosition(position: number): string {
+    return `${Math.max(0, Math.min(100, (position - min) / (max - min) * 100))}%`;
+  }
+  const rangeStyle = modulationRange && {
+    '--modulation-start': trackPosition(modulationRange[0]),
+    '--modulation-end': trackPosition(modulationRange[1])
+  } as CSSProperties | undefined;
+
   return <div className={className ? `numeric-slider ${className}` : 'numeric-slider'}>
     <div className="numeric-slider-header">
       <label htmlFor={sliderId}>{label}</label>
@@ -103,7 +113,12 @@ export function NumericSlider({
       Enter {numberDisplay.format(displayMinimum)} to {numberDisplay.format(displayMaximum)}{unitSuffix}.
     </span>}
     <input type="range" id={sliderId} min={min} max={max} step={step}
+      className={modulationRange ? 'numeric-slider-modulated' : undefined} style={rangeStyle}
       value={value} disabled={disabled} aria-valuetext={`${displayedValue}${unitSuffix}`}
+      aria-describedby={modulationRange ? rangeId : undefined}
       onChange={event => onChange(event.target.valueAsNumber)}/>
+    {modulationRange && <span className="numeric-slider-modulation-range" id={rangeId}>
+      {modulationRange.map(limit => numberDisplay.format(Number((limit * displayFactor).toFixed(2))) + unitSuffix).join(' – ')}
+    </span>}
   </div>;
 }

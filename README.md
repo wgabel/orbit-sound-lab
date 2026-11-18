@@ -19,6 +19,8 @@ Each layer also has a **Hold to Play** key under its level control. Hold it with
 
 Pressing a key activates **Key Mode** for that layer. Turn **Key Mode** off to return to continuous playback controls. Each layer’s attack, decay, sustain and release are saved with its sound preset.
 
+Use the round wave button beside an oscillator’s frequency, volume or low-pass cutoff to select another oscillator from the same drone as a modulation source. The source stays available when its audible output is muted. The blue interval shows the range of this route around the base setting, limited to the usable slider range. Routes modulate audio directly and are stored in presets. The existing LFO controls remain available.
+
 **Variant** varies oscillator and modulation values by up to 5% of each slider’s full range in either direction, within its limits.
 
 ## Architecture
