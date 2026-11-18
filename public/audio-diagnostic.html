@@ -9,7 +9,7 @@
     body { background: #0c1016; color: #e8e9df; margin: 0; line-height: 1.5; }
     main { max-width: 42rem; margin: auto; padding: 1.25rem; }
     a { color: #a6efab; }
-    button { font: inherit; padding: .55rem .85rem; }
+    button, select { font: inherit; padding: .55rem .85rem; }
     .controls { display: flex; flex-wrap: wrap; gap: .5rem; }
     .scroll-area { min-height: 135vh; border-block: 1px solid #35414c; padding-block: 1rem; }
   </style>
@@ -26,6 +26,15 @@
     </div>
     <p id="status" role="status">Tone stopped.</p>
     <p id="latency"></p>
+    <h2>Stereo channel test</h2>
+    <label for="channel">Play through</label>
+    <select id="channel">
+      <option value="both">Both channels</option>
+      <option value="left">Left only</option>
+      <option value="right">Right only</option>
+    </select>
+    <p>Play the tone and switch between left and right on the same output device. For the scrolling test, use both channels.</p>
+    <p id="channel-info" role="status"></p>
     <p id="measurement" role="status"></p>
     <h2>Compare two 30-second runs</h2>
     <ol>
@@ -43,6 +52,8 @@
     const status = document.querySelector('#status');
     const latency = document.querySelector('#latency');
     const measurement = document.querySelector('#measurement');
+    const channelSelect = document.querySelector('#channel');
+    const channelInfo = document.querySelector('#channel-info');
     let tone = null;
     let baseline = null;
 
@@ -59,6 +70,18 @@
       return Number.isFinite(value) ? `${(value * 1000).toFixed(1)} ms` : 'unavailable';
     }
 
+    function updateChannels() {
+      if (!tone) return;
+      const { context, channelGains } = tone;
+      for (const [index, gain] of channelGains.entries()) {
+        const channel = index === 0 ? 'left' : 'right';
+        const active = channelSelect.value === 'both' || channelSelect.value === channel;
+        gain.gain.setTargetAtTime(active ? 1 : 0, context.currentTime, 0.005);
+      }
+      const { channelCount, maxChannelCount } = context.destination;
+      channelInfo.textContent = `Web Audio output channels: ${channelCount} · Reported maximum: ${maxChannelCount}`;
+    }
+
     async function startTone() {
       const context = new AudioContext({ latencyHint: 'playback' });
       try {
@@ -70,9 +93,19 @@
         oscillator.frequency.value = 440;
         gain.gain.setValueAtTime(0, startTime);
         gain.gain.linearRampToValueAtTime(0.03, startTime + 0.02);
-        oscillator.connect(gain).connect(context.destination);
+        const stereo = context.createChannelMerger(2);
+        const channelGains = ['left', 'right'].map((channel, index) => {
+          const channelGain = context.createGain();
+          channelGain.gain.value = Number(channelSelect.value === 'both' || channelSelect.value === channel);
+          gain.connect(channelGain);
+          channelGain.connect(stereo, 0, index);
+          return channelGain;
+        });
+        oscillator.connect(gain);
+        stereo.connect(context.destination);
         oscillator.start(startTime);
-        tone = { context, oscillator, gain };
+        tone = { context, oscillator, gain, channelGains };
+        updateChannels();
         latency.textContent = `Sample rate ${context.sampleRate} Hz · Base latency ${describeLatency(context.baseLatency)} · Output latency ${describeLatency(context.outputLatency)}`;
         measurement.textContent = '';
         status.textContent = 'Tone playing.';
@@ -104,6 +137,8 @@
         status.textContent = 'Tone stopped.';
       }
     }
+
+    channelSelect.addEventListener('change', updateChannels);
 
     playButton.addEventListener('click', async () => {
       playButton.disabled = true;
