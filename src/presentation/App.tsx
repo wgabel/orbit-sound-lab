@@ -1,3 +1,4 @@
+import { builtInOscillatorPresets, createBuiltInOscillatorSnapshot } from '../domain/built-in-oscillator-presets';
 import { OscillatorLfoControls } from './OscillatorLfoControls';
 import { replaceOscillatorModulationRoute, validateOscillatorModulationRoutes } from '../domain/oscillator-modulation';
 import type { OscillatorModulationParameter, OscillatorModulationRoute } from '../domain/oscillator-modulation';
@@ -275,7 +276,7 @@ export function App() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot update LFO.'); }
   }
   const [oscillatorClipboard, setOscillatorClipboard] = useState<OscillatorSnapshot | null>(null);
-  const [clipboardStatus, setClipboardStatus] = useState('');
+  const [oscillatorActionStatus, setOscillatorActionStatus] = useState('');
   function applyOscillatorSnapshot({oscillator, modulations}: OscillatorSnapshot) {
     const engine = controller.current?.layers[activeLayer];
     engine?.updateOscillator({...oscillator,
@@ -294,18 +295,27 @@ export function App() {
       applyOscillatorSnapshot(randomizeOscillatorSettings(oscillator, modulations, mode));
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot randomize oscillator.'); }
   }
+  function loadBuiltInOscillatorPreset(presetId: string, oscillator: OscillatorSettings, number: number) {
+    const preset = builtInOscillatorPresets.find(item => item.id === presetId);
+    if (!preset) return;
+    try {
+      applyOscillatorSnapshot(createBuiltInOscillatorSnapshot(preset.id, oscillator));
+      setOscillatorActionStatus(`${preset.name} loaded into Drone ${activeLayer} · Oscillator ${number}`);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot load oscillator preset.'); }
+  }
+
   function copyOscillator(oscillator: OscillatorSettings, number: number) {
     setOscillatorClipboard({
       oscillator,
       modulations: lowFrequencyOscillatorSettings.filter(item => item.targetOscillatorId === oscillator.id)
     });
-    setClipboardStatus(`Drone ${activeLayer} · Oscillator ${number} copied`);
+    setOscillatorActionStatus(`Drone ${activeLayer} · Oscillator ${number} copied`);
   }
   function pasteOscillator(oscillator: OscillatorSettings, number: number) {
     if (!oscillatorClipboard) return;
     try {
       applyOscillatorSnapshot(retargetOscillatorSnapshot(oscillatorClipboard, oscillator));
-      setClipboardStatus(`Drone ${activeLayer} · Oscillator ${number} pasted`);
+      setOscillatorActionStatus(`Drone ${activeLayer} · Oscillator ${number} pasted`);
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot paste oscillator settings.'); }
   }
   function updateDelay(next: DelaySettings) {
@@ -359,7 +369,7 @@ export function App() {
       disabled={!delaySettings.enabled} value={delaySettings.feedback} onChange={value => updateDelay({...delaySettings,feedback:value})}/><NumericSlider label="WET MIX" unit="%" displayFactor={100} min={0} max={1} step={0.01}
       disabled={!delaySettings.enabled} value={delaySettings.mix} onChange={value => updateDelay({...delaySettings,mix:value})}/></div><p>Echo repeats the combined drone. Start with low feedback and mix.</p></section>
     <section className="preset-library"><h2>PRESET LIBRARY</h2><div className="preset-actions"><input aria-label="Preset name" placeholder="Preset name" maxLength={120} value={presetName} onChange={event => setPresetName(event.target.value)}/><button type="button" onClick={() => void saveCurrentPreset(false)}>SAVE PRESET</button><button type="button" onClick={() => void saveCurrentPreset(true)}>SAVE SNAPSHOT</button><button type="button" onClick={() => importInput.current?.click()}>IMPORT JSON</button><input ref={importInput} type="file" accept=".json,application/json" hidden onChange={event => { const file = event.target.files?.[0]; if (file) void handlePresetImport(file); event.target.value = ''; }}/></div><div className="preset-morph"><div className="preset-morph-heading"><h3>PRESET MORPH</h3><label className="preset-morph-toggle"><input type="checkbox" checked={morphEnabled} onChange={event => setMorphEnabled(event.target.checked)}/> ENABLE MORPH</label></div><fieldset className="preset-morph-content" disabled={!morphEnabled}><div className="preset-morph-selectors"><label>PRESET A<select aria-label="Morph preset A" value={morphStartId} onChange={event => { setMorphStartId(event.target.value); setMorphPosition(0); }}><option value="">Select preset A</option>{presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></label><label>PRESET B<select aria-label="Morph preset B" value={morphEndId} onChange={event => { setMorphEndId(event.target.value); setMorphPosition(0); }}><option value="">Select preset B</option>{presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></label></div><NumericSlider label="MORPH POSITION" className="preset-morph-slider" unit="%" displayFactor={100} min={0} max={1} step={0.01}
-      value={morphPosition} disabled={!morphEnabled || !morphStartId || !morphEndId || morphStartId === morphEndId || !presets.some(preset => preset.id === morphStartId) || !presets.some(preset => preset.id === morphEndId)} onChange={value => updateMorphPosition(value)}/><p>Continuous parameters interpolate; waveform and ON/OFF switch at 50%. Moving the slider changes the current sound, not saved presets. Disabling morph keeps the current sound.</p></fieldset></div><div className="preset-list">{presets.length === 0 ? <p>No saved presets yet. Presets stay in this browser; export JSON for backup.</p> : presets.map(preset => <div className="preset-item" key={preset.id}><div><strong>{preset.name}</strong><small>{new Date(preset.createdAt).toLocaleString()}</small></div><div className="preset-item-actions"><button type="button" aria-label={`Load ${preset.name} into Drone ${activeLayer}`} onClick={() => loadPreset(preset)}>LOAD TO {activeLayer}</button><button type="button" onClick={() => exportPreset(preset)}>EXPORT</button><button type="button" onClick={() => void removePreset(preset)}>DELETE</button></div></div>)}</div></section><section className="oscillator-switchboard" aria-label="Oscillator activation" key={`switches-${activeLayer}`}><h2>OSCILLATOR SWITCHES</h2><div className="oscillator-switches">{settings.oscillators.map((oscillator,index) => <label key={oscillator.id} className={`oscillator-quick-switch ${oscillator.enabled ? "is-active" : ""}`}><span>OSC {String(index+1).padStart(2,"0")}</span><input type="checkbox" checked={oscillator.enabled} onChange={event => updateOscillator({...oscillator,enabled:event.target.checked})}/><span className="oscillator-switch-state">{oscillator.enabled ? "ON" : "OFF"}</span></label>)}</div></section>{error && <p role="alert" className="error">{error}</p>}<section className="oscillators" key={`oscillators-${activeLayer}`}><h2>DRONE {activeLayer} OSCILLATORS <span className="oscillator-clipboard-status" role="status">{clipboardStatus}</span></h2>{settings.oscillators.map((oscillator,index) => <article key={oscillator.id} className={`oscillator-panel ${oscillator.enabled ? "" : "muted"}`}><div className="oscillator-card-header">
+      value={morphPosition} disabled={!morphEnabled || !morphStartId || !morphEndId || morphStartId === morphEndId || !presets.some(preset => preset.id === morphStartId) || !presets.some(preset => preset.id === morphEndId)} onChange={value => updateMorphPosition(value)}/><p>Continuous parameters interpolate; waveform and ON/OFF switch at 50%. Moving the slider changes the current sound, not saved presets. Disabling morph keeps the current sound.</p></fieldset></div><div className="preset-list">{presets.length === 0 ? <p>No saved presets yet. Presets stay in this browser; export JSON for backup.</p> : presets.map(preset => <div className="preset-item" key={preset.id}><div><strong>{preset.name}</strong><small>{new Date(preset.createdAt).toLocaleString()}</small></div><div className="preset-item-actions"><button type="button" aria-label={`Load ${preset.name} into Drone ${activeLayer}`} onClick={() => loadPreset(preset)}>LOAD TO {activeLayer}</button><button type="button" onClick={() => exportPreset(preset)}>EXPORT</button><button type="button" onClick={() => void removePreset(preset)}>DELETE</button></div></div>)}</div></section><section className="oscillator-switchboard" aria-label="Oscillator activation" key={`switches-${activeLayer}`}><h2>OSCILLATOR SWITCHES</h2><div className="oscillator-switches">{settings.oscillators.map((oscillator,index) => <label key={oscillator.id} className={`oscillator-quick-switch ${oscillator.enabled ? "is-active" : ""}`}><span>OSC {String(index+1).padStart(2,"0")}</span><input type="checkbox" checked={oscillator.enabled} onChange={event => updateOscillator({...oscillator,enabled:event.target.checked})}/><span className="oscillator-switch-state">{oscillator.enabled ? "ON" : "OFF"}</span></label>)}</div></section>{error && <p role="alert" className="error">{error}</p>}<section className="oscillators" key={`oscillators-${activeLayer}`}><h2>DRONE {activeLayer} OSCILLATORS <span className="oscillator-action-status" role="status">{oscillatorActionStatus}</span></h2>{settings.oscillators.map((oscillator,index) => <article key={oscillator.id} className={`oscillator-panel ${oscillator.enabled ? "" : "muted"}`}><div className="oscillator-card-header">
       <button type="button" className="oscillator-panel-toggle"
         aria-expanded={Boolean(expandedOscillators[`${activeLayer}:${oscillator.id}`])}
         aria-controls={`${oscillator.id}-settings`}
@@ -369,7 +379,12 @@ export function App() {
         <span className="oscillator-summary-status">{oscillator.enabled ? 'ACTIVE' : 'OFF'}</span>
         <span className="oscillator-expand-hint" aria-hidden="true"/>
       </button>
-      <div className="oscillator-clipboard-actions">
+      <div className="oscillator-header-actions">
+        <select className="oscillator-preset-select" aria-label={`Built-in preset for oscillator ${index + 1}`}
+          value="" onChange={event => loadBuiltInOscillatorPreset(event.target.value, oscillator, index + 1)}>
+          <option value="" disabled>PRESETS</option>
+          {builtInOscillatorPresets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+        </select>
         <button type="button" className="randomize-button"
           onClick={() => copyOscillator(oscillator, index + 1)} aria-label={`Copy oscillator ${index + 1}`}>COPY</button>
         <button type="button" className="randomize-button" disabled={!oscillatorClipboard}

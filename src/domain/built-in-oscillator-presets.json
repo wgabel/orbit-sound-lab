@@ -1,0 +1,50 @@
+[
+  {
+    "id": "sine-sub",
+    "name": "Sine Sub",
+    "settings": {
+      "waveform": "sine",
+      "frequencyHz": 55,
+      "volume": 0.7,
+      "pan": 0,
+      "detuneCents": 0,
+      "filter": { "enabled": false, "cutoffHz": 2400, "resonance": 0.7 }
+    }
+  },
+  {
+    "id": "soft-triangle",
+    "name": "Soft Triangle",
+    "settings": {
+      "waveform": "triangle",
+      "frequencyHz": 110,
+      "volume": 0.6,
+      "pan": 0,
+      "detuneCents": 0,
+      "filter": { "enabled": true, "cutoffHz": 600, "resonance": 0.7 }
+    }
+  },
+  {
+    "id": "warm-saw",
+    "name": "Warm Saw",
+    "settings": {
+      "waveform": "sawtooth",
+      "frequencyHz": 110,
+      "volume": 0.5,
+      "pan": 0,
+      "detuneCents": 0,
+      "filter": { "enabled": true, "cutoffHz": 440, "resonance": 1.1 }
+    }
+  },
+  {
+    "id": "hollow-square",
+    "name": "Hollow Square",
+    "settings": {
+      "waveform": "square",
+      "frequencyHz": 220,
+      "volume": 0.35,
+      "pan": 0,
+      "detuneCents": 0,
+      "filter": { "enabled": true, "cutoffHz": 1400, "resonance": 0.8 }
+    }
+  }
+]
