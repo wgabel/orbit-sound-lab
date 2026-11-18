@@ -2,7 +2,6 @@
 
 .diagnostic{margin-top:30px;padding:20px;border:1px solid #35414c;border-radius:12px;background:#172029}.diagnostic a{color:#a6efab}.diagnostic h2{font-size:13px;letter-spacing:.12em;color:#a6efab}.diagnostic label{display:flex;gap:10px;align-items:center;letter-spacing:0}.diagnostic-track{height:16px;margin:18px 40px;background:#273442;border-radius:12px;display:flex;justify-content:center;align-items:center}.diagnostic-indicator{width:12px;height:12px;border-radius:50%;background:#a6efab;will-change:transform}.diagnostic p{font-size:12px;color:#9dabb6;line-height:1.5}
 
-.oscillator-lfo{border-top:1px solid #35414c;margin-top:12px;padding-top:18px}.oscillator-lfo .oscillator-title{margin-bottom:14px}.oscillator-lfo .oscillator-title strong{font-size:14px;letter-spacing:.1em}.oscillator-lfo input:disabled,.oscillator-lfo select:disabled{opacity:.4}
 
 .oscillator-filter{border-top:1px solid #35414c;margin-top:12px;padding-top:18px}.oscillator-filter .oscillator-title{margin-bottom:14px}.oscillator-filter .oscillator-title strong{font-size:14px;letter-spacing:.1em}.oscillator-filter input:disabled{opacity:.4}
 
@@ -54,7 +53,8 @@
 .oscillator-panel-toggle:focus-visible{outline:2px solid #a6efab;outline-offset:-3px}
 .oscillator-panel-toggle[aria-expanded="true"] .oscillator-expand-hint:after{transform:rotate(180deg)}
 .oscillator-always-visible{display:flex;flex-wrap:wrap;align-items:center;gap:16px;padding:0 22px 18px}
-.oscillator-mix-controls{flex:1 1 188px;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:end}
+.oscillator-volume-group{flex:1 1 100%;min-width:0}
+.oscillator-mix-controls{min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:end}
 .numeric-slider{min-width:0}
 .numeric-slider-header,.numeric-slider-actions{display:flex;align-items:center;gap:4px}
 .numeric-slider-header{justify-content:space-between;flex-wrap:wrap;min-height:26px}
@@ -68,7 +68,6 @@
 .oscillator-always-visible input[type=range]{margin:10px 0 0}
 .oscillator-randomize-actions{display:flex;flex-wrap:wrap;gap:8px}
 .oscillator-panel-content[hidden]{display:none}
-@media(max-width:420px){.oscillator-mix-controls{flex-basis:100%}}
 
 .preset-morph{margin-top:20px;padding:16px;border:1px solid #43594d;border-radius:8px;background:#101e21}
 .preset-morph h3{font-size:12px;letter-spacing:.14em;color:#a6efab;margin:0 0 14px}
@@ -190,3 +189,15 @@
 .pitch-lfo-cycle{display:flex;align-items:center;gap:5px;color:inherit;font-size:inherit;letter-spacing:normal}
 .pitch-lfo-cycle input{width:8ch;font-variant-numeric:tabular-nums}
 .pitch-lfo-cycle input:disabled{opacity:.55}
+
+
+.oscillator-lfo-disclosure{margin:0 0 14px;border:1px solid #35414c;border-radius:7px;background:#15202b}
+.oscillator-volume-group .oscillator-lfo-disclosure{margin:8px 0 0}
+.oscillator-lfo-disclosure summary{padding:7px 8px;color:#c7d1d8;font-size:12px;cursor:pointer}
+.oscillator-lfo-disclosure summary:focus-visible{outline:2px solid #77dcff;outline-offset:2px}
+.oscillator-lfo-state{float:right;color:#9caeba;font-size:10px;font-weight:700;line-height:17px}
+.oscillator-lfo-state[data-active=true]{color:#77dcff}
+.oscillator-lfo-disclosure .lfo-destination{display:grid;gap:8px;padding:8px;border-top:1px solid #35414c}
+.oscillator-lfo-disclosure input[type=range]{margin:7px 0 0}
+.oscillator-lfo-disclosure select{display:block;width:100%;margin-top:5px}
+.oscillator-lfo-disclosure input:disabled,.oscillator-lfo-disclosure select:disabled{opacity:.55}
