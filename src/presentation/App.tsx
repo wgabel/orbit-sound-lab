@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createDefaultDelaySettings } from '../domain/delay';
 import type { DelaySettings } from '../domain/delay';
 import type { SoundLabController } from '../application/audio-contracts';
+import { applyPitchOffset } from '../domain/modulation';
 import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
 import type { DroneMixSettings, OscillatorSettings } from '../domain/drone';
 import { DRONE_LAYER_IDS, createDefaultDroneLayer } from '../domain/drone-layers';
@@ -101,7 +102,7 @@ export function App() {
       setError('');
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot update harmony.'); }
   }
-  const [expandedOscillators, setExpandedOscillators] = useState<Readonly<Record<string, boolean>>>({});
+  const [expandedOscillators, setExpandedOscillators] = useState<Partial<Record<DroneLayerId, string>>>({});
   const [delaySettings, setDelaySettings] = useState<DelaySettings>(createDefaultDelaySettings);
   const [error, setError] = useState('');
   const [presets, setPresets] = useState<SoundPreset[]>([]);
@@ -339,33 +340,132 @@ export function App() {
     controller.current?.layers[id].setGain(gain);
     setLayers(previous => ({...previous, [id]: {...previous[id], drone: {...previous[id].drone, gain}}}));
   }
-  return <main className="instrument"><header><span className="eyebrow">ORBIT / SOUND LAB</span><h1>DRONE ENGINE</h1></header><section className="master"><button className={playing ? 'playing' : ''} disabled={playbackTransition} onClick={() => void togglePlayback()}>{playing ? '■ STOP ALL DRONES' : '▶ START DRONES'}</button><NumericSlider label="MASTER LEVEL" unit="%" displayFactor={100} min={0} max={1} step={0.01}
-      value={masterGain} onChange={gain => {controller.current?.setMasterGain(gain); setMasterGain(gain);}}/></section>
-    <PerformancePad onChange={position => {
-      performancePosition.current = position;
-      controller.current?.setPerformancePosition(position);
-    }}/>
-    <section className="drone-layers" aria-label="Drone layers">
-      {DRONE_LAYER_IDS.map(id => <div key={id} className={activeLayer === id ? 'drone-layer selected' : 'drone-layer'}>
-        <div className="drone-layer-header">
-          <button type="button" aria-pressed={activeLayer === id} onClick={() => setActiveLayer(id)}>DRONE {id}</button>
-          <label className="switch">
-            <input type="checkbox" aria-label={`Enable Drone ${id}`} disabled={playbackTransition || holdModes[id]} checked={layers[id].enabled && !holdModes[id]}
-              onChange={event => updateLayerEnabled(id, event.target.checked)}/> {layers[id].enabled && !holdModes[id] ? 'ON' : 'OFF'}
-          </label>
-        </div>
-        <NumericSlider label={`DRONE ${id} LEVEL`} unit="%" displayFactor={100} min={0} max={0.4} step={0.01}
-          value={layers[id].drone.gain} onChange={gain => updateLayerGain(id, gain)}/>
-        <label className="switch drone-key-mode">
-          <input type="checkbox" aria-label={`Key mode for Drone ${id}`} checked={holdModes[id]}
-            onChange={event => updateHoldMode(id, event.target.checked)}/> KEY MODE
+  return <main className="instrument">
+    <section className="master" aria-label="Playback">
+      <h1>Orbit <span>Sound Lab</span></h1>
+      <button type="button" className={playing ? 'playing' : ''} disabled={playbackTransition}
+        onClick={() => void togglePlayback()}>{playing ? '■ Stop drones' : '▶ Start drones'}</button>
+      <NumericSlider label="MASTER LEVEL" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+        value={masterGain} onChange={gain => {controller.current?.setMasterGain(gain); setMasterGain(gain);}}/>
+    </section>
+    {error && <p role="alert" className="error">{error}</p>}
+    <section className="drone-picker" aria-label="Drone layers">
+      {DRONE_LAYER_IDS.map(id => <div key={id} className="drone-layer-choice" data-layer={id}>
+        <button type="button" aria-pressed={activeLayer === id} onClick={() => setActiveLayer(id)}>Drone {id}</button>
+        <label className="rack-switch">
+          <input type="checkbox" aria-label={`Enable Drone ${id}`} disabled={playbackTransition || holdModes[id]}
+            checked={layers[id].enabled && !holdModes[id]} onChange={event => updateLayerEnabled(id, event.target.checked)}/>
+          <span aria-hidden="true">{holdModes[id] ? 'Key' : layers[id].enabled ? 'On' : 'Off'}</span>
         </label>
-        <DroneKeyControls id={id} envelope={layers[id].drone.envelope} disabled={playbackTransition}
-          onEnvelopeChange={envelope => updateLayerEnvelope(id, envelope)}
-          onPress={() => void pressLayerKey(id)}
-          onRelease={() => controller.current?.releaseLayerKey(id)}
-          onBend={cents => controller.current?.setLayerBend(id, cents)}/>
       </div>)}
+    </section>
+    <section className="oscillators" data-layer={activeLayer} aria-labelledby="oscillator-rack-title">
+      <div className="oscillator-rack-heading">
+        <h2 id="oscillator-rack-title">Drone {activeLayer} oscillators</h2>
+        <span className="oscillator-action-status" role="status">{oscillatorActionStatus}</span>
+      </div>
+      {settings.oscillators.map((oscillator, index) => {
+        const expanded = expandedOscillators[activeLayer] === oscillator.id;
+        const settingsId = `${activeLayer}-${oscillator.id}-settings`;
+        const oscillatorNumber = index + 1;
+        const tunedFrequency = applyPitchOffset(getEffectiveOscillatorFrequency(harmony, oscillator.frequencyHz, index),
+          oscillator.detuneCents);
+        return <article key={settingsId} className="oscillator-panel" aria-label={`Oscillator ${oscillatorNumber}`}>
+          <div className="oscillator-rack-row">
+            <label className="rack-switch oscillator-rack-switch">
+              <input type="checkbox" aria-label={`Enable oscillator ${oscillatorNumber}`} checked={oscillator.enabled}
+                onChange={event => updateOscillator({...oscillator, enabled: event.target.checked})}/>
+              <span aria-hidden="true">{oscillator.enabled ? 'On' : 'Off'}</span>
+            </label>
+            <div className="oscillator-rack-identity">
+              <strong>OSC {String(oscillatorNumber).padStart(2, '0')}</strong>
+              <span title="Tuned pitch before modulation">{Number(tunedFrequency.toFixed(1))} Hz</span>
+            </div>
+            <OscillatorWaveform oscillatorId={oscillator.id} playing={playing && (layerEnabled || holdModes[activeLayer])}
+              enabled={oscillator.enabled} getAnalyser={getWaveformAnalyser}/>
+            <div className="oscillator-rack-volume">
+              {renderOscillatorModulationSlider(oscillator, index, 'volume')}
+            </div>
+            <button type="button" className="oscillator-panel-toggle" aria-expanded={expanded} aria-controls={settingsId}
+              aria-label={`${expanded ? 'Hide' : 'Show'} settings for oscillator ${oscillatorNumber}`}
+              onClick={() => setExpandedOscillators(previous => ({...previous, [activeLayer]: expanded ? undefined : oscillator.id}))}>
+              <span className="oscillator-expand-hint">{expanded ? 'Hide' : 'Settings'}</span>
+            </button>
+          </div>
+          <div id={settingsId} className="oscillator-controls" hidden={!expanded}>
+            <div className="oscillator-editor-actions">
+              <select className="oscillator-preset-select" aria-label={`Built-in preset for oscillator ${oscillatorNumber}`}
+                value="" onChange={event => loadBuiltInOscillatorPreset(event.target.value, oscillator, oscillatorNumber)}>
+                <option value="" disabled>PRESETS</option>
+                {builtInOscillatorPresets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+              </select>
+              <button type="button" className="randomize-button"
+                onClick={() => copyOscillator(oscillator, oscillatorNumber)} aria-label={`Copy oscillator ${oscillatorNumber}`}>COPY</button>
+              <button type="button" className="randomize-button" disabled={!oscillatorClipboard}
+                onClick={() => pasteOscillator(oscillator, oscillatorNumber)} aria-label={`Paste into oscillator ${oscillatorNumber}`}>PASTE</button>
+              <button type="button" className="randomize-button" onClick={() => randomizeOscillator(oscillator, 'random')}
+                aria-label={`Randomize settings for oscillator ${oscillatorNumber}`}>⤨ RANDOM</button>
+              <button type="button" className="randomize-button" onClick={() => randomizeOscillator(oscillator, 'variant')}
+                aria-label={`Generate variant for oscillator ${oscillatorNumber}`} title="Vary each setting by up to 5% of its slider range">VARIANT</button>
+            </div>
+            <OscillatorControlSection title="Volume & Pan">
+              <OscillatorPanControl oscillatorId={oscillator.id} oscillatorNumber={oscillatorNumber} pan={oscillator.pan}
+                onChange={pan => updateOscillator({...oscillator, pan})}/>
+              {renderOscillatorLfo(oscillator.id, 'amplitude')}
+            </OscillatorControlSection>
+            <OscillatorControlSection title="Frequency & Waveform">
+              {renderOscillatorModulationSlider(oscillator, index, 'frequency')}
+              {renderOscillatorLfo(oscillator.id, 'pitch')}
+              <NumericSlider label="DETUNE" unit="cents" min={-100} max={100} step={1} value={oscillator.detuneCents}
+                onChange={detuneCents => updateOscillator({...oscillator, detuneCents})}/>
+              <label className="oscillator-waveform-control">WAVEFORM
+                <select value={oscillator.waveform}
+                  onChange={event => updateOscillator({...oscillator, waveform: event.target.value as OscillatorSettings['waveform']})}>
+                  <option value="sine">Sine (diagnostic)</option>
+                  <option value="triangle">Triangle</option>
+                  <option value="sawtooth">Sawtooth</option>
+                  <option value="square">Square</option>
+                </select>
+              </label>
+            </OscillatorControlSection>
+            <OscillatorControlSection title="Low-pass filter" action={<label className="switch">
+              <input type="checkbox" checked={oscillator.filter.enabled}
+                onChange={event => updateOscillator({...oscillator, filter: {...oscillator.filter, enabled: event.target.checked}})}/>
+              {' '}ACTIVE
+            </label>}>
+              {renderOscillatorModulationSlider(oscillator, index, 'cutoff')}
+              {renderOscillatorLfo(oscillator.id, 'filterCutoff')}
+              <NumericSlider label="RESONANCE" min={0.1} max={12} step={0.1}
+                disabled={!oscillator.filter.enabled} value={oscillator.filter.resonance}
+                onChange={resonance => updateOscillator({...oscillator, filter: {...oscillator.filter, resonance}})}/>
+            </OscillatorControlSection>
+          </div>
+        </article>;
+      })}
+    </section>
+    <section className="performance-controls" aria-labelledby="performance-controls-title">
+      <h2 id="performance-controls-title">Performance</h2>
+      <PerformancePad onChange={position => {
+        performancePosition.current = position;
+        controller.current?.setPerformancePosition(position);
+      }}/>
+      <div className="drone-layers">
+        {DRONE_LAYER_IDS.map(id => <div key={id} className="drone-layer" data-layer={id}>
+            <h3>Drone {id}</h3>
+            <NumericSlider label={`DRONE ${id} LEVEL`} unit="%" displayFactor={100} min={0} max={0.4} step={0.01}
+              value={layers[id].drone.gain} onChange={gain => updateLayerGain(id, gain)}/>
+            <label className="switch drone-key-mode">
+              <input type="checkbox" aria-label={`Key mode for Drone ${id}`} checked={holdModes[id]}
+                onChange={event => updateHoldMode(id, event.target.checked)}/> KEY MODE
+            </label>
+            <DroneKeyControls id={id} envelope={layers[id].drone.envelope} disabled={playbackTransition}
+              onEnvelopeChange={envelope => updateLayerEnvelope(id, envelope)}
+              onPress={() => void pressLayerKey(id)}
+              onRelease={() => controller.current?.releaseLayerKey(id)}
+              onBend={cents => controller.current?.setLayerBend(id, cents)}/>
+
+      </div>)}
+      </div>
     </section>
     <DroneMixControls key={activeLayer} layerId={activeLayer} settings={settings.mix} onChange={updateDroneMix}/>
     <section className="harmony-engine" key={`harmony-${activeLayer}`}><h2>HARMONY ENGINE</h2><div className="harmony-modes">{(['free','natural','piano'] as const).map(mode => <button type="button" key={mode} className={harmony.mode === mode ? 'selected' : ''} aria-pressed={harmony.mode === mode} onClick={() => updateHarmony({...harmony,mode})}>{mode.toUpperCase()}</button>)}</div><div className="harmony-controls"><NumericSlider label="ROOT FREQUENCY" unit="Hz" min={55} max={220} step={1}
@@ -376,79 +476,6 @@ export function App() {
       disabled={!delaySettings.enabled} value={delaySettings.feedback} onChange={value => updateDelay({...delaySettings,feedback:value})}/><NumericSlider label="WET MIX" unit="%" displayFactor={100} min={0} max={1} step={0.01}
       disabled={!delaySettings.enabled} value={delaySettings.mix} onChange={value => updateDelay({...delaySettings,mix:value})}/></div><p>Echo repeats the combined drone. Start with low feedback and mix.</p></section>
     <section className="preset-library"><h2>PRESET LIBRARY</h2><div className="preset-actions"><input aria-label="Preset name" placeholder="Preset name" maxLength={120} value={presetName} onChange={event => setPresetName(event.target.value)}/><button type="button" onClick={() => void saveCurrentPreset(false)}>SAVE PRESET</button><button type="button" onClick={() => void saveCurrentPreset(true)}>SAVE SNAPSHOT</button><button type="button" onClick={() => importInput.current?.click()}>IMPORT JSON</button><input ref={importInput} type="file" accept=".json,application/json" hidden onChange={event => { const file = event.target.files?.[0]; if (file) void handlePresetImport(file); event.target.value = ''; }}/></div><div className="preset-morph"><div className="preset-morph-heading"><h3>PRESET MORPH</h3><label className="preset-morph-toggle"><input type="checkbox" checked={morphEnabled} onChange={event => setMorphEnabled(event.target.checked)}/> ENABLE MORPH</label></div><fieldset className="preset-morph-content" disabled={!morphEnabled}><div className="preset-morph-selectors"><label>PRESET A<select aria-label="Morph preset A" value={morphStartId} onChange={event => { setMorphStartId(event.target.value); setMorphPosition(0); }}><option value="">Select preset A</option>{presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></label><label>PRESET B<select aria-label="Morph preset B" value={morphEndId} onChange={event => { setMorphEndId(event.target.value); setMorphPosition(0); }}><option value="">Select preset B</option>{presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></label></div><NumericSlider label="MORPH POSITION" className="preset-morph-slider" unit="%" displayFactor={100} min={0} max={1} step={0.01}
-      value={morphPosition} disabled={!morphEnabled || !morphStartId || !morphEndId || morphStartId === morphEndId || !presets.some(preset => preset.id === morphStartId) || !presets.some(preset => preset.id === morphEndId)} onChange={value => updateMorphPosition(value)}/><p>Continuous parameters interpolate; waveform and ON/OFF switch at 50%. Moving the slider changes the current sound, not saved presets. Disabling morph keeps the current sound.</p></fieldset></div><div className="preset-list">{presets.length === 0 ? <p>No saved presets yet. Presets stay in this browser; export JSON for backup.</p> : presets.map(preset => <div className="preset-item" key={preset.id}><div><strong>{preset.name}</strong><small>{new Date(preset.createdAt).toLocaleString()}</small></div><div className="preset-item-actions"><button type="button" aria-label={`Load ${preset.name} into Drone ${activeLayer}`} onClick={() => loadPreset(preset)}>LOAD TO {activeLayer}</button><button type="button" onClick={() => exportPreset(preset)}>EXPORT</button><button type="button" onClick={() => void removePreset(preset)}>DELETE</button></div></div>)}</div></section><section className="oscillator-switchboard" aria-label="Oscillator activation" key={`switches-${activeLayer}`}><h2>OSCILLATOR SWITCHES</h2><div className="oscillator-switches">{settings.oscillators.map((oscillator,index) => <label key={oscillator.id} className={`oscillator-quick-switch ${oscillator.enabled ? "is-active" : ""}`}><span>OSC {String(index+1).padStart(2,"0")}</span><input type="checkbox" checked={oscillator.enabled} onChange={event => updateOscillator({...oscillator,enabled:event.target.checked})}/><span className="oscillator-switch-state">{oscillator.enabled ? "ON" : "OFF"}</span></label>)}</div></section>{error && <p role="alert" className="error">{error}</p>}<section className="oscillators" key={`oscillators-${activeLayer}`}><h2>DRONE {activeLayer} OSCILLATORS <span className="oscillator-action-status" role="status">{oscillatorActionStatus}</span></h2>{settings.oscillators.map((oscillator, index) => {
-      const expansionKey = `${activeLayer}:${oscillator.id}`;
-      const expanded = Boolean(expandedOscillators[expansionKey]);
-      return <article key={oscillator.id} className={`oscillator-panel ${oscillator.enabled ? "" : "muted"}`}><div className="oscillator-card-header">
-      <button type="button" className="oscillator-panel-toggle"
-        aria-expanded={expanded}
-        aria-controls={`${oscillator.id}-settings`}
-        onClick={() => setExpandedOscillators(previous => ({...previous,
-          [expansionKey]: !previous[expansionKey]}))}>
-        <strong>OSC {String(index + 1).padStart(2, '0')}</strong>
-        <span className="oscillator-summary-status">{oscillator.enabled ? 'ACTIVE' : 'OFF'}</span>
-        <span className="oscillator-expand-hint">
-          {expanded ? 'Hide settings' : 'Show settings'}
-        </span>
-      </button>
-      <div className="oscillator-header-actions">
-        <select className="oscillator-preset-select" aria-label={`Built-in preset for oscillator ${index + 1}`}
-          value="" onChange={event => loadBuiltInOscillatorPreset(event.target.value, oscillator, index + 1)}>
-          <option value="" disabled>PRESETS</option>
-          {builtInOscillatorPresets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
-        </select>
-        <button type="button" className="randomize-button"
-          onClick={() => copyOscillator(oscillator, index + 1)} aria-label={`Copy oscillator ${index + 1}`}>COPY</button>
-        <button type="button" className="randomize-button" disabled={!oscillatorClipboard}
-          onClick={() => pasteOscillator(oscillator, index + 1)} aria-label={`Paste into oscillator ${index + 1}`}>PASTE</button>
-      </div>
-    </div>
-      <OscillatorWaveform oscillatorId={oscillator.id} playing={playing && (layerEnabled || holdModes[activeLayer])}
-        enabled={oscillator.enabled} getAnalyser={getWaveformAnalyser}/>
-      <div className="oscillator-controls">
-        <div className="oscillator-randomize-actions">
-          <button type="button" className="randomize-button" onClick={() => randomizeOscillator(oscillator, 'random')}
-            aria-label={`Randomize settings for oscillator ${index + 1}`}>⤨ RANDOM</button>
-          <button type="button" className="randomize-button" onClick={() => randomizeOscillator(oscillator, 'variant')}
-            aria-label={`Generate variant for oscillator ${index + 1}`} title="Vary each setting by up to 5% of its slider range">VARIANT</button>
-        </div>
-        <OscillatorControlSection title="Volume & Pan">
-          <div className="oscillator-mix-controls">
-            {renderOscillatorModulationSlider(oscillator, index, 'volume')}
-            <OscillatorPanControl oscillatorId={oscillator.id} oscillatorNumber={index + 1} pan={oscillator.pan}
-              onChange={pan => updateOscillator({...oscillator, pan})}/>
-          </div>
-          {renderOscillatorLfo(oscillator.id, 'amplitude')}
-        </OscillatorControlSection>
-        <div id={`${oscillator.id}-settings`} className="oscillator-panel-content" hidden={!expanded}>
-          <OscillatorControlSection title="Frequency & Waveform">
-            {renderOscillatorModulationSlider(oscillator, index, 'frequency')}
-            {renderOscillatorLfo(oscillator.id, 'pitch')}
-            <NumericSlider label="DETUNE" unit="cents" min={-100} max={100} step={1} value={oscillator.detuneCents}
-              onChange={detuneCents => updateOscillator({...oscillator, detuneCents})}/>
-            <label className="oscillator-waveform-control">WAVEFORM
-              <select value={oscillator.waveform}
-                onChange={event => updateOscillator({...oscillator, waveform: event.target.value as OscillatorSettings['waveform']})}>
-                <option value="sine">Sine (diagnostic)</option>
-                <option value="triangle">Triangle</option>
-                <option value="sawtooth">Sawtooth</option>
-                <option value="square">Square</option>
-              </select>
-            </label>
-          </OscillatorControlSection>
-          <OscillatorControlSection title="Low-pass filter" action={<label className="switch">
-            <input type="checkbox" checked={oscillator.filter.enabled}
-              onChange={event => updateOscillator({...oscillator, filter: {...oscillator.filter, enabled: event.target.checked}})}/>
-            {' '}ACTIVE
-          </label>}>
-            {renderOscillatorModulationSlider(oscillator, index, 'cutoff')}
-            {renderOscillatorLfo(oscillator.id, 'filterCutoff')}
-            <NumericSlider label="RESONANCE" min={0.1} max={12} step={0.1}
-              disabled={!oscillator.filter.enabled} value={oscillator.filter.resonance}
-              onChange={resonance => updateOscillator({...oscillator, filter: {...oscillator.filter, resonance}})}/>
-          </OscillatorControlSection>
-        </div>
-      </div>
-    </article>;
-    })}</section><section className="diagnostic"><h2>ANDROID AUDIO DIAGNOSTIC</h2><label><input type="checkbox" checked={renderingDiagnosticEnabled} onChange={event => setRenderingDiagnosticEnabled(event.target.checked)}/> Keep rendering active while playing (experiment)</label><div className="diagnostic-track"><div className="diagnostic-indicator" ref={renderingIndicator}/></div><p>Compare 30 seconds with this OFF and ON without touching the screen. This intentionally increases rendering work and battery use; it is not a permanent audio fix.</p><a href="./audio-diagnostic.html">Open standalone audio output test</a></section><footer>WEB AUDIO ENGINE · SOLAR 42 INSPIRED · USE LOW VOLUME</footer></main>;
+      value={morphPosition} disabled={!morphEnabled || !morphStartId || !morphEndId || morphStartId === morphEndId || !presets.some(preset => preset.id === morphStartId) || !presets.some(preset => preset.id === morphEndId)} onChange={value => updateMorphPosition(value)}/><p>Continuous parameters interpolate; waveform and ON/OFF switch at 50%. Moving the slider changes the current sound, not saved presets. Disabling morph keeps the current sound.</p></fieldset></div><div className="preset-list">{presets.length === 0 ? <p>No saved presets yet. Presets stay in this browser; export JSON for backup.</p> : presets.map(preset => <div className="preset-item" key={preset.id}><div><strong>{preset.name}</strong><small>{new Date(preset.createdAt).toLocaleString()}</small></div><div className="preset-item-actions"><button type="button" aria-label={`Load ${preset.name} into Drone ${activeLayer}`} onClick={() => loadPreset(preset)}>LOAD TO {activeLayer}</button><button type="button" onClick={() => exportPreset(preset)}>EXPORT</button><button type="button" onClick={() => void removePreset(preset)}>DELETE</button></div></div>)}</div></section>
+    <section className="diagnostic"><h2>ANDROID AUDIO DIAGNOSTIC</h2><label><input type="checkbox" checked={renderingDiagnosticEnabled} onChange={event => setRenderingDiagnosticEnabled(event.target.checked)}/> Keep rendering active while playing (experiment)</label><div className="diagnostic-track"><div className="diagnostic-indicator" ref={renderingIndicator}/></div><p>Compare 30 seconds with this OFF and ON without touching the screen. This intentionally increases rendering work and battery use; it is not a permanent audio fix.</p><a href="./audio-diagnostic.html">Open standalone audio output test</a></section><footer>WEB AUDIO ENGINE · SOLAR 42 INSPIRED · USE LOW VOLUME</footer></main>;
 }
