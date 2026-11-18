@@ -12,7 +12,7 @@ describe('LFO destination routing', () => {
     const pitch = {} as AudioParam;
     const cutoffA = {} as AudioParam;
     const cutoffB = {} as AudioParam;
-    const voice = {output: {} as AudioNode, start: vi.fn(), dispose: vi.fn(), getDetuneParameter: vi.fn(() => pitch), getFilterCutoffParameters: vi.fn(() => [cutoffA, cutoffB])} as unknown as DroneVoice;
+    const voice = {output: {} as AudioNode, start: vi.fn(), stop: vi.fn().mockResolvedValue(undefined), dispose: vi.fn(), getDetuneParameter: vi.fn(() => pitch), getFilterCutoffParameters: vi.fn(() => [cutoffA, cutoffB])} as unknown as DroneVoice;
     const graph = {register: vi.fn(), connect: vi.fn(), unregister: vi.fn(), dispose: vi.fn()} as unknown as AudioGraph;
     const matrix = {connect: vi.fn(), disconnect: vi.fn(), dispose: vi.fn()} as unknown as ModulationMatrix;
     const source = () => ({output: {} as AudioNode, start: vi.fn(), update: vi.fn(), dispose: vi.fn()});
@@ -29,7 +29,7 @@ describe('LFO destination routing', () => {
     expect(matrix.disconnect).not.toHaveBeenCalled();
     expect(matrix.connect).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({parameter: pitch}));
     expect(matrix.connect).toHaveBeenCalledTimes(3);
-    controller.stop();
+    await controller.stop();
     expect(matrix.disconnect).toHaveBeenCalledTimes(3);
   });
   it('rejects invalid destinations and depth', () => {

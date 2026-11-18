@@ -140,6 +140,11 @@ Treat this as a software-inspired design, not a claim of exact SOLAR 42 internal
 - Document architectural decisions that are non-obvious, especially audio routing, scheduling, dependency ownership and state synchronization.
 - Do not claim an implementation is finished until it is committed and verification status is communicated.
 
+## Automatic playback fades
+
+- Use a fixed 20 ms gain ramp when starting or toggling an oscillator and when stopping the drone. Keep the voice routed until its sources end so Stop can finish the ramp.
+- Preserve legacy preset fade fields for compatibility and for possible use by a future layer or sequencer. They are no longer exposed as oscillator controls or applied to manual playback.
+
 ## Per-oscillator stereo panorama
 
 - Place each native stereo panner after its oscillator's filter, amplitude modulation and fade, before the drone mix. Preserve the pre-pan analyser tap so hard panning does not change the scope's level.

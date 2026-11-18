@@ -26,10 +26,6 @@ export function randomizeOscillatorSettings(
         enabled: Math.random() < 0.5,
         cutoffHz: randomStep(20, 20000, 1),
         resonance: randomStep(0.1, 12, 0.1)
-      },
-      fade: {
-        fadeInSeconds: randomStep(0.1, 30, 0.1),
-        fadeOutSeconds: randomStep(0.1, 30, 0.1)
       }
     },
     modulation: {
