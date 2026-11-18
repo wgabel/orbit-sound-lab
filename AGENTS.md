@@ -153,6 +153,7 @@ Treat this as a software-inspired design, not a claim of exact SOLAR 42 internal
 ## Click prevention
 
 - Crossfade carrier waveform changes over the existing 20 ms playback ramp. Reuse a stable detune parameter so pitch LFOs remain connected through the change.
+- A smooth output peak limit follows the compressor and only affects samples above 0.85 full scale, with a 0.97 sample ceiling. Keep the ordinary signal and oscillator shape intact below the knee.
 - Bound normalized LFO samples and smooth their edges before feeding audio parameters. Cap effective cutoff depth symmetrically as the base cutoff changes, keeping sweeps away from DC. Presets retain the requested depth.
 
 ## Automatic playback fades
