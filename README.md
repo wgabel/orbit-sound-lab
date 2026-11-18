@@ -23,5 +23,7 @@ Use the round wave button beside an oscillator’s frequency, volume or low-pass
 
 **Variant** varies oscillator and modulation values by up to 5% of each slider’s full range in either direction, within its limits.
 
+The Pitch LFO shows the duration of one cycle beside Rate. Frequency follows the live pitch, including detune and any oscillator-to-oscillator frequency route. The editable number still sets the base frequency, and the live readout makes small vibrato excursions visible.
+
 ## Architecture
 Domain models in `src/domain`; orchestration and ports in `src/application`; Web Audio implementations and factory in `src/infrastructure/audio`; dependency assembly in `src/composition`; React UI in `src/presentation`. See `AGENTS.md`.

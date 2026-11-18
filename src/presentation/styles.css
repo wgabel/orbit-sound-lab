@@ -183,3 +183,6 @@
 .numeric-slider-modulated::-moz-range-thumb{width:14px;height:14px;border:1px solid #172029;border-radius:50%;background:#a6efab}
 .numeric-slider-modulated:disabled{opacity:.55}
 .numeric-slider-modulation-range{display:block;color:#a5eaff;font-size:11px;margin-bottom:8px}
+
+.numeric-slider-live-value,.pitch-lfo-detail{display:block;color:#a5eaff;font-size:11px;margin:0 0 7px}
+.numeric-slider-live-value{font-variant-numeric:tabular-nums}

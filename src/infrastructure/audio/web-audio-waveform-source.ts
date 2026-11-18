@@ -1,4 +1,5 @@
 import type { OscillatorSettings, OscillatorWaveform } from '../../domain/drone';
+import { applyPitchOffset } from '../../domain/modulation';
 import { PLAYBACK_FADE_SECONDS } from './web-audio-fade';
 
 interface OscillatorBranch {
@@ -14,6 +15,7 @@ export class WebAudioWaveformSource {
   readonly frequency: AudioParam;
   private readonly sharedFrequency: ConstantSourceNode;
   private readonly sharedDetune: ConstantSourceNode;
+  private pitchPreview?: {frequency: AnalyserNode; detune: AnalyserNode; samples: Float32Array<ArrayBuffer>};
   private readonly branches = new Set<OscillatorBranch>();
   private current: OscillatorBranch;
   private started = false;
@@ -31,6 +33,26 @@ export class WebAudioWaveformSource {
   }
 
   get activeOscillator(): OscillatorNode { return this.current.oscillator; }
+
+  readEffectiveFrequency(): number | null {
+    if (!this.started || this.stopped || this.context.state !== 'running') return null;
+    if (!this.pitchPreview) {
+      const frequency = this.context.createAnalyser();
+      const detune = this.context.createAnalyser();
+      const samples = new Float32Array(32);
+      frequency.fftSize = detune.fftSize = samples.length;
+      this.sharedFrequency.connect(frequency);
+      this.sharedDetune.connect(detune);
+      this.pitchPreview = {frequency, detune, samples};
+      return null;
+    }
+    const {frequency, detune, samples} = this.pitchPreview;
+    frequency.getFloatTimeDomainData(samples);
+    const frequencyHz = samples[samples.length - 1];
+    if (frequencyHz <= 0) return null;
+    detune.getFloatTimeDomainData(samples);
+    return Math.min(this.context.sampleRate / 2, applyPitchOffset(frequencyHz, samples[samples.length - 1]));
+  }
 
   start(now: number): void {
     this.current.oscillator.start(now);

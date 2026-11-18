@@ -35,3 +35,7 @@ export function limitFilterModulationDepth(depthHz: number, cutoffHz: number, sa
   const {minimum, maximum} = getFilterModulationLimits(cutoffHz, sampleRate);
   return Math.max(0, Math.min(depthHz, cutoffHz - minimum, maximum - cutoffHz));
 }
+
+export function applyPitchOffset(frequencyHz: number, cents: number): number {
+  return frequencyHz * 2 ** (cents / 1200);
+}
