@@ -37,6 +37,10 @@ export class DroneController implements SynthesizerController {
 
   get sampleRate(): number { return this.context.sampleRate; }
   get isPlaying(): boolean { return this.playing; }
+  readOscillatorFrequency(oscillatorId: string): number | null {
+    return this.playing ? this.voice?.readOscillatorFrequency?.(oscillatorId) ?? null : null;
+  }
+
   getWaveformAnalyser(oscillatorId: string): AnalyserNode | null {
     return this.voice?.getWaveformAnalyser?.(oscillatorId) ?? null;
   }

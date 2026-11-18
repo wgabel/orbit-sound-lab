@@ -1,4 +1,5 @@
 import { useCallback, useId, useRef } from 'react';
+import { applyPitchOffset } from '../domain/modulation';
 import type { OscillatorSettings } from '../domain/drone';
 import {
   getOscillatorModulationRange, getOscillatorSliderSpan, OSCILLATOR_MODULATION_PARAMETERS
@@ -14,6 +15,8 @@ interface OscillatorModulationSliderProps {
   readonly routes: readonly OscillatorModulationRoute[];
   readonly sampleRate?: number;
   readonly playing: boolean;
+  readonly pitchDepthCents?: number;
+  readonly readOscillatorFrequency: (oscillatorId: string) => number | null;
   readonly getModulationAnalyser: (targetId: string, parameter: OscillatorModulationParameter) => AnalyserNode | null;
   readonly disabled?: boolean;
   readonly onChange: (value: number) => void;
@@ -21,7 +24,8 @@ interface OscillatorModulationSliderProps {
 }
 
 export function OscillatorModulationSlider({
-  oscillator, effectiveFrequency, oscillators, parameter, routes, sampleRate, playing, getModulationAnalyser, disabled, onChange, onRouteChange
+  oscillator, effectiveFrequency, oscillators, parameter, routes, sampleRate, playing, getModulationAnalyser, pitchDepthCents, readOscillatorFrequency,
+  disabled, onChange, onRouteChange
 }: OscillatorModulationSliderProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const dialogId = useId();
@@ -34,16 +38,30 @@ export function OscillatorModulationSlider({
     targetId: oscillator.id, parameter, sourceId: sources[0].id, depth: span / 10, enabled: false
   };
   const baseRange = getOscillatorModulationRange(oscillator, parameter, 0);
-  const range = getOscillatorModulationRange({...oscillator, frequencyHz: effectiveFrequency}, parameter, route.depth,
-    sampleRate);
-  const getAnalyser = useCallback(() => getModulationAnalyser(oscillator.id, parameter),
-    [getModulationAnalyser, oscillator.id, parameter]);
+  const range = getOscillatorModulationRange({...oscillator, frequencyHz: effectiveFrequency}, parameter,
+    route.enabled ? route.depth : 0, sampleRate);
+  const samples = useRef(new Float32Array(32));
+  const readLiveValue = useCallback(() => {
+    if (parameter === 'frequency') return readOscillatorFrequency(oscillator.id);
+    const analyser = getModulationAnalyser(oscillator.id, parameter);
+    if (!analyser) return null;
+    const buffer = samples.current;
+    analyser.getFloatTimeDomainData(buffer);
+    return range.base + buffer.reduce((total, sample) => total + sample, 0) / buffer.length;
+  }, [getModulationAnalyser, oscillator.id, parameter, range.base, readOscillatorFrequency]);
+  const showPreview = route.enabled || pitchDepthCents !== undefined;
+  const depthCents = pitchDepthCents ?? 0;
+  const nyquist = (sampleRate ?? 48000) / 2;
+  const bounds: readonly [number, number] = parameter === 'frequency' ? [
+    Math.min(nyquist, applyPitchOffset(range.lower, oscillator.detuneCents - depthCents)),
+    Math.min(nyquist, applyPitchOffset(range.upper, oscillator.detuneCents + depthCents))
+  ] : [range.lower, range.upper];
 
   return <>
     <NumericSlider label={label} unit={unit} displayFactor={factor} min={minimum} max={maximum} step={step}
       value={baseRange.base} disabled={disabled} onChange={onChange}
-      modulationRange={route.enabled ? [range.lower, range.upper] : undefined}
-      modulationBase={range.base} getModulationAnalyser={playing && route.enabled ? getAnalyser : undefined}
+      modulationRange={showPreview ? bounds : undefined}
+      readLiveValue={playing && showPreview ? readLiveValue : undefined} showLiveValue={parameter === 'frequency'}
       action={<button type="button" className="oscillator-modulation-button" data-active={route.enabled}
         aria-label={`${label} modulation`} title={`${label} modulation`} aria-haspopup="dialog" aria-controls={dialogId}
         onClick={() => dialog.current?.showModal()}><span aria-hidden="true">∿</span></button>}/>
