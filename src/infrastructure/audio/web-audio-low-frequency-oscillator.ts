@@ -19,7 +19,7 @@ export class WebAudioLowFrequencyOscillator implements ModulationSource {
     validateLowFrequencyOscillatorSettings(settings);
     this.oscillator.type = settings.waveform;
     this.oscillator.frequency.setTargetAtTime(settings.frequencyHz, this.context.currentTime, 0.015);
-    this.output.gain.setTargetAtTime(settings.enabled ? settings.depthCents : 0, this.context.currentTime, 0.015);
+    this.output.gain.setTargetAtTime(settings.enabled ? (settings.destination === 'pitch' ? settings.depthCents : settings.depthHz) : 0, this.context.currentTime, 0.015);
   }
   dispose(): void {
     if (this.disposed) return;
