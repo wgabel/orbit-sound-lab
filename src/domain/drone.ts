@@ -5,7 +5,21 @@ export interface LowPassFilterSettings {
   readonly cutoffHz: number;
   readonly resonance: number;
 }
+export interface AmplitudeEnvelopeSettings {
+  readonly enabled: boolean;
+  readonly attackSeconds: number;
+  readonly decaySeconds: number;
+  readonly sustainLevel: number;
+  readonly releaseSeconds: number;
+}
+export function validateAmplitudeEnvelopeSettings(envelope: AmplitudeEnvelopeSettings): void {
+  for (const duration of [envelope.attackSeconds, envelope.decaySeconds, envelope.releaseSeconds]) {
+    if (!Number.isFinite(duration) || duration < 0.01 || duration > 30) throw new Error('Envelope durations must be between 0.01 and 30 seconds.');
+  }
+  if (!Number.isFinite(envelope.sustainLevel) || envelope.sustainLevel < 0 || envelope.sustainLevel > 1) throw new Error('Envelope sustain must be between 0 and 1.');
+}
 export interface OscillatorSettings {
+  readonly envelope: AmplitudeEnvelopeSettings;
   readonly id: string;
   readonly frequencyHz: number;
   readonly detuneCents: number;
@@ -18,7 +32,8 @@ export function createDefaultDroneSettings(): DroneSettings {
   return { id: 'drone-1', name: 'Drone 1', gain: 0.12, oscillators: Array.from({length: OSCILLATORS_PER_DRONE}, (_, index) => ({
     id: `oscillator-${index + 1}`, frequencyHz: 110, detuneCents: (index - 2) * 3,
     enabled: true, waveform: 'sawtooth' as const,
-    filter: {enabled: false, cutoffHz: 2400, resonance: 0.7}
+    filter: {enabled: false, cutoffHz: 2400, resonance: 0.7},
+    envelope: {enabled: false, attackSeconds: 0.5, decaySeconds: 0.5, sustainLevel: 0.7, releaseSeconds: 1.5}
   })) };
 }
 export function validateLowPassFilterSettings(settings: LowPassFilterSettings): void {
@@ -34,5 +49,6 @@ export function validateDroneSettings(settings: DroneSettings): void {
     if (!Number.isFinite(oscillator.detuneCents) || Math.abs(oscillator.detuneCents) > 2400) throw new Error('Invalid oscillator detune.');
     if (!['sine','triangle','sawtooth','square'].includes(oscillator.waveform)) throw new Error('Invalid oscillator waveform.');
     validateLowPassFilterSettings(oscillator.filter);
+    validateAmplitudeEnvelopeSettings(oscillator.envelope);
   }
 }
