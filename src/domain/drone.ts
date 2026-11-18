@@ -76,14 +76,16 @@ export function validateDroneSettings(settings: DroneSettings): void {
   if (settings.oscillators.length !== OSCILLATORS_PER_DRONE) throw new Error('A drone must contain exactly five oscillators.');
   if (!Number.isFinite(settings.gain) || settings.gain < 0 || settings.gain > 1) throw new Error('Invalid drone gain.');
   if (new Set(settings.oscillators.map(oscillator => oscillator.id)).size !== OSCILLATORS_PER_DRONE) throw new Error('Oscillator identifiers must be unique.');
-  for (const oscillator of settings.oscillators) {
-    if (!Number.isFinite(oscillator.frequencyHz) || oscillator.frequencyHz < 20 || oscillator.frequencyHz > 20000) throw new Error('Invalid oscillator frequency.');
-    if (!Number.isFinite(oscillator.volume) || oscillator.volume < 0 || oscillator.volume > 1) throw new Error('Oscillator volume must be between 0 and 1.');
-    if (!Number.isFinite(oscillator.pan) || Math.abs(oscillator.pan) > 1) throw new Error('Oscillator pan must be between -1 and 1.');
-    if (!Number.isFinite(oscillator.detuneCents) || Math.abs(oscillator.detuneCents) > 2400) throw new Error('Invalid oscillator detune.');
-    if (!['sine','triangle','sawtooth','square'].includes(oscillator.waveform)) throw new Error('Invalid oscillator waveform.');
-    validateLowPassFilterSettings(oscillator.filter);
-    validateFadeSettings(oscillator.fade);
-  }
+  for (const oscillator of settings.oscillators) validateOscillatorSettings(oscillator);
   if (settings.oscillatorModulations !== undefined) validateOscillatorModulationRoutes(settings.oscillatorModulations, settings.oscillators);
+}
+
+export function validateOscillatorSettings(oscillator: OscillatorSettings): void {
+  if (!Number.isFinite(oscillator.frequencyHz) || oscillator.frequencyHz < 20 || oscillator.frequencyHz > 20000) throw new Error('Invalid oscillator frequency.');
+  if (!Number.isFinite(oscillator.volume) || oscillator.volume < 0 || oscillator.volume > 1) throw new Error('Oscillator volume must be between 0 and 1.');
+  if (!Number.isFinite(oscillator.pan) || Math.abs(oscillator.pan) > 1) throw new Error('Oscillator pan must be between -1 and 1.');
+  if (!Number.isFinite(oscillator.detuneCents) || Math.abs(oscillator.detuneCents) > 2400) throw new Error('Invalid oscillator detune.');
+  if (!['sine','triangle','sawtooth','square'].includes(oscillator.waveform)) throw new Error('Invalid oscillator waveform.');
+  validateLowPassFilterSettings(oscillator.filter);
+  validateFadeSettings(oscillator.fade);
 }
