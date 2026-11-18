@@ -54,3 +54,12 @@
 .oscillator-always-visible .randomize-button{flex-shrink:0}
 .oscillator-panel-content[hidden]{display:none}
 @media(max-width:420px){.oscillator-always-visible{flex-wrap:wrap}.oscillator-always-visible label{flex-basis:100%}}
+
+.preset-morph{margin-top:20px;padding:16px;border:1px solid #43594d;border-radius:8px;background:#101e21}
+.preset-morph h3{font-size:12px;letter-spacing:.14em;color:#a6efab;margin:0 0 14px}
+.preset-morph-selectors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.preset-morph-selectors label,.preset-morph-slider{display:block;font-size:11px;letter-spacing:.08em;color:#c3d0c9}
+.preset-morph-selectors select{display:block;width:100%;margin-top:7px;padding:10px;border:1px solid #53665c;border-radius:5px;background:#182b2b;color:#e8e9df}
+.preset-morph-slider{margin-top:16px}.preset-morph-slider output{float:right}.preset-morph-slider input{display:block;width:100%;margin-top:12px;accent-color:#a6efab}
+.preset-morph p{font-size:12px;color:#a8b9b0;line-height:1.5;margin:12px 0 0}
+@media(max-width:450px){.preset-morph-selectors{grid-template-columns:1fr}}
