@@ -14,6 +14,7 @@ export class DroneController implements SynthesizerController {
   private playing = false;
   private disposed = false;
   private readonly activeModulations = new Map<string, ActiveModulation>();
+  private modulationKey(settings: LowFrequencyOscillatorSettings): string { return `${settings.targetOscillatorId}:${settings.destination}`; }
 
   constructor(
     private readonly context: AudioContext,
@@ -56,11 +57,11 @@ export class DroneController implements SynthesizerController {
   private validateModulationBank(settings: readonly LowFrequencyOscillatorSettings[]): void {
     const oscillatorIds = new Set(this.settings.oscillators.map(oscillator => oscillator.id));
     const targets = new Set<string>();
-    if (settings.length !== oscillatorIds.size) throw new Error('Each oscillator requires one LFO configuration.');
+    if (settings.length !== oscillatorIds.size * 3) throw new Error('Each oscillator requires three LFO configurations.');
     for (const item of settings) {
       validateLowFrequencyOscillatorSettings(item);
-      if (!oscillatorIds.has(item.targetOscillatorId) || targets.has(item.targetOscillatorId)) throw new Error('LFO targets must be unique and match oscillator identifiers.');
-      targets.add(item.targetOscillatorId);
+      if (!oscillatorIds.has(item.targetOscillatorId) || targets.has(this.modulationKey(item))) throw new Error('LFO targets must be unique and match oscillator identifiers.');
+      targets.add(this.modulationKey(item));
     }
   }
 
@@ -72,7 +73,7 @@ export class DroneController implements SynthesizerController {
     try {
       for (const destination of destinations) { this.modulationMatrix.connect(source, destination); connected.push(destination); }
       source.start();
-      this.activeModulations.set(settings.targetOscillatorId, {source, destinations, target: settings.destination});
+      this.activeModulations.set(this.modulationKey(settings), {source, destinations, target: settings.destination});
     } catch (error) {
       for (const destination of connected) this.modulationMatrix.disconnect(source, destination);
       source.dispose();
@@ -80,16 +81,16 @@ export class DroneController implements SynthesizerController {
     }
   }
 
-  private detachModulation(oscillatorId: string): void {
-    const active = this.activeModulations.get(oscillatorId);
+  private detachModulation(modulationKey: string): void {
+    const active = this.activeModulations.get(modulationKey);
     if (!active) return;
     for (const destination of active.destinations) this.modulationMatrix.disconnect(active.source, destination);
     active.source.dispose();
-    this.activeModulations.delete(oscillatorId);
+    this.activeModulations.delete(modulationKey);
   }
 
   private detachAllModulations(): void {
-    for (const oscillatorId of [...this.activeModulations.keys()]) this.detachModulation(oscillatorId);
+    for (const modulationKey of [...this.activeModulations.keys()]) this.detachModulation(modulationKey);
   }
 
   stop(): void {
@@ -103,11 +104,12 @@ export class DroneController implements SynthesizerController {
   updateLowFrequencyOscillator(settings: LowFrequencyOscillatorSettings): void {
     if (this.disposed) throw new Error('Controller has been disposed.');
     validateLowFrequencyOscillatorSettings(settings);
-    const index = this.lowFrequencyOscillatorSettings.findIndex(item => item.targetOscillatorId === settings.targetOscillatorId);
+    const index = this.lowFrequencyOscillatorSettings.findIndex(item => item.targetOscillatorId === settings.targetOscillatorId && item.destination === settings.destination);
     if (index < 0) throw new Error('Unknown LFO target oscillator.');
-    const active = this.activeModulations.get(settings.targetOscillatorId);
-    if (!settings.enabled) this.detachModulation(settings.targetOscillatorId);
-    else if (active && active.target === settings.destination) active.source.update(settings);
+    const key = this.modulationKey(settings);
+    const active = this.activeModulations.get(key);
+    if (!settings.enabled) this.detachModulation(key);
+    else if (active) active.source.update(settings);
     else if (active && this.voice) { this.detachModulation(settings.targetOscillatorId); this.attachModulation(this.voice, settings); }
     else if (this.voice) this.attachModulation(this.voice, settings);
     this.lowFrequencyOscillatorSettings = this.lowFrequencyOscillatorSettings.map((item, itemIndex) => itemIndex === index ? settings : item);
