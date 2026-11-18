@@ -20,6 +20,7 @@ export function randomizeOscillatorSettings(
       ...oscillator,
       enabled: Math.random() < 0.5,
       frequencyHz: randomStep(40, 880, 1),
+      volume: randomStep(0, 1, 0.01),
       detuneCents: randomStep(-100, 100, 1),
       waveform: randomChoice(waveforms),
       filter: {
