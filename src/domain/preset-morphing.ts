@@ -1,4 +1,5 @@
 import type { SoundPreset } from './preset-library';
+import { normalizePresetModulations } from './preset-library';
 import type { DroneSettings } from './drone';
 import type { LowFrequencyOscillatorSettings } from './modulation';
 import type { DelaySettings } from './delay';
@@ -16,11 +17,13 @@ const interpolateFrequency = (start: number, end: number, position: number): num
 /** Pure interpolation: continuous controls glide; discrete controls switch at the midpoint. */
 export function morphPresets(start: SoundPreset, end: SoundPreset, position: number): MorphedSound {
   if (!Number.isFinite(position) || position < 0 || position > 1) throw new Error('Morph position must be between 0 and 1.');
-  if (position === 0) return {drone: start.drone, modulation: start.modulation, delay: start.delay};
-  if (position === 1) return {drone: end.drone, modulation: end.modulation, delay: end.delay};
+  const startModulations = normalizePresetModulations(start.modulation, start.drone.oscillators.map(item => item.id));
+  const endNormalizedModulations = normalizePresetModulations(end.modulation, end.drone.oscillators.map(item => item.id));
+  if (position === 0) return {drone: start.drone, modulation: startModulations, delay: start.delay};
+  if (position === 1) return {drone: end.drone, modulation: endNormalizedModulations, delay: end.delay};
   const endOscillators = new Map(end.drone.oscillators.map(oscillator => [oscillator.id, oscillator]));
-  const endModulations = new Map(end.modulation.map(modulation => [modulation.targetOscillatorId, modulation]));
-  if (start.drone.oscillators.length !== endOscillators.size || start.modulation.length !== endModulations.size) throw new Error('Presets have incompatible oscillator layouts.');
+  const endModulations = new Map(endNormalizedModulations.map(modulation => [modulation.targetOscillatorId + ':' + modulation.destination, modulation]));
+  if (start.drone.oscillators.length !== endOscillators.size || startModulations.length !== endModulations.size) throw new Error('Presets have incompatible oscillator layouts.');
   const drone: DroneSettings = {
     ...start.drone,
     gain: interpolate(start.drone.gain, end.drone.gain, position),
@@ -46,8 +49,8 @@ export function morphPresets(start: SoundPreset, end: SoundPreset, position: num
       };
     })
   };
-  const modulation: readonly LowFrequencyOscillatorSettings[] = start.modulation.map(a => {
-    const b = endModulations.get(a.targetOscillatorId);
+  const modulation: readonly LowFrequencyOscillatorSettings[] = startModulations.map(a => {
+    const b = endModulations.get(a.targetOscillatorId + ':' + a.destination);
     if (!b) throw new Error('Presets have incompatible modulation targets.');
     return {
       ...a,
