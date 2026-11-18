@@ -113,6 +113,16 @@ export class DroneController implements SynthesizerController {
     this.lowFrequencyOscillatorSettings = this.lowFrequencyOscillatorSettings.map((item, itemIndex) => itemIndex === index ? settings : item);
   }
 
+  gateOn(oscillatorId: string): void {
+    if (!this.settings.oscillators.some(oscillator => oscillator.id === oscillatorId)) throw new Error('Unknown oscillator.');
+    this.voice?.gateOn(oscillatorId);
+  }
+
+  gateOff(oscillatorId: string): void {
+    if (!this.settings.oscillators.some(oscillator => oscillator.id === oscillatorId)) throw new Error('Unknown oscillator.');
+    this.voice?.gateOff(oscillatorId);
+  }
+
   setGain(value: number): void {
     if (!Number.isFinite(value) || value < 0 || value > 1) throw new Error('Invalid gain.');
     this.settings = {...this.settings, gain: value};
