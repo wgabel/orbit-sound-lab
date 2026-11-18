@@ -1,4 +1,4 @@
-import { AMPLITUDE_LFO_CENTER, LFO_MAXIMUM_RATE_HZ, LFO_MINIMUM_RATE_HZ } from '../domain/modulation';
+import { AMPLITUDE_LFO_CENTER, LOW_FREQUENCY_OSCILLATOR_WAVEFORMS, LFO_MAXIMUM_RATE_HZ, LFO_MINIMUM_RATE_HZ } from '../domain/modulation';
 import type { LowFrequencyOscillatorSettings, LowFrequencyOscillatorWaveform } from '../domain/modulation';
 import { LfoCycleInput } from './LfoCycleInput';
 import { NumericSlider } from './NumericSlider';
@@ -8,8 +8,6 @@ const DESTINATION_LABELS = {
   pitch: 'Pitch LFO',
   filterCutoff: 'Cutoff LFO'
 } as const;
-
-const WAVEFORMS: readonly LowFrequencyOscillatorWaveform[] = ['sine', 'triangle', 'square', 'sawtooth'];
 
 interface OscillatorLfoControlsProps {
   readonly modulation: LowFrequencyOscillatorSettings;
@@ -47,9 +45,12 @@ export function OscillatorLfoControls({modulation, onChange}: OscillatorLfoContr
       <label>LFO WAVEFORM
         <select disabled={!enabled} value={waveform}
           onChange={event => onChange({...modulation, waveform: event.target.value as LowFrequencyOscillatorWaveform})}>
-          {WAVEFORMS.map(option => <option key={option} value={option}>{option[0].toUpperCase() + option.slice(1)}</option>)}
+          {LOW_FREQUENCY_OSCILLATOR_WAVEFORMS.map(option => <option key={option} value={option}>
+            {option === 'smoothRandom' ? 'Smooth Random' : option[0].toUpperCase() + option.slice(1)}
+          </option>)}
         </select>
       </label>
+      {waveform === 'smoothRandom' && <p className="pitch-lfo-detail">Moves to a new random target each cycle.</p>}
     </div>
   </details>;
 }

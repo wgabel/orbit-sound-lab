@@ -7,6 +7,11 @@ describe('LFO settings', () => {
     expect(bank.filter(item => item.targetOscillatorId === 'a').map(item => item.destination)).toEqual(['pitch','filterCutoff','amplitude']);
   });
   it('accepts defaults', () => expect(() => validateLowFrequencyOscillatorSettings(createDefaultLowFrequencyOscillatorSettings())).not.toThrow());
+  it('accepts Smooth Random for each independent LFO route', () => {
+    for (const settings of createDefaultLowFrequencyOscillators(['oscillator-1'])) {
+      expect(() => validateLowFrequencyOscillatorSettings({...settings, waveform: 'smoothRandom'})).not.toThrow();
+    }
+  });
   it('rejects invalid frequency and depth', () => {
     const settings = createDefaultLowFrequencyOscillatorSettings();
     expect(() => validateLowFrequencyOscillatorSettings({...settings,frequencyHz:0})).toThrow();

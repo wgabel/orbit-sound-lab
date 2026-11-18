@@ -2,7 +2,8 @@ export const LFO_MINIMUM_RATE_HZ = 0.01;
 export const LFO_MAXIMUM_RATE_HZ = 20;
 export const AMPLITUDE_LFO_CENTER = 0.5;
 
-export type LowFrequencyOscillatorWaveform = 'sine' | 'triangle' | 'square' | 'sawtooth';
+export const LOW_FREQUENCY_OSCILLATOR_WAVEFORMS = ['sine', 'triangle', 'square', 'sawtooth', 'smoothRandom'] as const;
+export type LowFrequencyOscillatorWaveform = typeof LOW_FREQUENCY_OSCILLATOR_WAVEFORMS[number];
 export type LowFrequencyOscillatorDestination = 'pitch' | 'filterCutoff' | 'amplitude';
 export interface LowFrequencyOscillatorSettings {
   readonly destination: LowFrequencyOscillatorDestination;
@@ -26,7 +27,7 @@ export function validateLowFrequencyOscillatorSettings(settings: LowFrequencyOsc
   if (!Number.isFinite(settings.depthHz) || settings.depthHz < 0 || settings.depthHz > 10000) throw new Error('Filter modulation depth must be between 0 and 10000 Hz.');
   if (!Number.isFinite(settings.depthAmplitude) || settings.depthAmplitude < 0 || settings.depthAmplitude > AMPLITUDE_LFO_CENTER) throw new Error('Amplitude depth must be between 0 and 0.5.');
   if (settings.destination !== 'pitch' && settings.destination !== 'filterCutoff' && settings.destination !== 'amplitude') throw new Error('Invalid LFO destination.');
-  if (!['sine', 'triangle', 'square', 'sawtooth'].includes(settings.waveform)) throw new Error('Invalid LFO waveform.');
+  if (!LOW_FREQUENCY_OSCILLATOR_WAVEFORMS.includes(settings.waveform)) throw new Error('Invalid LFO waveform.');
   if (!settings.targetOscillatorId) throw new Error('LFO target is required.');
 }
 
