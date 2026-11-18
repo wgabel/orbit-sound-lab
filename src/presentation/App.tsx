@@ -12,10 +12,10 @@ import { createSynthesizer } from '../composition/create-synthesizer';
 import { NumericSlider } from './NumericSlider';
 import { OscillatorPanControl } from './OscillatorPanControl';
 import { useRenderingActivityDiagnostic } from './use-rendering-activity-diagnostic';
-import { createPreset, deletePreset, exportPreset, importPreset, listPresets, savePreset } from '../domain/preset-library';
+import { createPreset, deletePreset, exportPreset, importPreset, listPresets, loadPresetSound, savePreset } from '../domain/preset-library';
 import type { SoundPreset } from '../domain/preset-library';
 import { morphPresets } from '../domain/preset-morphing';
-import { DEFAULT_HARMONY_SETTINGS, getEffectiveOscillatorFrequency } from '../domain/harmony';
+import { getEffectiveOscillatorFrequency } from '../domain/harmony';
 import type { HarmonySettings } from '../domain/harmony';
 import { OscillatorWaveform } from './OscillatorWaveform';
 import './styles.css';
@@ -76,7 +76,6 @@ export function App() {
   const [error, setError] = useState('');
   const [presets, setPresets] = useState<SoundPreset[]>([]);
   const [presetName, setPresetName] = useState('');
-  const [selectedPresetId, setSelectedPresetId] = useState('');
   const importInput = useRef<HTMLInputElement | null>(null);
   const [morphStartId, setMorphStartId] = useState('');
   const [morphEndId, setMorphEndId] = useState('');
@@ -95,7 +94,6 @@ export function App() {
         B: morphed.layerMix.secondLayer
       }, morphed.layerMix.masterGain, morphed.delay);
       setMorphPosition(position);
-      setSelectedPresetId('');
       setError('');
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot morph presets.'); }
   }
@@ -105,22 +103,18 @@ export function App() {
       const name = snapshot ? `Snapshot ${new Date().toLocaleString()}` : presetName.trim();
       if (!name) { setError('Enter a preset name.'); return; }
       const preset = createPreset(name, layers.A.drone, layers.A.modulation, delaySettings, layers.A.harmony,
-        {firstLayerEnabled: layers.A.enabled, secondLayer: layers.B, masterGain});
+        {firstLayerEnabled: layers.A.enabled, secondLayer: layers.B, masterGain}, activeLayer);
       await savePreset(preset);
       setPresets(await listPresets());
-      setSelectedPresetId(preset.id);
       setPresetName('');
       setError('');
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot save preset.'); }
   }
   function loadPreset(preset: SoundPreset) {
     try {
-      applyScene({
-        A: {drone: preset.drone, modulation: preset.modulation, harmony: preset.harmony ?? DEFAULT_HARMONY_SETTINGS,
-          enabled: preset.layerMix.firstLayerEnabled},
-        B: preset.layerMix.secondLayer
-      }, preset.layerMix.masterGain, preset.delay);
-      setSelectedPresetId(preset.id);
+      const next = loadPresetSound(preset, layers[activeLayer]);
+      applyLayer(activeLayer, next);
+      updateActiveLayer(() => next);
       setError('');
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot load preset.'); }
   }
@@ -129,15 +123,13 @@ export function App() {
       if (!window.confirm(`Delete preset "${preset.name}"?`)) return;
       await deletePreset(preset.id);
       setPresets(await listPresets());
-      if (selectedPresetId === preset.id) setSelectedPresetId('');
       setError('');
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot delete preset.'); }
   }
   async function handlePresetImport(file: File) {
     try {
-      const preset = await importPreset(file);
+      await importPreset(file);
       setPresets(await listPresets());
-      setSelectedPresetId(preset.id);
       setError('');
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot import preset.'); }
   }
@@ -224,7 +216,7 @@ export function App() {
     <section className="harmony-engine" key={`harmony-${activeLayer}`}><h2>HARMONY ENGINE</h2><div className="harmony-modes">{(['free','natural','piano'] as const).map(mode => <button type="button" key={mode} className={harmony.mode === mode ? 'selected' : ''} aria-pressed={harmony.mode === mode} onClick={() => updateHarmony({...harmony,mode})}>{mode.toUpperCase()}</button>)}</div><div className="harmony-controls"><NumericSlider label="ROOT FREQUENCY" unit="Hz" min={55} max={220} step={1}
       value={harmony.rootFrequencyHz} onChange={value => updateHarmony({...harmony,rootFrequencyHz:value})}/><label>HARMONY<select value={harmony.chord} onChange={event => updateHarmony({...harmony,chord:event.target.value as HarmonySettings['chord']})}><option value="minor">Minor / melancholic</option><option value="major">Major / warm</option><option value="fifth">Open fifths / spacious</option><option value="ambient">Ambient / suspended</option></select></label><NumericSlider label="DETUNE / SPREAD" unit="cents" min={0} max={20} step={1}
       value={harmony.spreadCents} onChange={value => updateHarmony({...harmony,spreadCents:value})}/></div><div className="harmony-preview">{settings.oscillators.map((oscillator,index) => <span key={oscillator.id}>OSC {index+1} · {oscillator.frequencyHz.toFixed(1)} → {getEffectiveOscillatorFrequency(harmony,oscillator.frequencyHz,index).toFixed(1)} Hz</span>)}</div><p>{harmony.mode === 'free' ? 'FREE: frequency sliders and RANDOM use unrestricted frequencies.' : 'NATURAL / PIANO: RANDOM chooses a note from the selected harmony. Harmony processes the audible pitch without changing source frequencies.'}</p></section><section className="preset-library"><h2>PRESET LIBRARY</h2><div className="preset-actions"><input aria-label="Preset name" placeholder="Preset name" maxLength={120} value={presetName} onChange={event => setPresetName(event.target.value)}/><button type="button" onClick={() => void saveCurrentPreset(false)}>SAVE PRESET</button><button type="button" onClick={() => void saveCurrentPreset(true)}>SAVE SNAPSHOT</button><button type="button" onClick={() => importInput.current?.click()}>IMPORT JSON</button><input ref={importInput} type="file" accept=".json,application/json" hidden onChange={event => { const file = event.target.files?.[0]; if (file) void handlePresetImport(file); event.target.value = ''; }}/></div><div className="preset-morph"><div className="preset-morph-heading"><h3>PRESET MORPH</h3><label className="preset-morph-toggle"><input type="checkbox" checked={morphEnabled} onChange={event => setMorphEnabled(event.target.checked)}/> ENABLE MORPH</label></div><fieldset className="preset-morph-content" disabled={!morphEnabled}><div className="preset-morph-selectors"><label>PRESET A<select aria-label="Morph preset A" value={morphStartId} onChange={event => { setMorphStartId(event.target.value); setMorphPosition(0); }}><option value="">Select preset A</option>{presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></label><label>PRESET B<select aria-label="Morph preset B" value={morphEndId} onChange={event => { setMorphEndId(event.target.value); setMorphPosition(0); }}><option value="">Select preset B</option>{presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></label></div><NumericSlider label="MORPH POSITION" className="preset-morph-slider" unit="%" displayFactor={100} min={0} max={1} step={0.01}
-      value={morphPosition} disabled={!morphEnabled || !morphStartId || !morphEndId || morphStartId === morphEndId || !presets.some(preset => preset.id === morphStartId) || !presets.some(preset => preset.id === morphEndId)} onChange={value => updateMorphPosition(value)}/><p>Continuous parameters interpolate; waveform and ON/OFF switch at 50%. Moving the slider changes the current sound, not saved presets. Disabling morph keeps the current sound.</p></fieldset></div><div className="preset-list">{presets.length === 0 ? <p>No saved presets yet. Presets stay in this browser; export JSON for backup.</p> : presets.map(preset => <div className="preset-item" key={preset.id}><div><strong>{preset.name}</strong><small>{new Date(preset.createdAt).toLocaleString()}</small></div><div className="preset-item-actions"><button type="button" aria-label={`Load ${preset.name}`} onClick={() => loadPreset(preset)}>{selectedPresetId === preset.id ? 'LOAD AGAIN' : 'LOAD'}</button><button type="button" onClick={() => exportPreset(preset)}>EXPORT</button><button type="button" onClick={() => void removePreset(preset)}>DELETE</button></div></div>)}</div></section><section className="oscillator-switchboard" aria-label="Oscillator activation" key={`switches-${activeLayer}`}><h2>OSCILLATOR SWITCHES</h2><div className="oscillator-switches">{settings.oscillators.map((oscillator,index) => <label key={oscillator.id} className={`oscillator-quick-switch ${oscillator.enabled ? "is-active" : ""}`}><span>OSC {String(index+1).padStart(2,"0")}</span><input type="checkbox" checked={oscillator.enabled} onChange={event => updateOscillator({...oscillator,enabled:event.target.checked})}/><span className="oscillator-switch-state">{oscillator.enabled ? "ON" : "OFF"}</span></label>)}</div></section>{error && <p role="alert" className="error">{error}</p>}<section className="master-delay"><div className="oscillator-title"><strong>MASTER ECHO / DELAY</strong><label className="switch"><input type="checkbox" checked={delaySettings.enabled} onChange={event => updateDelay({...delaySettings,enabled:event.target.checked})}/> ACTIVE</label></div><div className="delay-controls"><NumericSlider label="TIME" unit="s" min={0.05} max={2} step={0.01}
+      value={morphPosition} disabled={!morphEnabled || !morphStartId || !morphEndId || morphStartId === morphEndId || !presets.some(preset => preset.id === morphStartId) || !presets.some(preset => preset.id === morphEndId)} onChange={value => updateMorphPosition(value)}/><p>Continuous parameters interpolate; waveform and ON/OFF switch at 50%. Moving the slider changes the current sound, not saved presets. Disabling morph keeps the current sound.</p></fieldset></div><div className="preset-list">{presets.length === 0 ? <p>No saved presets yet. Presets stay in this browser; export JSON for backup.</p> : presets.map(preset => <div className="preset-item" key={preset.id}><div><strong>{preset.name}</strong><small>{new Date(preset.createdAt).toLocaleString()}</small></div><div className="preset-item-actions"><button type="button" aria-label={`Load ${preset.name} into Drone ${activeLayer}`} onClick={() => loadPreset(preset)}>LOAD TO {activeLayer}</button><button type="button" onClick={() => exportPreset(preset)}>EXPORT</button><button type="button" onClick={() => void removePreset(preset)}>DELETE</button></div></div>)}</div></section><section className="oscillator-switchboard" aria-label="Oscillator activation" key={`switches-${activeLayer}`}><h2>OSCILLATOR SWITCHES</h2><div className="oscillator-switches">{settings.oscillators.map((oscillator,index) => <label key={oscillator.id} className={`oscillator-quick-switch ${oscillator.enabled ? "is-active" : ""}`}><span>OSC {String(index+1).padStart(2,"0")}</span><input type="checkbox" checked={oscillator.enabled} onChange={event => updateOscillator({...oscillator,enabled:event.target.checked})}/><span className="oscillator-switch-state">{oscillator.enabled ? "ON" : "OFF"}</span></label>)}</div></section>{error && <p role="alert" className="error">{error}</p>}<section className="master-delay"><div className="oscillator-title"><strong>MASTER ECHO / DELAY</strong><label className="switch"><input type="checkbox" checked={delaySettings.enabled} onChange={event => updateDelay({...delaySettings,enabled:event.target.checked})}/> ACTIVE</label></div><div className="delay-controls"><NumericSlider label="TIME" unit="s" min={0.05} max={2} step={0.01}
       disabled={!delaySettings.enabled} value={delaySettings.timeSeconds} onChange={value => updateDelay({...delaySettings,timeSeconds:value})}/><NumericSlider label="FEEDBACK" unit="%" displayFactor={100} min={0} max={0.85} step={0.01}
       disabled={!delaySettings.enabled} value={delaySettings.feedback} onChange={value => updateDelay({...delaySettings,feedback:value})}/><NumericSlider label="WET MIX" unit="%" displayFactor={100} min={0} max={1} step={0.01}
       disabled={!delaySettings.enabled} value={delaySettings.mix} onChange={value => updateDelay({...delaySettings,mix:value})}/></div><p>Echo repeats the combined drone. Start with low feedback and mix.</p></section><section className="oscillators" key={`oscillators-${activeLayer}`}><h2>DRONE {activeLayer} OSCILLATORS</h2>{settings.oscillators.map((oscillator,index) => <article key={oscillator.id} className={`oscillator-panel ${oscillator.enabled ? "" : "muted"}`}><button type="button" className="oscillator-panel-toggle" aria-expanded={Boolean(expandedOscillators[`${activeLayer}:${oscillator.id}`])} aria-controls={`${oscillator.id}-settings`} onClick={() => setExpandedOscillators(previous => ({...previous,[`${activeLayer}:${oscillator.id}`]: !previous[`${activeLayer}:${oscillator.id}`]}))}><strong>OSC {String(index+1).padStart(2,"0")}</strong><span className="oscillator-summary-status">{oscillator.enabled ? "ACTIVE" : "OFF"}</span><span className="oscillator-expand-hint">{expandedOscillators[`${activeLayer}:${oscillator.id}`] ? "HIDE DETAILS" : "DETAILS"}</span></button><OscillatorWaveform oscillatorId={oscillator.id} playing={playing && layerEnabled} enabled={oscillator.enabled} getAnalyser={getWaveformAnalyser}/><div className="oscillator-always-visible"><div className="oscillator-mix-controls"><NumericSlider label="VOLUME" unit="%" displayFactor={100} min={0} max={1} step={0.01}
