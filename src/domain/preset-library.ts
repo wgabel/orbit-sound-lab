@@ -1,3 +1,4 @@
+import { DEFAULT_DRONE_ENVELOPE } from './drone-envelope';
 import { createDefaultLayerMix, validateMasterGain } from './drone-layers';
 import type { DroneLayer, DroneLayerId, LayerMix } from './drone-layers';
 import { DEFAULT_HARMONY_SETTINGS, validateHarmonySettings } from './harmony';
@@ -58,6 +59,7 @@ function validateLayerSound(settings: DroneSettings, modulationSettings: readonl
   const mix = settings.mix === undefined ? defaults : settings.mix;
   const drone: DroneSettings = {
     ...settings,
+    envelope: settings.envelope === undefined ? DEFAULT_DRONE_ENVELOPE : settings.envelope,
     mix: mix && mix.reverb === undefined ? {...mix, reverb: defaults.reverb} : mix,
     oscillators: settings.oscillators.map(oscillator =>
       oscillator.pan === undefined ? {...oscillator, pan: 0} : oscillator)

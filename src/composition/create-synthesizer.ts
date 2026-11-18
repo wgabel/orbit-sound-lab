@@ -1,3 +1,5 @@
+import { MAX_DRONE_BEND_CENTS } from '../domain/drone-envelope';
+import { WebAudioDroneGate } from '../infrastructure/audio/web-audio-drone-gate';
 import { createDefaultDelaySettings } from '../domain/delay';
 import type { DelaySettings } from '../domain/delay';
 import { DRONE_LAYER_IDS, createDefaultDroneLayer, validateMasterGain } from '../domain/drone-layers';
@@ -20,7 +22,10 @@ export function createSynthesizer(): SoundLabController {
   const outputProtection = new WebAudioOutputProtection(context);
   const masterGain = context.createGain();
   const performance = new WebAudioPerformanceMix(context);
-  graph.register({id: 'performance', inputs: [{id: 'A', node: performance.inputA}, {id: 'B', node: performance.inputB}],
+  const gates = {A: new WebAudioDroneGate(context), B: new WebAudioDroneGate(context)};
+  gates.A.node.connect(performance.inputA);
+  gates.B.node.connect(performance.inputB);
+  graph.register({id: 'performance', inputs: DRONE_LAYER_IDS.map(id => ({id, node: gates[id].node})),
     outputs: [{id: 'audio', node: performance.output}]});
   graph.register({id: 'effects', inputs: [{id: 'audio', node: delay.input}], outputs: [{id: 'audio', node: delay.output}]});
   graph.register({id: 'master-level', inputs: [{id: 'audio', node: masterGain}], outputs: [{id: 'audio', node: masterGain}]});
@@ -39,6 +44,10 @@ export function createSynthesizer(): SoundLabController {
 
   const layers = {A: createLayerController('A'), B: createLayerController('B')};
   let enabled: Readonly<Record<DroneLayerId, boolean>> = {A: true, B: false};
+  const holdModes = {A: false, B: false};
+  const armedLayers = new Set<DroneLayerId>();
+  const pressedKeys = new Map<DroneLayerId, symbol>();
+  let continuousPlayback = false;
   let playing = false;
   let disposed = false;
   let transition = Promise.resolve();
@@ -48,7 +57,8 @@ export function createSynthesizer(): SoundLabController {
     const next = transition.then(async () => {
       if (disposed) return;
       const results = await Promise.allSettled(DRONE_LAYER_IDS.map(id =>
-        playing && enabled[id] ? layers[id].start() : layers[id].stop()));
+        playing && (holdModes[id] ? armedLayers.has(id) : continuousPlayback && enabled[id])
+          ? layers[id].start() : layers[id].stop()));
       const failure = results.find(result => result.status === 'rejected');
       if (failure) throw failure.reason;
     });
@@ -63,17 +73,72 @@ export function createSynthesizer(): SoundLabController {
     get isPlaying() { return playing; },
     async start() {
       playing = true;
+      continuousPlayback = true;
       try {
         // Resume on Start even when both layers are disabled.
         await context.resume();
         await synchronizeLayers();
       } catch (error) {
         playing = false;
+        continuousPlayback = false;
         await synchronizeLayers();
         throw error;
       }
     },
-    stop() { playing = false; return synchronizeLayers(); },
+    async stop() {
+      playing = false;
+      continuousPlayback = false;
+      pressedKeys.clear();
+      armedLayers.clear();
+      await synchronizeLayers();
+      for (const id of DRONE_LAYER_IDS) {
+        if (pressedKeys.has(id)) continue;
+        layers[id].setPitchBend(0);
+        gates[id].reset(!holdModes[id]);
+      }
+    },
+    setLayerHoldMode(id, holding) {
+      if (holding === holdModes[id]) return Promise.resolve();
+      holdModes[id] = holding;
+      pressedKeys.delete(id);
+      armedLayers.delete(id);
+      layers[id].setPitchBend(0);
+      if (holding && layers[id].isPlaying) armedLayers.add(id);
+      if (layers[id].isPlaying) gates[id].setContinuous(!holding);
+      else gates[id].reset(!holding);
+      return playing ? synchronizeLayers() : Promise.resolve();
+    },
+    setLayerEnvelope: (id, envelope) => gates[id].setEnvelope(envelope),
+    async pressLayerKey(id) {
+      if (!holdModes[id] || pressedKeys.has(id)) return;
+      const press = Symbol();
+      pressedKeys.set(id, press);
+      layers[id].setPitchBend(0);
+      playing = true;
+      try {
+        await context.resume();
+        if (pressedKeys.get(id) !== press) return;
+        if (!layers[id].isPlaying) {
+          armedLayers.add(id);
+          await synchronizeLayers();
+        }
+        if (pressedKeys.get(id) === press) gates[id].trigger();
+      } catch (error) {
+        if (pressedKeys.get(id) === press) {
+          pressedKeys.delete(id);
+          armedLayers.delete(id);
+          if (!continuousPlayback && !armedLayers.size && !pressedKeys.size) playing = false;
+        }
+        throw error;
+      }
+    },
+    releaseLayerKey(id) {
+      if (pressedKeys.delete(id)) gates[id].release();
+    },
+    setLayerBend(id, cents) {
+      if (!pressedKeys.has(id) || !Number.isFinite(cents)) return;
+      layers[id].setPitchBend(Math.max(-MAX_DRONE_BEND_CENTS, Math.min(MAX_DRONE_BEND_CENTS, cents)));
+    },
     setLayersEnabled(next) {
       if (next.A === enabled.A && next.B === enabled.B) return Promise.resolve();
       enabled = next;
@@ -90,6 +155,7 @@ export function createSynthesizer(): SoundLabController {
       for (const id of DRONE_LAYER_IDS) layers[id].dispose();
       graph.dispose();
       masterGain.disconnect();
+      for (const id of DRONE_LAYER_IDS) gates[id].node.disconnect();
       performance.dispose();
       delay.dispose();
       outputProtection.dispose();

@@ -79,6 +79,26 @@ describe('preset schema', () => {
     expect(roundTrip.drone.mix).toEqual(mix);
     expect(roundTrip.layerMix.secondLayer.drone.mix).toEqual(mix);
   });
+  it('defaults missing envelopes and round-trips each layer envelope independently', () => {
+    const preset = createPreset('Keys', drone, modulation, delay);
+    const {envelope: _first, ...legacyDrone} = drone;
+    const {envelope: _second, ...legacySecondDrone} = preset.layerMix.secondLayer.drone;
+    const legacy = {...preset, drone: legacyDrone, layerMix: {...preset.layerMix,
+      secondLayer: {...preset.layerMix.secondLayer, drone: legacySecondDrone}}};
+    const normalized = validatePreset(legacy);
+    expect(normalized.drone.envelope).toEqual(drone.envelope);
+    expect(normalized.layerMix.secondLayer.drone.envelope).toEqual(drone.envelope);
+
+    const envelopeA = {...drone.envelope, attack: 0.4};
+    const envelopeB = {...drone.envelope, release: 1.8, sustain: 0.3};
+    const edited = {...preset, drone: {...drone, envelope: envelopeA}, layerMix: {...preset.layerMix,
+      secondLayer: {...preset.layerMix.secondLayer, drone: {...legacySecondDrone, envelope: envelopeB}}}};
+    const restored = validatePreset(JSON.parse(JSON.stringify(edited)));
+    expect(restored.drone.envelope).toEqual(envelopeA);
+    expect(restored.layerMix.secondLayer.drone.envelope).toEqual(envelopeB);
+    expect(() => validatePreset({...edited, drone: {...drone, envelope: {...envelopeA, release: 0}}}))
+      .toThrow('Invalid drone volume envelope');
+  });
   it('rejects unsupported schema versions', () => {
     const preset = createPreset('Ambient', drone, modulation, delay);
     expect(() => validatePreset({...preset, schemaVersion: 2})).toThrow('Unsupported preset version');

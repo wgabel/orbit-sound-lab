@@ -1,3 +1,6 @@
+import { DEFAULT_DRONE_ENVELOPE, validateDroneEnvelope } from './drone-envelope';
+import type { DroneEnvelope } from './drone-envelope';
+
 export const OSCILLATORS_PER_DRONE = 5 as const;
 export type OscillatorWaveform = 'sawtooth' | 'sine' | 'square' | 'triangle';
 export interface LowPassFilterSettings {
@@ -30,6 +33,7 @@ export interface DroneSettings {
   readonly id: string;
   readonly name: string;
   readonly gain: number;
+  readonly envelope: DroneEnvelope;
   readonly oscillators: readonly OscillatorSettings[];
   readonly mix: DroneMixSettings;
 }
@@ -41,7 +45,7 @@ export function createDefaultDroneMix(): DroneMixSettings {
   };
 }
 export function createDefaultDroneSettings(): DroneSettings {
-  return { id: 'drone-1', name: 'Drone 1', gain: 0.12, mix: createDefaultDroneMix(), oscillators: Array.from({length: OSCILLATORS_PER_DRONE}, (_, index) => ({
+  return { id: 'drone-1', name: 'Drone 1', gain: 0.12, envelope: DEFAULT_DRONE_ENVELOPE, mix: createDefaultDroneMix(), oscillators: Array.from({length: OSCILLATORS_PER_DRONE}, (_, index) => ({
     id: `oscillator-${index + 1}`, frequencyHz: 110, volume: 1, pan: 0, detuneCents: (index - 2) * 3,
     enabled: true, waveform: 'sawtooth' as const,
     filter: {enabled: false, cutoffHz: 2400, resonance: 0.7}, fade: {fadeInSeconds: 1, fadeOutSeconds: 2}
@@ -64,6 +68,7 @@ export function validateLowPassFilterSettings(settings: LowPassFilterSettings): 
 }
 export function validateDroneSettings(settings: DroneSettings): void {
   validateDroneMix(settings.mix);
+  validateDroneEnvelope(settings.envelope);
   if (settings.oscillators.length !== OSCILLATORS_PER_DRONE) throw new Error('A drone must contain exactly five oscillators.');
   if (!Number.isFinite(settings.gain) || settings.gain < 0 || settings.gain > 1) throw new Error('Invalid drone gain.');
   if (new Set(settings.oscillators.map(oscillator => oscillator.id)).size !== OSCILLATORS_PER_DRONE) throw new Error('Oscillator identifiers must be unique.');

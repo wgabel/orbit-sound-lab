@@ -134,3 +134,19 @@
 .performance-pad:focus-visible{outline:2px solid #a6efab;outline-offset:4px}
 .performance-cursor{position:absolute;display:block;width:22px;height:22px;transform:translate(-50%,-50%);border:2px solid #102027;border-radius:50%;background:#a6efab;box-shadow:0 0 0 2px #baffbe8a;pointer-events:none}
 .performance-key-hint{margin:7px 0 0;color:#a8b7bf;font-size:11px;text-align:center}
+
+.drone-key-mode{margin-top:14px}
+.drone-key-controls{display:grid;gap:12px;margin-top:8px}
+.drone-key{
+  width:100%;min-height:58px;padding:10px;border:1px solid #739985;border-radius:8px;
+  background:#213e33;color:#dcf5e2;font:inherit;font-size:13px;font-weight:750;cursor:pointer;
+  touch-action:none;user-select:none;-webkit-touch-callout:none
+}
+.drone-key span{margin-left:4px}
+.drone-key[data-pressed=true]{background:#a6efab;color:#172029;border-color:#a6efab}
+.drone-key:focus-visible{outline:2px solid #e6f5e8;outline-offset:2px}
+.drone-envelope{
+  min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(112px,100%),1fr));
+  gap:10px 14px;margin:0;padding:8px 0 0;border:0;border-top:1px solid #35414c
+}
+.drone-envelope legend{padding:0 8px 0 0;color:#b7c9c4;font-size:11px;font-weight:700}
