@@ -1,3 +1,5 @@
+import { createDefaultLayerMix, validateMasterGain } from './drone-layers';
+import type { LayerMix } from './drone-layers';
 import { DEFAULT_HARMONY_SETTINGS, validateHarmonySettings } from './harmony';
 import type { HarmonySettings } from './harmony';
 import type { DroneSettings } from './drone';
@@ -16,6 +18,7 @@ export interface SoundPreset {
   readonly modulation: readonly LowFrequencyOscillatorSettings[];
   readonly delay: DelaySettings;
   readonly harmony?: HarmonySettings;
+  readonly layerMix: LayerMix;
 }
 const DATABASE_NAME = 'orbit-sound-lab-presets';
 const STORE_NAME = 'presets';
@@ -48,32 +51,45 @@ export function normalizePresetModulations(modulations: readonly LowFrequencyOsc
     modulations.find(item => item.targetOscillatorId === id && item.destination === destination)
       ?? {...createDefaultLowFrequencyOscillatorSettings(id), destination}));
 }
-export function validatePreset(value: unknown): SoundPreset {
-  if (!value || typeof value !== 'object') throw new Error('Invalid preset file.');
-  const preset = value as Partial<SoundPreset>;
-  if (preset.schemaVersion !== 1) throw new Error('Unsupported preset version.');
-  if (typeof preset.id !== 'string' || !preset.id || typeof preset.name !== 'string' || !preset.name.trim() || preset.name.length > 120 || typeof preset.createdAt !== 'string') throw new Error('Invalid preset metadata.');
-  if (!preset.drone || !Array.isArray(preset.drone.oscillators) || !Array.isArray(preset.modulation) || !preset.delay) throw new Error('Incomplete preset.');
+function validateLayerSound(settings: DroneSettings, modulationSettings: readonly LowFrequencyOscillatorSettings[]) {
+  if (!settings || !Array.isArray(settings.oscillators) || !Array.isArray(modulationSettings)) throw new Error('Incomplete preset layer.');
   const drone: DroneSettings = {
-    ...preset.drone,
-    oscillators: preset.drone.oscillators.map(oscillator =>
+    ...settings,
+    oscillators: settings.oscillators.map(oscillator =>
       oscillator.pan === undefined ? {...oscillator, pan: 0} : oscillator)
   };
   validateDroneSettings(drone);
-  validateDelaySettings(preset.delay);
-  if (preset.harmony !== undefined) validateHarmonySettings(preset.harmony);
-  const ids = new Set(preset.drone.oscillators.map(oscillator => oscillator.id));
-  if (preset.modulation.length !== ids.size && preset.modulation.length !== ids.size * 3) throw new Error('Preset LFO targets do not match oscillators.');
-  const keys = preset.modulation.map(item => item.targetOscillatorId + ':' + item.destination);
+  const ids = drone.oscillators.map(oscillator => oscillator.id);
+  if (modulationSettings.length !== ids.length && modulationSettings.length !== ids.length * 3) throw new Error('Preset LFO targets do not match oscillators.');
+  const keys = modulationSettings.map(item => item.targetOscillatorId + ':' + item.destination);
   if (new Set(keys).size !== keys.length) throw new Error('Duplicate preset LFO destinations.');
-  for (const modulation of preset.modulation) {
+  for (const modulation of modulationSettings) {
     validateLowFrequencyOscillatorSettings(modulation);
-    if (!ids.has(modulation.targetOscillatorId)) throw new Error('Unknown preset LFO target.');
+    if (!ids.includes(modulation.targetOscillatorId)) throw new Error('Unknown preset LFO target.');
   }
-  return {...preset, drone, modulation: normalizePresetModulations(preset.modulation, drone.oscillators.map(item => item.id))} as SoundPreset;
+  return {drone, modulation: normalizePresetModulations(modulationSettings, ids)};
 }
-export function createPreset(name: string, drone: DroneSettings, modulation: readonly LowFrequencyOscillatorSettings[], delay: DelaySettings, harmony: HarmonySettings = DEFAULT_HARMONY_SETTINGS): SoundPreset {
-  return validatePreset({schemaVersion: 1, id: crypto.randomUUID(), name: name.trim(), createdAt: new Date().toISOString(), drone, modulation, delay, harmony});
+
+export function validatePreset(value: unknown): SoundPreset {
+  if (!value || typeof value !== 'object') throw new Error('Invalid preset file.');
+  const preset = value as Partial<SoundPreset>;
+  const {schemaVersion, id, name, createdAt, delay, harmony} = preset;
+  if (schemaVersion !== 1) throw new Error('Unsupported preset version.');
+  if (typeof id !== 'string' || !id || typeof name !== 'string' || !name.trim() || name.length > 120 || typeof createdAt !== 'string') throw new Error('Invalid preset metadata.');
+  if (!preset.drone || !preset.modulation || !delay) throw new Error('Incomplete preset.');
+  validateDelaySettings(delay);
+  if (harmony !== undefined) validateHarmonySettings(harmony);
+  const primary = validateLayerSound(preset.drone, preset.modulation);
+  const mix = preset.layerMix === undefined ? createDefaultLayerMix() : preset.layerMix;
+  if (!mix || typeof mix.firstLayerEnabled !== 'boolean' || typeof mix.secondLayer?.enabled !== 'boolean' || !mix.secondLayer.harmony) throw new Error('Invalid preset layer mix.');
+  validateMasterGain(mix.masterGain);
+  validateHarmonySettings(mix.secondLayer.harmony);
+  const secondLayer = {...mix.secondLayer, ...validateLayerSound(mix.secondLayer.drone, mix.secondLayer.modulation)};
+  return {...preset, schemaVersion, id, name, createdAt, ...primary, delay, harmony, layerMix: {...mix, secondLayer}};
+}
+export function createPreset(name: string, drone: DroneSettings, modulation: readonly LowFrequencyOscillatorSettings[], delay: DelaySettings,
+  harmony: HarmonySettings = DEFAULT_HARMONY_SETTINGS, layerMix: LayerMix = createDefaultLayerMix()): SoundPreset {
+  return validatePreset({schemaVersion: 1, id: crypto.randomUUID(), name: name.trim(), createdAt: new Date().toISOString(), drone, modulation, delay, harmony, layerMix});
 }
 export async function listPresets(): Promise<SoundPreset[]> {
   const values = await transact<unknown[]>('readonly', (store, resolve, reject) => {

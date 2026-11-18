@@ -1,26 +1,29 @@
+import type { LayerMix } from './drone-layers';
 import type { SoundPreset } from './preset-library';
 import { normalizePresetModulations } from './preset-library';
 import type { DroneSettings } from './drone';
 import type { LowFrequencyOscillatorSettings } from './modulation';
 import type { DelaySettings } from './delay';
 
-export interface MorphedSound {
+interface LayerSound {
   readonly drone: DroneSettings;
   readonly modulation: readonly LowFrequencyOscillatorSettings[];
+}
+
+export interface MorphedSound extends LayerSound {
   readonly delay: DelaySettings;
+  readonly layerMix: LayerMix;
 }
 const interpolate = (start: number, end: number, position: number): number => start + (end - start) * position;
 const choose = <T>(start: T, end: T, position: number): T => position < 0.5 ? start : end;
 const interpolateFrequency = (start: number, end: number, position: number): number =>
   Math.exp(interpolate(Math.log(start), Math.log(end), position));
 
-/** Pure interpolation: continuous controls glide; discrete controls switch at the midpoint. */
-export function morphPresets(start: SoundPreset, end: SoundPreset, position: number): MorphedSound {
-  if (!Number.isFinite(position) || position < 0 || position > 1) throw new Error('Morph position must be between 0 and 1.');
+function morphLayerSound(start: LayerSound, end: LayerSound, position: number): LayerSound {
   const startModulations = normalizePresetModulations(start.modulation, start.drone.oscillators.map(item => item.id));
   const endNormalizedModulations = normalizePresetModulations(end.modulation, end.drone.oscillators.map(item => item.id));
-  if (position === 0) return {drone: start.drone, modulation: startModulations, delay: start.delay};
-  if (position === 1) return {drone: end.drone, modulation: endNormalizedModulations, delay: end.delay};
+  if (position === 0) return {drone: start.drone, modulation: startModulations};
+  if (position === 1) return {drone: end.drone, modulation: endNormalizedModulations};
   const endOscillators = new Map(end.drone.oscillators.map(oscillator => [oscillator.id, oscillator]));
   const endModulations = new Map(endNormalizedModulations.map(modulation => [modulation.targetOscillatorId + ':' + modulation.destination, modulation]));
   if (start.drone.oscillators.length !== endOscillators.size || startModulations.length !== endModulations.size) throw new Error('Presets have incompatible oscillator layouts.');
@@ -64,11 +67,29 @@ export function morphPresets(start: SoundPreset, end: SoundPreset, position: num
       depthAmplitude: interpolate(a.depthAmplitude, b.depthAmplitude, position)
     };
   });
+  return {drone, modulation};
+}
+
+/** Pure interpolation: continuous controls glide; discrete controls switch at the midpoint. */
+export function morphPresets(start: SoundPreset, end: SoundPreset, position: number): MorphedSound {
+  if (!Number.isFinite(position) || position < 0 || position > 1) throw new Error('Morph position must be between 0 and 1.');
+  const first = morphLayerSound(start, end, position);
+  const startMix = start.layerMix;
+  const endMix = end.layerMix;
+  const secondLayer = {
+    ...choose(startMix.secondLayer, endMix.secondLayer, position),
+    ...morphLayerSound(startMix.secondLayer, endMix.secondLayer, position)
+  };
+  const layerMix = {
+    firstLayerEnabled: choose(startMix.firstLayerEnabled, endMix.firstLayerEnabled, position),
+    secondLayer,
+    masterGain: interpolate(startMix.masterGain, endMix.masterGain, position)
+  };
   const delay: DelaySettings = {
     enabled: choose(start.delay.enabled, end.delay.enabled, position),
     timeSeconds: interpolate(start.delay.timeSeconds, end.delay.timeSeconds, position),
     feedback: interpolate(start.delay.feedback, end.delay.feedback, position),
     mix: interpolate(start.delay.mix, end.delay.mix, position)
   };
-  return {drone, modulation, delay};
+  return {...first, delay, layerMix};
 }

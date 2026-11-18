@@ -104,3 +104,11 @@
 .oscillator-waveform-label{position:absolute;left:10px;top:7px;color:#7d9e9e;font:10px monospace;letter-spacing:.1em;pointer-events:none}
 .oscillator-waveform-idle{position:absolute;right:10px;top:7px;color:#6d8588;font:10px monospace;pointer-events:none}
 @media(max-width:420px){.oscillator-waveform{margin:0 14px 12px;height:64px}}
+
+.drone-layers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:24px}
+.drone-layer{padding:14px;border:1px solid #35414c;border-radius:12px;background:#172029;min-width:0}
+.drone-layer.selected{border-color:#a6efab}
+.drone-layer-header{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.drone-layer-header button{color:#c7d1d8;background:#263542;border:1px solid #657783;border-radius:5px;font:inherit;font-size:13px;font-weight:750;padding:7px 10px;cursor:pointer}
+.drone-layer.selected .drone-layer-header button{color:#172029;background:#a6efab;border-color:#a6efab}
+.drone-layer input[type=range]{margin:8px 0 0}
