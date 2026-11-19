@@ -5,6 +5,7 @@ import { fadeGain, PLAYBACK_FADE_SECONDS } from './web-audio-fade';
 import { WebAudioLfoWorkletFactory } from './web-audio-lfo-worklet';
 import { WebAudioLowFrequencyOscillatorFactory } from './web-audio-low-frequency-oscillator';
 import { readOutputContextTime } from './web-audio-output-clock';
+import { WebAudioOutputProtection } from './web-audio-output-protection';
 import { createPatchRuntimeModule } from './web-audio-patch-modules';
 import type { PatchRuntimeModule } from './web-audio-patch-modules';
 import { WebAudioPulseWorkletFactory } from './web-audio-pulse-worklet';
@@ -65,6 +66,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
   private readonly lfo: WebAudioLfoWorkletFactory;
   private readonly modulationFactory: WebAudioLowFrequencyOscillatorFactory;
   private readonly pulse: WebAudioPulseWorkletFactory;
+  private readonly protection: WebAudioOutputProtection;
   private readonly master: GainNode;
   private readonly analyser: AnalyserNode;
   private readonly samples: Float32Array<ArrayBuffer> = new Float32Array(1024);
@@ -80,11 +82,13 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     this.pulse = new WebAudioPulseWorkletFactory(context);
     this.lfo = new WebAudioLfoWorkletFactory(context);
     this.modulationFactory = new WebAudioLowFrequencyOscillatorFactory(context,this.lfo);
+    this.protection = new WebAudioOutputProtection(context);
     this.master = context.createGain();
     this.master.gain.value = 0;
     this.analyser = context.createAnalyser();
     this.analyser.fftSize = this.samples.length;
-    this.master.connect(this.analyser).connect(context.destination);
+    this.master.connect(this.protection.input);
+    this.protection.output.connect(this.analyser).connect(context.destination);
   }
 
   get sampleRate(): number { return this.context.sampleRate; }
@@ -118,7 +122,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     if (this.state !== 'playing') return 0;
     if (this.context.state === 'running') {
       const outputTime = readOutputContextTime(this.context, performance.now());
-      this.audibleElapsed = Math.max(0, outputTime - this.origin - 0.006);
+      this.audibleElapsed = Math.max(0, outputTime - this.origin - this.protection.lookaheadSeconds);
     }
     return this.audibleElapsed;
   }
@@ -249,6 +253,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     for (const finish of this.retirement) finish();
     this.clearPatch();
     this.master.disconnect();
+    this.protection.dispose();
     this.analyser.disconnect();
     void this.context.close();
   }

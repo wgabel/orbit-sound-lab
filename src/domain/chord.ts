@@ -14,9 +14,18 @@ const INTERVALS: Readonly<Record<ChordType,readonly number[]>> = {
   dominant7:[0,4,7,10], minor9:[0,3,7,10,14]
 };
 export const DEFAULT_CHORD_SETTINGS: ChordSettings = {rootNote:48,chord:'major',inversion:0,octave:0,spread:0};
+export function getMaximumChordInversion(chord: ChordType): number {
+  return INTERVALS[chord].length - 1;
+}
+
+export function isLegacyTriadInversion(chord: unknown, inversion: unknown): boolean {
+  return inversion === 3 && typeof chord === 'string' && Object.hasOwn(INTERVALS,chord) &&
+    getMaximumChordInversion(chord as ChordType) === 2;
+}
+
 export function validateChordSettings(settings: ChordSettings): void {
   if (!settings || !Number.isInteger(settings.rootNote) || settings.rootNote < 36 || settings.rootNote > 72 ||
-    !CHORD_TYPES.includes(settings.chord) || !Number.isInteger(settings.inversion) || settings.inversion < 0 || settings.inversion > 3 ||
+    !CHORD_TYPES.includes(settings.chord) || !Number.isInteger(settings.inversion) || settings.inversion < 0 || settings.inversion > getMaximumChordInversion(settings.chord) ||
     !Number.isInteger(settings.octave) || settings.octave < -1 || settings.octave > 1 ||
     !Number.isInteger(settings.spread) || settings.spread < 0 || settings.spread > 1)
     throw new Error('Invalid Chord Generator settings.');
@@ -24,8 +33,10 @@ export function validateChordSettings(settings: ChordSettings): void {
 export function getChordMidiNotes(settings: ChordSettings): readonly number[] {
   validateChordSettings(settings);
   const notes = [...INTERVALS[settings.chord]];
-  const inversion = settings.inversion % notes.length;
-  for (let index=0;index<inversion;index++) notes[index] += 12;
+  const bass = notes[settings.inversion];
+  for (let index = 0; index < settings.inversion; index++) {
+    while (notes[index] < bass) notes[index] += 12;
+  }
   notes.sort((first,second)=>first-second);
   return notes.map((interval,index)=>settings.rootNote + settings.octave*12 + interval + index*settings.spread*12);
 }

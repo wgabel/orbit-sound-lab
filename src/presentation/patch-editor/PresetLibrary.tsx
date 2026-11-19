@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { usePresetCollection } from './usePresetCollection';
 
 interface PresetItem {
   readonly id: string;
@@ -6,63 +7,52 @@ interface PresetItem {
   readonly createdAt: string;
 }
 
-interface PresetLibraryProps<Preset extends PresetItem> {
+interface PresetLibraryPanelProps<Preset extends PresetItem> {
   readonly label: string;
   readonly nameLimit: number;
   readonly showHeading?: boolean;
-  list(): Promise<Preset[]>;
+  readonly collection: ReturnType<typeof usePresetCollection<Preset>>;
   save(name: string): Promise<unknown>;
   createSnapshotName?(): string;
   importFile(file: File): Promise<unknown>;
   exportFile(preset: Preset): void;
   remove(id: string): Promise<void>;
   onLoad(preset: Preset): void;
-  onLibraryChanged?(): void;
 }
 
-export function PresetLibrary<Preset extends PresetItem>({label, nameLimit, showHeading = true, list, save, createSnapshotName,
-  importFile, exportFile, remove, onLoad, onLibraryChanged}: PresetLibraryProps<Preset>) {
-  const input = useRef<HTMLInputElement>(null);
-  const [presets,setPresets] = useState<Preset[]>([]);
-  const [name,setName] = useState('');
-  const [busy,setBusy] = useState(true);
-  const [error,setError] = useState('');
+export function PresetLibrary<Preset extends PresetItem>({list, ...panel}: Omit<PresetLibraryPanelProps<Preset>, 'collection'> & {
+  list(): Promise<Preset[]>;
+}) {
+  const collection = usePresetCollection(list);
+  return <PresetLibraryPanel {...panel} collection={collection}/>;
+}
 
-  useEffect(() => {
-    let active = true;
-    void list().then(presets => {
-      if (active) setPresets(presets);
-    }).catch(reason => {
-      if (active) setError(reason instanceof Error ? reason.message : `Cannot read ${label} presets.`);
-    }).finally(() => {
-      if (active) setBusy(false);
-    });
-    return () => {active = false;};
-  }, [list]);
+export function PresetLibraryPanel<Preset extends PresetItem>({label, nameLimit, showHeading = true, collection, save,
+  createSnapshotName, importFile, exportFile, remove, onLoad}: PresetLibraryPanelProps<Preset>) {
+  const input = useRef<HTMLInputElement>(null);
+  const {presets,busy,loadError,update} = collection;
+  const [name,setName] = useState('');
+  const [actionError,setActionError] = useState('');
 
   async function changeLibrary(operation: () => Promise<unknown>) {
-    if (busy) return;
-    setBusy(true);
-    setError('');
+    setActionError('');
     try {
-      await operation();
-      setPresets(await list());
-      onLibraryChanged?.();
+      return await update(operation);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : `Cannot update ${label} presets.`);
-    } finally {
-      setBusy(false);
+      setActionError(reason instanceof Error ? reason.message : `Cannot update ${label} presets.`);
+      return false;
     }
   }
+
+  const error = actionError || loadError;
 
   return <section className="patch-preset-library" aria-label={`${label} preset library`} aria-busy={busy}>
     {showHeading && <h3>{label} presets</h3>}
     <form className="preset-actions" onSubmit={event => {
       event.preventDefault();
       if (!name.trim()) return;
-      void changeLibrary(async () => {
-        await save(name);
-        setName('');
+      void changeLibrary(() => save(name)).then(saved => {
+        if (saved) setName('');
       });
     }}>
       <input aria-label={`${label} preset name`} placeholder="Preset name" maxLength={nameLimit}

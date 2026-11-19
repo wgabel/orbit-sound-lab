@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createDefaultDroneLayer } from './drone-layers';
 import { createExamplePatch, createPatchModule, setPatchDroneLayer } from './patch';
+import { DEFAULT_CHORD_SETTINGS } from './chord';
 import { readPatchPreset } from './patch-preset';
 
 function createPresetFixture() {
@@ -34,6 +35,16 @@ describe('whole patch preset files', () => {
       cables:[{...edited,enabled:'false'}]}})).toThrow('automation cable controls');
     expect(() => readPatchPreset({...fixture,patch:{...fixture.patch,
       cables:[{...fixture.patch.cables[0],inverted:true}]}})).toThrow('automation cable controls');
+  });
+
+  it('preserves the sound of older triad presets saved with the wrapped inversion', () => {
+    const fixture = createPresetFixture();
+    const triad = {id:'triad',kind:'chord',settings:{...DEFAULT_CHORD_SETTINGS,inversion:3}};
+    const seventh = {id:'seventh',kind:'chord',settings:{...DEFAULT_CHORD_SETTINGS,chord:'major7',inversion:3}};
+    const preset = readPatchPreset({...fixture,patch:{version:1,modules:[triad,seventh],cables:[]},
+      layout:{triad:{x:0,y:0},seventh:{x:180,y:0}}});
+    expect(preset.patch.modules).toEqual([{...triad,settings:{...triad.settings,inversion:0}},seventh]);
+    expect(triad.settings.inversion).toBe(3);
   });
 
   it('validates supported module kinds, cable compatibility and every node position', () => {

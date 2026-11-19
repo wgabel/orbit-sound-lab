@@ -1,4 +1,4 @@
-import { CHORD_TYPES, getChordMidiNotes, getNoteName } from '../../domain/chord';
+import { CHORD_TYPES, getChordMidiNotes, getMaximumChordInversion, getNoteName } from '../../domain/chord';
 import type { ChordType } from '../../domain/chord';
 import { PatchLfoSettings } from './PatchLfoSettings';
 import { OSCILLATOR_WAVEFORMS, supportsOscillatorShape } from '../../domain/drone';
@@ -82,11 +82,14 @@ function ModuleSettings({module, sampleRate, onChange}: {module: PatchModule; sa
         {Array.from({length:37},(_,index)=>index+36).map(note=>
           <option key={note} value={note}>{getNoteName(note)}</option>)}
       </select></label>
-      <label>Chord type<select value={module.settings.chord} onChange={event =>
-        onChange({...module,settings:{...module.settings,chord:event.target.value as ChordType}})}>
+      <label>Chord type<select value={module.settings.chord} onChange={event => {
+        const chord = event.target.value as ChordType;
+        const inversion = Math.min(module.settings.inversion,getMaximumChordInversion(chord));
+        onChange({...module,settings:{...module.settings,chord,inversion}});
+      }}>
         {CHORD_TYPES.map(chord=><option key={chord} value={chord}>{chord}</option>)}
       </select></label>
-      <NumericSlider label="Inversion" unit="" min={0} max={3} step={1}
+      <NumericSlider label="Inversion" unit="" min={0} max={getMaximumChordInversion(module.settings.chord)} step={1}
         value={module.settings.inversion} onChange={inversion=>onChange({...module,settings:{...module.settings,inversion}})}/>
       <NumericSlider label="Octave shift" unit="oct" min={-1} max={1} step={1}
         value={module.settings.octave} onChange={octave=>onChange({...module,settings:{...module.settings,octave}})}/>
