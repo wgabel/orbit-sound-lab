@@ -1,3 +1,5 @@
+import { getMorphAutomationProgress, validateMorphAutomation } from '../../domain/morph-automation';
+import type { MorphAutomationSettings } from '../../domain/morph-automation';
 import type { ScenePlayback } from '../../application/audio-contracts';
 import {
   ARRANGEMENT_FADE_IN_SECONDS, ARRANGEMENT_FADE_OUT_SECONDS, ARRANGEMENT_TAIL_SECONDS,
@@ -24,9 +26,18 @@ interface Session {
   disposalTimer?: ReturnType<typeof setTimeout>;
 }
 
+const MORPH_LOOP_SAMPLES = 256;
+
+interface MorphAutomation {
+  readonly settings: MorphAutomationSettings;
+  startTime?: number;
+  loop?: {source: AudioBufferSourceNode; inverse: GainNode};
+}
+
 interface Morph {
   position: number;
   tracks?: readonly [Track, Track];
+  automation?: MorphAutomation;
 }
 
 export class WebAudioScenePlayback implements ScenePlayback {
@@ -38,16 +49,18 @@ export class WebAudioScenePlayback implements ScenePlayback {
     private readonly editorLevel: AudioParam,
     private readonly createVoice: (scene: SoundScene, output: AudioNode) => SceneVoice) {}
 
-  async startMorph(start: SoundScene, end: SoundScene, position: number): Promise<void> {
+  async startMorph(start: SoundScene, end: SoundScene, position: number, automation?: MorphAutomationSettings): Promise<void> {
     sceneBlendGains(position);
+    if (automation) validateMorphAutomation(automation);
     const session = this.beginSession();
-    const morph: Morph = {position};
+    const morph: Morph = {position, automation: automation ? {settings: automation} : undefined};
     this.morph = morph;
     try {
       const tracks = await Promise.all([this.prepareTrack(session, start), this.prepareTrack(session, end)] as const);
       if (session.abort.signal.aborted) return;
       morph.tracks = tracks;
-      this.setMorphPosition(morph.position);
+      if (morph.automation) this.scheduleMorph(morph.tracks, morph.automation);
+      else this.setMorphPosition(morph.position);
       this.revealSession(session);
     } catch (error) {
       if (session.abort.signal.aborted) return;
@@ -59,9 +72,79 @@ export class WebAudioScenePlayback implements ScenePlayback {
   setMorphPosition(position: number): void {
     const gains = sceneBlendGains(position);
     if (!this.morph) return;
+    this.pauseMorphAutomation();
     this.morph.position = position;
     this.morph.tracks?.forEach((track, index) =>
       fadeGain(track.level.gain, gains[index], this.context.currentTime));
+  }
+
+  startMorphAutomation(settings: MorphAutomationSettings): void {
+    validateMorphAutomation(settings);
+    const morph = this.morph;
+    if (!morph) return;
+    this.pauseMorphAutomation();
+    const automation = {settings};
+    morph.automation = automation;
+    if (morph.tracks) this.scheduleMorph(morph.tracks, automation);
+  }
+
+  readMorphAutomation(): {position: number; running: boolean} | null {
+    const automation = this.morph?.automation;
+    if (!automation) return null;
+    const elapsed = automation.startTime === undefined ? 0 : this.context.currentTime - automation.startTime;
+    return getMorphAutomationProgress(automation.settings, elapsed);
+  }
+
+  pauseMorphAutomation(): number | null {
+    const morph = this.morph;
+    const automation = morph?.automation;
+    if (!morph || !automation) return null;
+    const now = this.context.currentTime;
+    const position = this.readMorphAutomation()?.position ?? 0;
+    morph.automation = undefined;
+    morph.position = position;
+    if (automation.loop) {
+      automation.loop.source.stop(now);
+      automation.loop.source.disconnect();
+      automation.loop.inverse.disconnect();
+    }
+    const gains = sceneBlendGains(position);
+    morph.tracks?.forEach((track, index) => {
+      const gain = track.level.gain;
+      gain.cancelScheduledValues(now);
+      gain.setValueAtTime(gains[index], now);
+    });
+    return position;
+  }
+
+  private scheduleMorph(tracks: readonly [Track, Track], automation: MorphAutomation): void {
+    const now = this.context.currentTime;
+    const startTime = now + PLAYBACK_FADE_SECONDS;
+    const {durationSeconds, loop} = automation.settings;
+    automation.startTime = startTime;
+    fadeGain(tracks[0].level.gain, 1, now);
+    fadeGain(tracks[1].level.gain, 0, now);
+    if (!loop) {
+      tracks[0].level.gain.linearRampToValueAtTime(0, startTime + durationSeconds);
+      tracks[1].level.gain.linearRampToValueAtTime(1, startTime + durationSeconds);
+      return;
+    }
+    // A repeating control buffer keeps both gains in sync without JS timers.
+    const buffer = this.context.createBuffer(1, MORPH_LOOP_SAMPLES, this.context.sampleRate);
+    const values = buffer.getChannelData(0);
+    for (let index = 0; index < values.length; index++) {
+      values[index] = getMorphAutomationProgress(automation.settings, index / values.length * 2 * durationSeconds).position;
+    }
+    const source = this.context.createBufferSource();
+    const inverse = this.context.createGain();
+    source.buffer = buffer;
+    source.loop = true;
+    source.playbackRate.value = buffer.duration / (2 * durationSeconds);
+    inverse.gain.value = -1;
+    source.connect(tracks[1].level.gain);
+    source.connect(inverse).connect(tracks[0].level.gain);
+    source.start(startTime);
+    automation.loop = {source, inverse};
   }
 
   async playArrangement(scenes: readonly ArrangementScene[], onScene: (index: number) => void): Promise<void> {
@@ -113,6 +196,7 @@ export class WebAudioScenePlayback implements ScenePlayback {
   stop(): void {
     const session = this.session;
     if (!session) return;
+    this.pauseMorphAutomation();
     this.session = null;
     this.morph = null;
     session.abort.abort();
@@ -123,6 +207,7 @@ export class WebAudioScenePlayback implements ScenePlayback {
   }
 
   dispose(): void {
+    this.pauseMorphAutomation();
     this.session = null;
     this.morph = null;
     for (const session of this.sessions) this.disposeSession(session);

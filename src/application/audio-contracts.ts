@@ -1,3 +1,4 @@
+import type { MorphAutomationSettings } from '../domain/morph-automation';
 import type { OscillatorModulationParameter, OscillatorModulationRoute } from '../domain/oscillator-modulation';
 import type { DroneEnvelope } from '../domain/drone-envelope';
 import type { ArrangementScene, SoundScene } from '../domain/sound-scene';
@@ -52,7 +53,10 @@ export interface SoundLabVoiceController {
 }
 
 export interface ScenePlayback {
-  startMorph(start: SoundScene, end: SoundScene, position: number): Promise<void>;
+  startMorph(start: SoundScene, end: SoundScene, position: number, automation?: MorphAutomationSettings): Promise<void>;
+  startMorphAutomation(settings: MorphAutomationSettings): void;
+  readMorphAutomation(): {position: number; running: boolean} | null;
+  pauseMorphAutomation(): number | null;
   setMorphPosition(position: number): void;
   playArrangement(scenes: readonly ArrangementScene[], onScene: (index: number) => void): Promise<void>;
   stop(): void;
