@@ -1,3 +1,4 @@
+import { readPeriodicLfoSample } from './lfo-waveforms';
 import { LFO_MAXIMUM_RATE_HZ, LFO_MINIMUM_RATE_HZ, LOW_FREQUENCY_OSCILLATOR_WAVEFORMS } from './modulation';
 import type { LowFrequencyOscillatorWaveform } from './modulation';
 
@@ -23,10 +24,5 @@ export function readPatchLfoPhase(settings: PatchLfo, elapsed: number): number {
 }
 
 export function readLfoPreviewValue(waveform: Exclude<LowFrequencyOscillatorWaveform,'smoothRandom'>, phase: number): number {
-  switch (waveform) {
-    case 'sine': return (1 + Math.sin(2 * Math.PI * phase)) / 2;
-    case 'triangle': return 1 - 2 * Math.abs(phase - 0.5);
-    case 'square': return phase < 0.5 ? 1 : 0;
-    case 'sawtooth': return phase;
-  }
+  return (1 + readPeriodicLfoSample(waveform,phase)) / 2;
 }

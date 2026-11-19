@@ -1,5 +1,5 @@
 import type { LowFrequencyOscillatorWaveform } from '../../domain/modulation';
-import moduleUrl from './lfo.worklet.js?url&no-inline';
+import moduleUrl from './lfo.worklet.ts?worker&url';
 
 export interface LfoWorkletConfiguration {
   readonly waveform: LowFrequencyOscillatorWaveform;

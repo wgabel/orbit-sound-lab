@@ -1,8 +1,10 @@
+import { OSCILLATOR_WAVEFORMS } from './oscillator-waveforms';
+
 export const LFO_MINIMUM_RATE_HZ = 0.01;
 export const LFO_MAXIMUM_RATE_HZ = 20;
 export const AMPLITUDE_LFO_CENTER = 0.5;
 
-export const LOW_FREQUENCY_OSCILLATOR_WAVEFORMS = ['sine', 'triangle', 'square', 'sawtooth', 'smoothRandom'] as const;
+export const LOW_FREQUENCY_OSCILLATOR_WAVEFORMS = [...OSCILLATOR_WAVEFORMS, 'smoothRandom'] as const;
 export type LowFrequencyOscillatorWaveform = typeof LOW_FREQUENCY_OSCILLATOR_WAVEFORMS[number];
 export const LFO_DESTINATIONS = ['pitch', 'filterCutoff', 'amplitude', 'shape'] as const;
 export type LowFrequencyOscillatorDestination = typeof LFO_DESTINATIONS[number];

@@ -130,7 +130,9 @@ Use **PRESETS** beside **COPY** on any oscillator to load a built-in sound into 
 
 Cutoff LFO accepts a cycle duration in seconds and offers finer control at low depths. When the low-pass filter is active, Cutoff shows the live Hz from the LFO and oscillator route together. The displayed sweep range respects the filter’s safe modulation limits.
 
-Select **Smooth Random** as an LFO waveform to glide between randomly chosen targets. Each transition takes one cycle at the set Rate, and Depth bounds the motion. The waveform is available for Pitch, Amplitude, and Cutoff.
+Select **Smooth Random** as an LFO waveform to glide between randomly chosen targets. Each transition takes one cycle at the set Rate, and Depth bounds the motion. The waveform is available for Pitch, Amplitude, Cutoff, and Shape.
+
+The LFO menus in both editors also include **Sine ↔ Triangle**, **Variable Pulse (25%)**, **Folded Sine**, and **Peaked Sine**. The sine-based shapes use their midpoint setting for modulation. Variable Pulse stays high for the first quarter of each cycle. Adjust the Depth in the Drone editor or the cable range in the Patch Editor to set how far the target moves.
 
 Enable **Sync** on LFOs with the same Rate to align them to the audio clock, even if you turn them on at different times. **Phase** offsets an LFO within the cycle. With the same sine waveform, 180° makes two LFOs move in opposite directions. Synced Smooth Random LFOs at the same Rate and Phase share random targets during playback.
 

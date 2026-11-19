@@ -1,7 +1,13 @@
 import type { ModulationSource, ModulationSourceFactory } from '../../application/modulation-contracts';
-import type { LowFrequencyOscillatorSettings } from '../../domain/modulation';
+import type { LowFrequencyOscillatorSettings, LowFrequencyOscillatorWaveform } from '../../domain/modulation';
 import { DEFAULT_SHAPE_LFO_DEPTH, validateLowFrequencyOscillatorSettings } from '../../domain/modulation';
 import type { LfoWorkletConfiguration, WebAudioLfoWorkletFactory } from './web-audio-lfo-worklet';
+
+const NATIVE_LFO_WAVEFORMS = ['sine','triangle','square','sawtooth'] as const;
+
+function isNativeLfoWaveform(waveform: LowFrequencyOscillatorWaveform): waveform is typeof NATIVE_LFO_WAVEFORMS[number] {
+  return NATIVE_LFO_WAVEFORMS.some(native => native === waveform);
+}
 
 export class WebAudioLowFrequencyOscillator implements ModulationSource {
   readonly output: GainNode;
@@ -24,7 +30,7 @@ export class WebAudioLowFrequencyOscillator implements ModulationSource {
     this.workletGain = context.createGain();
     this.output = context.createGain();
     this.output.gain.value = 0;
-    this.periodicGain.gain.value = settings.sync || settings.waveform === 'smoothRandom' ? 0 : 1;
+    this.periodicGain.gain.value = settings.sync || !isNativeLfoWaveform(settings.waveform) ? 0 : 1;
     this.workletGain.gain.value = 1 - this.periodicGain.gain.value;
     this.limiter = context.createWaveShaper();
     // Band-limited square and saw waves can overshoot their nominal ±1.
@@ -52,7 +58,7 @@ export class WebAudioLowFrequencyOscillator implements ModulationSource {
     validateLowFrequencyOscillatorSettings(settings);
     const now = this.context.currentTime;
     const synchronized = settings.sync ?? false;
-    const useWorklet = synchronized || settings.waveform === 'smoothRandom';
+    const useWorklet = synchronized || !isNativeLfoWaveform(settings.waveform);
     if (useWorklet) {
       const configuration: LfoWorkletConfiguration = {
         waveform: settings.waveform,
@@ -61,7 +67,7 @@ export class WebAudioLowFrequencyOscillator implements ModulationSource {
         phaseDegrees: synchronized ? (settings.phaseDegrees ?? 0) % 360 : 0
       };
       if (!this.workletOscillator) {
-        if (!this.lfoWorklet) throw new Error('Sync and Smooth Random LFO are unavailable.');
+        if (!this.lfoWorklet) throw new Error('This LFO waveform or sync mode requires AudioWorklet.');
         this.workletOscillator = this.lfoWorklet.create(configuration);
         this.workletOscillator.connect(this.workletGain);
       } else {
@@ -69,7 +75,7 @@ export class WebAudioLowFrequencyOscillator implements ModulationSource {
       }
       this.workletOscillator.parameters.get('rate')?.setTargetAtTime(settings.frequencyHz, now, 0.015);
     }
-    if (settings.waveform !== 'smoothRandom') {
+    if (isNativeLfoWaveform(settings.waveform)) {
       this.oscillator.type = settings.waveform;
       this.oscillator.frequency.setTargetAtTime(settings.frequencyHz, now, 0.015);
     }
