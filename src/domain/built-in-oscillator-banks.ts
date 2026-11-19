@@ -1,5 +1,5 @@
 import { OSCILLATORS_PER_DRONE, validateDroneSettings } from './drone';
-import type { OscillatorSettings } from './drone';
+import type { DroneMixSettings, OscillatorSettings } from './drone';
 import type { DroneLayer } from './drone-layers';
 import { createDefaultLowFrequencyOscillators, validateLowFrequencyOscillatorSettings } from './modulation';
 import type { LowFrequencyOscillatorSettings } from './modulation';
@@ -27,6 +27,7 @@ interface BankOscillator extends Pick<OscillatorSettings, 'waveform' | 'frequenc
 interface OscillatorBank {
   readonly id: string;
   readonly name: string;
+  readonly mix?: Partial<Pick<DroneMixSettings, 'noise' | 'reverb'>>;
   readonly routes?: readonly OscillatorBankRoute[];
   readonly oscillators: readonly [BankOscillator, BankOscillator, BankOscillator, BankOscillator, BankOscillator];
 }
@@ -319,6 +320,97 @@ const steppedDroneBanks = [
   }
 ] satisfies readonly OscillatorBank[];
 
+const grungyDroneBanks = [
+  {
+    id: 'rust-mouth', name: 'Rust Mouth',
+    mix: {noise: {enabled: false, volume: 0.2}, reverb: {enabled: false, mix: 0}},
+    oscillators: [
+      {waveform: 'sine', frequencyHz: 46, volume: 0.48, pan: 0},
+      {waveform: 'triangle', frequencyHz: 69, volume: 0, pan: 0},
+      {waveform: 'sawtooth', frequencyHz: 138, volume: 0.34, pan: -0.42, cutoffHz: 810,
+        movements: [{destination: 'filterCutoff', frequencyHz: 0.16, depthHz: 420, waveform: 'smoothRandom'}]},
+      {waveform: 'square', frequencyHz: 92, detuneCents: -11, volume: 0.25, pan: 0.43, cutoffHz: 430},
+      {waveform: 'triangle', frequencyHz: 184, detuneCents: 13, volume: 0.13, pan: 0.59}
+    ],
+    routes: [{sourceSlot: 2, targetSlot: 3, parameter: 'frequency', depth: 91}]
+  },
+  {
+    id: 'broken-conveyor', name: 'Broken Conveyor',
+    mix: {noise: {enabled: false, volume: 0.2}, reverb: {enabled: false, mix: 0}},
+    oscillators: [
+      {waveform: 'sine', frequencyHz: 49, volume: 0.39, pan: 0},
+      {waveform: 'square', frequencyHz: 98, volume: 0.34, pan: -0.62, cutoffHz: 630,
+        movements: squareMovements(0.8, 0, {destination: 'amplitude', depthAmplitude: 0.49},
+          {destination: 'filterCutoff', depthHz: 500})},
+      {waveform: 'sawtooth', frequencyHz: 147, volume: 0.28, pan: 0.67, cutoffHz: 920,
+        movements: squareMovements(1.2, 180, {destination: 'amplitude', depthAmplitude: 0.46})},
+      {waveform: 'sine', frequencyHz: 73.5, volume: 0, pan: 0},
+      {waveform: 'triangle', frequencyHz: 245, volume: 0.12, pan: 0.21}
+    ],
+    routes: [{sourceSlot: 4, targetSlot: 3, parameter: 'cutoff', depth: 570}]
+  },
+  {
+    id: 'shortwave-dust', name: 'Shortwave Dust',
+    mix: {noise: {enabled: true, volume: 0.13}, reverb: {enabled: true, mix: 0.12}},
+    oscillators: [
+      {waveform: 'triangle', frequencyHz: 58, volume: 0.37, pan: 0},
+      {waveform: 'square', frequencyHz: 116, detuneCents: -22, volume: 0.28, pan: -0.56, cutoffHz: 505,
+        movements: [{destination: 'pitch', frequencyHz: 0.19, depthCents: 50, waveform: 'smoothRandom'}]},
+      {waveform: 'sawtooth', frequencyHz: 116, detuneCents: 17, volume: 0.26, pan: 0.52, cutoffHz: 690,
+        movements: [{destination: 'filterCutoff', frequencyHz: 0.13, depthHz: 350, waveform: 'smoothRandom'}]},
+      {waveform: 'sine', frequencyHz: 174, volume: 0, pan: 0},
+      {waveform: 'sine', frequencyHz: 232, volume: 0.18, pan: -0.2}
+    ],
+    routes: [{sourceSlot: 4, targetSlot: 5, parameter: 'volume', depth: 0.17}]
+  }
+] satisfies readonly OscillatorBank[];
+
+const wetDroneBanks = [
+  {
+    id: 'tidal-glass', name: 'Tidal Glass',
+    mix: {noise: {enabled: false, volume: 0.2}, reverb: {enabled: true, mix: 0.58}},
+    oscillators: [
+      {waveform: 'sine', frequencyHz: 65.4064, volume: 0.43, pan: 0},
+      {waveform: 'sineTriangle', frequencyHz: 130.8128, volume: 0.35, pan: -0.53, shape: 0.28,
+        movements: [{destination: 'shape', frequencyHz: 0.09, depthShape: 0.24}]},
+      {waveform: 'triangle', frequencyHz: 196.2192, volume: 0.26, pan: 0.54,
+        movements: [{destination: 'amplitude', frequencyHz: 0.14, depthAmplitude: 0.38}]},
+      {waveform: 'sine', frequencyHz: 261.6256, volume: 0.21, pan: -0.73,
+        movements: [{destination: 'amplitude', frequencyHz: 0.18, depthAmplitude: 0.4}]},
+      {waveform: 'sine', frequencyHz: 392.4384, volume: 0.16, pan: 0.71,
+        movements: [{destination: 'amplitude', frequencyHz: 0.11, depthAmplitude: 0.44}]}
+    ]
+  },
+  {
+    id: 'sunken-choir', name: 'Sunken Choir',
+    mix: {noise: {enabled: false, volume: 0.2}, reverb: {enabled: true, mix: 0.73}},
+    oscillators: [
+      {waveform: 'sine', frequencyHz: 73.416, volume: 0.45, pan: 0},
+      {waveform: 'sineTriangle', frequencyHz: 146.832, detuneCents: -6, volume: 0.31, pan: -0.61, shape: 0.51,
+        movements: [{destination: 'amplitude', frequencyHz: 0.072, depthAmplitude: 0.33}]},
+      {waveform: 'sineTriangle', frequencyHz: 146.832, detuneCents: 7, volume: 0.31, pan: 0.61, shape: 0.44,
+        movements: [{destination: 'amplitude', frequencyHz: 0.096, depthAmplitude: 0.33}]},
+      {waveform: 'triangle', frequencyHz: 176.1984, volume: 0.23, pan: -0.39, cutoffHz: 640},
+      {waveform: 'triangle', frequencyHz: 220.248, volume: 0.19, pan: 0.41, cutoffHz: 790,
+        movements: [{destination: 'filterCutoff', frequencyHz: 0.083, depthHz: 410}]}
+    ]
+  },
+  {
+    id: 'rain-vault', name: 'Rain Vault',
+    mix: {noise: {enabled: false, volume: 0.2}, reverb: {enabled: true, mix: 0.86}},
+    oscillators: [
+      {waveform: 'sine', frequencyHz: 82.4, volume: 0.31, pan: 0},
+      {waveform: 'sine', frequencyHz: 164.8, volume: 0.24, pan: -0.39},
+      {waveform: 'triangle', frequencyHz: 247.2, volume: 0.35, pan: -0.68,
+        movements: squareMovements(0.77, 0, {destination: 'amplitude', depthAmplitude: 0.5})},
+      {waveform: 'sineTriangle', frequencyHz: 329.6, volume: 0.24, pan: 0.65, shape: 0.75,
+        movements: squareMovements(0.77, 180, {destination: 'amplitude', depthAmplitude: 0.5})},
+      {waveform: 'sine', frequencyHz: 494.4, volume: 0.19, pan: 0.26,
+        movements: squareMovements(0.51, 90, {destination: 'amplitude', depthAmplitude: 0.5})}
+    ]
+  }
+] satisfies readonly OscillatorBank[];
+
 export const oscillatorBankGroups: readonly {
   readonly label: string;
   readonly presets: readonly OscillatorBank[];
@@ -326,7 +418,9 @@ export const oscillatorBankGroups: readonly {
   {label: 'Drone Foundations', presets: droneBanks},
   {label: 'Cross-Modulation', presets: crossModulationBanks},
   {label: 'Routing Example', presets: routingExampleBanks},
-  {label: 'Stepped Drones', presets: steppedDroneBanks}
+  {label: 'Stepped Drones', presets: steppedDroneBanks},
+  {label: 'Grungy', presets: grungyDroneBanks},
+  {label: 'Wet', presets: wetDroneBanks}
 ];
 
 const banks = oscillatorBankGroups.flatMap(group => group.presets);
@@ -355,7 +449,8 @@ export function loadBuiltInOscillatorBank(presetId: string, layer: DroneLayer): 
     signal: 'waveform' as const,
     enabled: true
   }));
-  const drone = {...layer.drone, oscillators, oscillatorModulations};
+  const mix = preset.mix ? {...layer.drone.mix, ...preset.mix} : layer.drone.mix;
+  const drone = {...layer.drone, oscillators, oscillatorModulations, mix};
   validateDroneSettings(drone);
   for (const settings of modulation) validateLowFrequencyOscillatorSettings(settings);
   // Free tuning plays the bank's exact voicing even if the previous patch used a different harmony.

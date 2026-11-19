@@ -41,7 +41,7 @@ Cutoff sliders use a logarithmic scale, and oscillator Volume and Amplitude LFO 
 
 Each oscillator uses the same section layout for Volume & Pan, Frequency & Waveform, and Low-pass Filter. LFO controls sit with the slider they affect. Amplitude LFO sits under Volume, Pitch LFO under Frequency, and Cutoff LFO in the low-pass filter controls.
 
-Use **5-oscillator preset** above the rack to load a factory bank into the selected drone. The picker groups banks under **Drone Foundations**, **Cross-Modulation**, **Routing Example**, and **Stepped Drones**. Each bank sets all five oscillator voices and their modulation. It replaces the layer's oscillator routes and selects Free harmony mode so the voiced pitches play as designed. Layer enable, gain, envelope and mix stay as set.
+Use **5-oscillator preset** above the rack to load a factory bank into the selected drone. The picker groups banks under **Drone Foundations**, **Cross-Modulation**, **Routing Example**, **Stepped Drones**, **Grungy**, and **Wet**. Each bank sets all five oscillator voices and their modulation. It replaces the layer's oscillator routes and selects Free harmony mode so the voiced pitches play as designed. Layer enable, gain, envelope and mix stay as set.
 
 | Cross-modulation bank | Waveform route | What to listen for |
 | --- | --- | --- |
@@ -70,6 +70,17 @@ OSC 2 runs at zero audible volume in these banks. Its waveform feeds the route b
 | Register Switch | One voice steps between roughly A3 and E4 as its filter and waveform change. Two side voices trade accents. |
 
 These banks run from the audio clock as soon as the drone plays. Open the oscillator's LFO controls to compare the synced rates and phase offsets.
+
+| Group | Preset | Sound |
+| --- | --- | --- |
+| Grungy | Rust Mouth | Low distorted-sounding FM and an irregular filter sweep. |
+| Grungy | Broken Conveyor | Dry square and saw voices pulse at different rates over a bass. |
+| Grungy | Shortwave Dust | Detuned voices drift over a thin layer of white noise. |
+| Wet | Tidal Glass | Soft, independently swelling harmonics through 58% reverb. |
+| Wet | Sunken Choir | A detuned stereo pair and minor voicing through 73% reverb. |
+| Wet | Rain Vault | Alternating high voices leave overlapping tails through 86% reverb. |
+
+**Grungy** and **Wet** also set the chosen drone’s noise and reverb. The layer low-pass, shelf EQ, and shared echo keep their current settings.
 
 Use **PRESETS** beside **COPY** on any oscillator to load a built-in sound into that slot. The list is bundled in `src/domain/built-in-oscillator-presets.json`.
 
