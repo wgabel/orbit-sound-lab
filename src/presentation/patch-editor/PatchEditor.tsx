@@ -356,7 +356,7 @@ export function PatchEditor({hidden, droneLayers, onClose, onEditDrone, createPl
               <option key={kind} value={kind} className="patch-module-option-control">◆ {MODULE_LABELS[kind]}</option>)}
           </optgroup>
           <optgroup label="Audio processing &amp; routing">
-            {(['filter','gain','shelfEq','mixer','crossfader','oscilloscope','pitchShift','output'] as const).map(kind =>
+            {(['filter','gain','shelfEq','reverb','mixer','crossfader','oscilloscope','pitchShift','output'] as const).map(kind =>
               <option key={kind} value={kind}>{MODULE_LABELS[kind]}</option>)}
           </optgroup>
         </select>

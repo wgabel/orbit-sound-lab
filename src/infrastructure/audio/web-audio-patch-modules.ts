@@ -7,6 +7,7 @@ import { createPatchChordVoice } from './web-audio-patch-chords';
 import type { ChordRoute } from './web-audio-patch-chords';
 import { getShelfFrequencyHz } from '../../domain/drone-shelf-response';
 import { WebAudioPitchShift } from './web-audio-pitch-shift';
+import { WebAudioReverb } from './web-audio-reverb';
 import { WebAudioShelfEq } from './web-audio-shelf-eq';
 import { createDefaultDroneSettings } from '../../domain/drone';
 import type { PatchModule } from '../../domain/patch';
@@ -231,6 +232,12 @@ export function createPatchRuntimeModule(
         levelA:{parameter:channelA.gain, base:levelA},
         levelB:{parameter:channelB.gain, base:levelB}
       }, dispose() {channelA.disconnect(); channelB.disconnect(); output.disconnect();}};
+    }
+    case 'reverb': {
+      const effect = new WebAudioReverb(context,{...definition.settings,enabled:true});
+      const mix = effect.enableMixAutomation(definition.settings.mix);
+      return {definition,inputs:{in:effect.input},output:effect.output,
+        parameters:{mix:{parameter:mix,base:definition.settings.mix}},dispose:() => effect.dispose()};
     }
     case 'shelfEq': {
       const shelf = new WebAudioShelfEq(context,definition.settings);

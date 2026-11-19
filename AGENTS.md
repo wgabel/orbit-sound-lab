@@ -151,7 +151,7 @@ Treat this as a software-inspired design, not a claim of exact SOLAR 42 internal
 - Load the saved sound into the layer selected in the UI, preserving its enable state, the other layer and the shared effects. Save the source layer with the preset; older presets use A as their source.
 - Each drone has a white-noise source with its own level. Center the noise and sum it with the oscillator outputs before the layer low-pass. The per-oscillator filters and panorama precede this layer stage, and the shared echo follows it.
 - The noise source is created on first use in a running voice, and released with that voice. Old presets default to noise off and layer filter bypass.
-- Apply each layer’s optional stereo convolver after the shared low-pass and before the layer level. Reverb uses a fixed 1.8-second response with separate dry/wet mix; presets without the reverb settings start bypassed.
+- Apply each layer’s optional stereo convolver after the shelf EQ and before the layer level. The Drone editor and Reverb node share the same response generator and controls. Older drone presets retain a 1.8-second response, 18 ms pre-delay and zero additional damping. Presets without reverb settings start bypassed.
 - Preset Morph and Scene Timeline blend the stereo outputs of two complete scenes in one audio context. Each scene retains its oscillator, filter, effect, harmony and modulation settings. Run the blend after the scene effects and before shared output protection. Fade the last scene's source mix before its reverb and echo so the ending can ring out.
 
 ## XY performance pad

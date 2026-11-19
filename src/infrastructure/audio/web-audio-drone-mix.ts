@@ -34,7 +34,8 @@ export class WebAudioDroneMix {
     this.dryGain.gain.value = settings.filter.enabled ? 0 : 1;
     this.wetGain = context.createGain();
     this.wetGain.gain.value = settings.filter.enabled ? 1 : 0;
-    this.reverb = new WebAudioReverb(context, settings.reverb, output);
+    this.reverb = new WebAudioReverb(context, settings.reverb);
+    this.reverb.output.connect(output);
     this.shelfEq = new WebAudioShelfEq(context,settings);
     this.sourceLevel.connect(this.dryGain).connect(this.shelfEq.lowShelf);
     this.sourceLevel.connect(this.filter).connect(this.wetGain).connect(this.shelfEq.lowShelf);

@@ -50,6 +50,8 @@ In an **Automation** node, **Smooth waves** loads editable curves with rounded t
 
 Choose **Add module → LFO** for repeating modulation. Select a waveform, set the rate or cycle duration, and connect **Value** to a control input. The cable sets the modulation range. **Synchronize with patch** aligns the LFO to the patch transport and enables phase offsets. This node uses AudioWorklet.
 
+Add a **Reverb** node and connect an audio source or Mixer to **Audio in**. Route **Audio out** to the next effect or Output. Connect an Automation or LFO **Value** to **Wet Mix** to move between the dry signal and the reverberant tail. In an arrangement, give the effect tail enough time to ring out after the last source clip.
+
 Use an **Oscilloscope** node to display the waveform at any patch audio connection. Connect it inline through **Audio in** and **Audio out**, or connect its input in parallel and leave its output free. The display uses a mono preview at 4× vertical scale. Inline audio keeps its original channels and level.
 
 The **Heavy & Wet Drones** factory group contains four ready-to-play patches. **Flooded Foundry** fades between a cross-modulated bass drone and a reverberant choir. **Drowned Conveyor** steps filter cutoff and the level of a mechanical drone together. **Silt Pressure** layers random low-pass movement over slower swells. **Blackwater Siren** adds an automated pitch-shifted branch to a folded-sine and noise drone.
@@ -146,6 +148,8 @@ Choose **Variable Pulse** to shape the width of the pulse from 5% to 95%. At 50%
 Choose **Folded Sine** and raise **Fold Amount** to bend the sine peaks back inward, adding harmonics at the same oscillator pitch. At 0% the signal is a clean sine. Use **Shape LFO** to sweep from a mellow tone into brighter or metallic textures, or use a square LFO to alternate settings.
 
 ## Drone shelf EQ
+
+In **Drone Mix**, switch on **Reverb** or load a space from **Reverb preset**. **Decay** sets the response length (0.2–12 seconds), **Pre-delay** sets when reflections begin (0–250 ms), and higher **Damping** makes the high frequencies fade faster. **Wet Mix** blends the original and reverberant sound. **Concrete Room**, **Dark Hall**, and **Flooded Cavern** are editable starting points shared with the Reverb node. Existing presets use the original 1.8-second response and 18 ms pre-delay unless you edit them.
 
 Each **Drone Mix** has a **Low shelf** and **High shelf**. Frequency sets the center of the shelf’s transition, and Gain sets how much to boost or cut in dB. Try +3 dB at 150 Hz on the low shelf for more body, or −4 dB at 2,400 Hz on the high shelf to soften the top end. Both are flat at 0 dB. The response graph shows the combined gain from both shelves across frequency, with a blue marker for the low shelf and amber for the high shelf. The shelves shape the whole drone before its reverb, and saved presets retain the settings.
 
