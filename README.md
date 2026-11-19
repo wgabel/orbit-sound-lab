@@ -30,6 +30,8 @@ Select a **Drone** node and choose **Copy Drone A** or **Copy Drone B** to take 
 
 To combine two sources, connect them to **Audio A** and **Audio B** on a **Mixer**, then connect its **Audio out** to a filter, gain stage, or other audio input. Set each channel’s level in the inspector or automate it via **Level A** and **Level B**.
 
+In an **Automation** node, **Smooth waves** loads editable curves with rounded transitions between points. The presets loop cleanly and keep your current duration and playback mode.
+
 Choose **Add module → LFO** for repeating modulation. Select a waveform, set the rate or cycle duration, and connect **Value** to a control input. The cable sets the modulation range. **Synchronize with patch** aligns the LFO to the patch transport and enables phase offsets. This node uses AudioWorklet.
 
 Use an **Oscilloscope** node to display the waveform at any patch audio connection. Connect it inline through **Audio in** and **Audio out**, or connect its input in parallel and leave its output free. The display uses a mono preview at 4× vertical scale. Inline audio keeps its original channels and level.
