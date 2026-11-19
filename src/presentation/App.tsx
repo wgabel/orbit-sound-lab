@@ -6,6 +6,8 @@ import { OscillatorShapeControls } from './OscillatorShapeControls';
 import { replaceOscillatorModulationRoute, validateOscillatorModulationRoutes } from '../domain/oscillator-modulation';
 import type { OscillatorModulationParameter, OscillatorModulationRoute } from '../domain/oscillator-modulation';
 import { OscillatorModulationSlider } from './OscillatorModulationSlider';
+import { MAX_MORPH_DURATION_SECONDS, MIN_MORPH_DURATION_SECONDS } from '../domain/morph-automation';
+import type { MorphAutomationSettings } from '../domain/morph-automation';
 import { NEUTRAL_PERFORMANCE_POSITION } from '../domain/performance-pad';
 import { PerformancePad } from './PerformancePad';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -110,6 +112,9 @@ export function App() {
   const [morphStartId, setMorphStartId] = useState('');
   const [morphEndId, setMorphEndId] = useState('');
   const [morphPosition, setMorphPosition] = useState(0);
+  const [morphDuration, setMorphDuration] = useState(20);
+  const [morphLoop, setMorphLoop] = useState(false);
+  const [morphMotion, setMorphMotion] = useState<'idle' | 'running' | 'held' | 'complete'>('idle');
   const [morphEnabled, setMorphEnabled] = useState(false);
   const morphStart = presets.find(preset => preset.id === morphStartId);
   const morphEnd = presets.find(preset => preset.id === morphEndId);
@@ -123,6 +128,7 @@ export function App() {
     previewSession.current = null;
     setPreviewMode(null);
     setSceneIndex(null);
+    setMorphMotion('idle');
     controller.current?.scenePlayback.stop();
   }
 
@@ -131,25 +137,53 @@ export function App() {
     setMorphPosition(0);
   }
 
-  async function updateMorphPosition(position: number) {
+  async function previewMorph(position: number, automation?: MorphAutomationSettings) {
     if (!canMorph || previewSession.current?.kind === 'arrangement') return;
+    const current = previewSession.current;
+    const session = current ?? {kind: 'morph'} as const;
     setMorphPosition(position);
-    if (previewSession.current?.kind === 'morph') {
-      controller.current?.scenePlayback.setMorphPosition(position);
-      return;
-    }
-    const session = {kind: 'morph'} as const;
+    setMorphMotion(automation ? 'running' : 'idle');
+    setError('');
     previewSession.current = session;
     setPreviewMode(session.kind);
     try {
-      setError('');
-      await ensureSynthesizer().scenePlayback.startMorph(sceneFromPreset(morphStart), sceneFromPreset(morphEnd), position);
+      const playback = ensureSynthesizer().scenePlayback;
+      if (current) {
+        if (automation) playback.startMorphAutomation(automation);
+        else playback.setMorphPosition(position);
+        return;
+      }
+      await playback.startMorph(sceneFromPreset(morphStart), sceneFromPreset(morphEnd), position, automation);
     } catch (reason) {
       if (previewSession.current !== session) return;
       stopScenePlayback();
       setError(reason instanceof Error ? reason.message : 'Cannot preview the preset blend.');
     }
   }
+
+  function holdMorph() {
+    const position = controller.current?.scenePlayback.pauseMorphAutomation();
+    if (position != null) setMorphPosition(position);
+    setMorphMotion('held');
+  }
+
+  useEffect(() => {
+    if (morphMotion !== 'running') return;
+    let frame: number;
+    function updateProgress() {
+      const playback = controller.current?.scenePlayback;
+      const automation = playback?.readMorphAutomation();
+      if (!automation) return;
+      setMorphPosition(Math.round(automation.position * 1000) / 1000);
+      if (automation.running) frame = requestAnimationFrame(updateProgress);
+      else {
+        playback?.pauseMorphAutomation();
+        setMorphMotion('complete');
+      }
+    }
+    frame = requestAnimationFrame(updateProgress);
+    return () => cancelAnimationFrame(frame);
+  }, [morphMotion]);
 
   async function playArrangement(scenes: readonly ArrangementScene[]) {
     if (previewSession.current || playbackTransition) return;
@@ -571,10 +605,29 @@ export function App() {
           </select></label>
         </div>
         <NumericSlider label="Morph position" className="preset-morph-slider" unit="%" displayFactor={100} min={0} max={1} step={0.001}
-          value={morphPosition} disabled={!canMorph || playbackTransition} onChange={position => void updateMorphPosition(position)}/>
-        {previewMode !== 'morph' && <button type="button" disabled={!canMorph || playbackTransition}
-          onClick={() => void updateMorphPosition(morphPosition)}>Preview blend</button>}
-        <p>The slider crossfades both saved sounds. Turn Morph off to return to the editor sound.</p>
+          value={morphPosition} disabled={!canMorph || playbackTransition} onChange={position => void previewMorph(position)}/>
+        <div className="preset-morph-automation">
+          <NumericSlider label="Travel time" unit="s" scale="logarithmic" min={MIN_MORPH_DURATION_SECONDS} max={MAX_MORPH_DURATION_SECONDS} step={0.5}
+            value={morphDuration} disabled={!canMorph || morphMotion === 'running'}
+            onChange={setMorphDuration}/>
+          <label className="preset-morph-toggle"><input type="checkbox" checked={morphLoop}
+            disabled={!canMorph || morphMotion === 'running'}
+            onChange={event => setMorphLoop(event.target.checked)}/> Loop back and forth</label>
+        </div>
+        <div className="preset-morph-actions">
+          {previewMode !== 'morph' && <button type="button" disabled={!canMorph || playbackTransition}
+            onClick={() => void previewMorph(morphPosition)}>Preview blend</button>}
+          {morphMotion === 'running' ?
+            <button type="button" onClick={holdMorph}>Hold blend</button> :
+            <button type="button" disabled={!canMorph || playbackTransition}
+              onClick={() => void previewMorph(0, {durationSeconds: morphDuration, loop: morphLoop})}>
+              {morphLoop ? 'Loop A ↔ B' : 'Play A → B'}
+            </button>}
+          <span role="status">{{
+            idle: '', running: morphLoop ? 'Looping' : 'Playing A → B', held: 'Blend held', complete: 'At preset B'
+          }[morphMotion]}</span>
+        </div>
+        <p>Travel time is for one direction. Move the slider to take over the blend, or turn Morph off to return to the editor sound.</p>
       </fieldset>
     </div>
     <SceneTimeline captureSound={captureSound} onPlay={scenes => void playArrangement(scenes)}

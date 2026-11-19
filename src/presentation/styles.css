@@ -169,6 +169,12 @@ body{margin:0;background:#0c1016;color:#e8e9df;font-family:system-ui,sans-serif}
 .preset-morph-content{border:0;padding:0;margin:16px 0 0;min-width:0}
 .preset-morph-content:disabled{opacity:.45}
 .preset-morph-content:disabled select,.preset-morph-content:disabled input{cursor:not-allowed}
+.preset-morph-automation{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:14px;margin-top:14px}
+.preset-morph-automation .numeric-slider{min-width:0}
+.preset-morph-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin-top:12px}
+.preset-morph-actions span{color:#a8b9b0;font-size:12px}
+.preset-morph-actions button:disabled{opacity:.45;cursor:default}
+@media(max-width:450px){.preset-morph-automation{grid-template-columns:1fr}}
 
 /* Always-visible per-voice oscilloscope, including collapsed oscillator panels. */
 .oscillator-waveform{position:relative;height:42px;margin:0;min-width:0;border:1px solid #304e51;border-radius:6px;background:#0b171c;overflow:hidden}
@@ -283,7 +289,7 @@ body{margin:0;background:#0c1016;color:#e8e9df;font-family:system-ui,sans-serif}
 
 .scene-timeline .preset-morph-heading span,.scene-timeline-actions span{color:#a8b9b0;font-size:12px}
 .scene-timeline-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.scene-timeline-actions button:disabled,.preset-morph-content>button:disabled{opacity:.45;cursor:default}
+.scene-timeline-actions button:disabled{opacity:.45;cursor:default}
 .scene-timeline-list{display:grid;gap:8px;list-style:none;padding:0;margin:12px 0}
 .scene-timeline-list li{
   display:grid;grid-template-columns:1fr repeat(2,minmax(85px,110px)) auto;gap:8px;
