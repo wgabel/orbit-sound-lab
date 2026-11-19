@@ -15,6 +15,7 @@ import { deletePatchPreset, exportPatchPreset, importPatchPreset, listPatchPrese
 import { PresetLibraryPanel } from './PresetLibrary';
 import { usePresetCollection } from './usePresetCollection';
 import { PatchViewControls } from './PatchViewControls';
+import { resolvePatchOverlaps } from './patch-overlap';
 import './patch-editor.css';
 
 export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
@@ -168,6 +169,17 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
     setPending(null);
   }
 
+  function cleanUpOverlaps() {
+    if (!viewport.current) return;
+    const sizes = new Map(Array.from(viewport.current.querySelectorAll<HTMLElement>('[data-node-id]'), node => {
+      const {width,height} = node.getBoundingClientRect();
+      return [node.dataset.nodeId ?? '',{width:width/scale,height:height/scale}];
+    }));
+    const next = resolvePatchOverlaps(positions,sizes);
+    setPositions(next);
+    setMessage(next === positions ? 'No node overlaps to clean up.' : 'Overlapping nodes moved to nearby spaces.');
+  }
+
   function updateModule(module: PatchModule) {
     const next = {...patch,modules:patch.modules.map(item => item.id === module.id ? module : item)};
     const cables = patch.cables.filter(cable => getPatchPort(next,cable.source) && getPatchPort(next,cable.destination));
@@ -281,6 +293,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
           {presetCollection.presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
         </select>
         <button type="button" disabled={presetCollection.busy} onClick={() => void saveSnapshot()}>Save snapshot</button>
+        <button type="button" disabled={patch.modules.length < 2} onClick={cleanUpOverlaps}>Clean up overlaps</button>
         <button type="button" onClick={() => loadPatch(true)}>Load example</button>
         <button type="button" onClick={() => loadPatch(false)}>Empty patch</button>
         <span className="patch-legend"><span>Audio</span><span>Automation</span></span>
