@@ -22,10 +22,11 @@ import { resolvePatchOverlaps } from './patch-overlap';
 import './patch-editor.css';
 import './patch-arrangement.css';
 
-export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
+export function PatchEditor({hidden, droneLayers, onClose, onEditDrone, createPlayback}: {
   hidden: boolean;
   readonly droneLayers: Readonly<Record<DroneLayerId, DroneLayer>>;
   onClose(): void;
+  onEditDrone(module: PatchDrone, applyEdits: (layer: DroneLayer) => boolean): void;
   createPlayback(): PatchPlayback;
 }) {
   const engine = useRef<PatchPlayback | null>(null);
@@ -241,6 +242,19 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
     if (apply({...next,cables}) && cables.length !== patch.cables.length) setMessage('Disconnected a port the new waveform does not support.');
   }
 
+  async function editDrone(module: PatchDrone) {
+    if (transportBusy.current || (playing && !await stopPlayback())) return;
+    if (viewport.current) pendingViewport.current = readPatchViewportOrigin(viewport.current,scale);
+    setPending(null);
+    onEditDrone(module,layer => {
+      const edited = setPatchDroneLayer(module,layer,module.settings.copiedFrom);
+      const next = {...patch,modules:patch.modules.map(item => item.id === module.id ? edited : item)};
+      if (!apply(next)) return false;
+      setMessage('Drone node updated.');
+      return true;
+    });
+  }
+
   function copyDrone(module: PatchDrone, layerId: DroneLayerId) {
     const snapshot = setPatchDroneLayer(module,droneLayers[layerId],layerId);
     if (apply({...patch, modules:patch.modules.map(item => item.id === module.id ? snapshot : item)})) {
@@ -392,7 +406,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
               ? {...previous,[id]:position} : previous;
           })}/>
         <p className="patch-status" role={error ? 'alert' : 'status'}>{error || message}</p>
-        {!hidden && <PatchInspector patch={patch} sampleRate={engine.current?.sampleRate} selection={selection} onModule={updateModule} onCopyDrone={copyDrone} onMapping={updateMapping} onRemove={remove}/>}
+        {!hidden && <PatchInspector patch={patch} sampleRate={engine.current?.sampleRate} selection={selection} onModule={updateModule} onEditDrone={module => void editDrone(module)} onCopyDrone={copyDrone} onMapping={updateMapping} onRemove={remove}/>}
       </div>
     </div>
   </main>;

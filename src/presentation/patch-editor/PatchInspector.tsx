@@ -20,6 +20,7 @@ interface InspectorProps {
   readonly patch: Patch;
   readonly sampleRate?: number;
   readonly selection: PatchSelection | null;
+  onEditDrone(module: PatchDrone): void;
   onCopyDrone(module: PatchDrone, layerId: DroneLayerId): void;
   onModule(module: PatchModule): void;
   onMapping(id: string, mapping: CableMapping): void;
@@ -123,7 +124,7 @@ function CableSettings({patch, cable, onChange}: {patch: Patch; cable: PatchCabl
   </div>;
 }
 
-export function PatchInspector({patch, sampleRate, selection, onModule, onCopyDrone, onMapping, onRemove}: InspectorProps) {
+export function PatchInspector({patch, sampleRate, selection, onModule, onEditDrone, onCopyDrone, onMapping, onRemove}: InspectorProps) {
   const module = selection?.kind === 'module' ? patch.modules.find(item => item.id === selection.id) : undefined;
   const cable = selection?.kind === 'cable' ? patch.cables.find(item => item.id === selection.id) : undefined;
   const destination = cable && getPatchPort(patch,cable.destination);
@@ -139,6 +140,7 @@ export function PatchInspector({patch, sampleRate, selection, onModule, onCopyDr
     {module && <ModuleSettings module={module} sampleRate={sampleRate} onChange={onModule}/>}
     {module?.kind === 'drone' && <>
       <div className="patch-actions patch-drone-copy">
+        <button type="button" onClick={() => onEditDrone(module)}>Edit drone</button>
         {DRONE_LAYER_IDS.map(layerId => <button key={layerId} type="button" onClick={() => onCopyDrone(module,layerId)}>
           Copy Drone {layerId}</button>)}
       </div>
