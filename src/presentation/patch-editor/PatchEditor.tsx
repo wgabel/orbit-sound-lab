@@ -4,7 +4,9 @@ import { connectPatchPorts, createExamplePatch, createPatchModule, getPatchPort,
   MODULE_LABELS, sameEndpoint, validatePatch } from '../../domain/patch';
 import type { CableMapping, Patch, PatchEndpoint, PatchModule, PatchModuleKind, PatchPort } from '../../domain/patch';
 import { createExampleLayout, PatchCanvas } from './PatchCanvas';
-import type { PatchLayout, PatchSelection } from './PatchCanvas';
+import type { PatchSelection } from './PatchCanvas';
+import { placeNewPatchNode } from './patch-layout';
+import type { PatchLayout } from './patch-layout';
 import { PatchInspector } from './PatchInspector';
 import './patch-editor.css';
 
@@ -15,6 +17,7 @@ export function PatchEditor({hidden, onClose, createPlayback}: {
 }) {
   const engine = useRef<PatchPlayback | null>(null);
   const nextId = useRef(1);
+  const viewport = useRef<HTMLDivElement>(null);
   const [patch, setPatch] = useState(createExamplePatch);
   const [positions, setPositions] = useState<PatchLayout>(createExampleLayout);
   const [selection, setSelection] = useState<PatchSelection | null>({kind:'cable',id:'filter-control'});
@@ -108,11 +111,9 @@ export function PatchEditor({hidden, onClose, createPlayback}: {
   function addModule(kind: PatchModuleKind) {
     const id = `module-${nextId.current++}`;
     const module = createPatchModule(kind,id);
+    const position = viewport.current ? placeNewPatchNode(viewport.current,module) : {x:28,y:38};
     if (!apply({...patch,modules:[...patch.modules,module]})) return;
-    const slot = Array.from({length:patch.modules.length + 1}, (_, index) =>
-      ({x:28+(index%4)*221,y:38+Math.floor(index/4)*194}))
-      .find(point => Object.values(positions).every(existing => Math.abs(existing.x-point.x)>180 || Math.abs(existing.y-point.y)>170));
-    setPositions(previous => ({...previous,[id]:slot ?? {x:28,y:38+patch.modules.length*194}}));
+    setPositions(previous => ({...previous,[id]:position}));
     setSelection({kind:'module',id});
     setPending(null);
   }
@@ -171,7 +172,7 @@ export function PatchEditor({hidden, onClose, createPlayback}: {
         <button type="button" onClick={() => loadPatch(false)}>Empty patch</button>
         <span className="patch-legend"><span>Audio</span><span>Automation</span></span>
       </div>
-      <PatchCanvas patch={patch} positions={positions} selection={selection} pending={pending}
+      <PatchCanvas viewportRef={viewport} patch={patch} positions={positions} selection={selection} pending={pending}
         elapsed={monitor.elapsed} outputLevel={monitor.level} onPort={handlePort} canConnect={canConnect}
         onSelect={item => {setSelection(item); setPending(null); setError('');}}
         onMove={(id,position) => setPositions(previous => ({...previous,[id]:position}))}/>
