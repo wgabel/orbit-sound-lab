@@ -1,3 +1,6 @@
+import { DEFAULT_CYCLE_ENVELOPE } from '../../domain/cycle-envelope';
+import type { CycleEnvelope } from '../../domain/cycle-envelope';
+import { createCycleEnvelopeWave } from './cycle-envelope-wave';
 import { DEFAULT_OSCILLATOR_SHAPE, MAXIMUM_PULSE_WIDTH, MINIMUM_PULSE_WIDTH } from '../../domain/drone';
 import type { OscillatorSettings, OscillatorWaveform } from '../../domain/drone';
 import { applyPitchOffset } from '../../domain/modulation';
@@ -31,6 +34,7 @@ interface OscillatorBranch {
   readonly pulse?: AudioWorkletNode;
   readonly pulseShape?: AudioParam;
   readonly waveform: OscillatorWaveform;
+  readonly cycleEnvelope?: CycleEnvelope;
   readonly blend?: ShapeBlend;
   readonly shapeControl?: ShapeControl;
   readonly fold?: {drive: GainNode; amount: GainNode; shaper: WaveShaperNode};
@@ -66,7 +70,7 @@ export class WebAudioWaveformSource {
     this.sharedShape = context.createConstantSource();
     this.shape = this.sharedShape.offset;
     this.shape.value = getBaseShape(settings);
-    this.current = this.createBranch(settings.waveform, null);
+    this.current = this.createBranch(settings, null);
   }
 
   get activeClock(): AudioScheduledSourceNode { return this.current.clock; }
@@ -118,8 +122,9 @@ export class WebAudioWaveformSource {
 
   update(settings: OscillatorSettings, now: number): void {
     const previous = this.current;
-    if (previous.waveform !== settings.waveform) {
-      this.current = this.createBranch(settings.waveform, this.started ? now : null);
+    const cycleEnvelope = settings.waveform === 'cycleEnvelope' ? settings.cycleEnvelope ?? DEFAULT_CYCLE_ENVELOPE : undefined;
+    if (previous.waveform !== settings.waveform || previous.cycleEnvelope !== cycleEnvelope) {
+      this.current = this.createBranch(settings, this.started ? now : null);
       if (this.started) {
         this.startBranch(this.current, now);
         const end = now + PLAYBACK_FADE_SECONDS;
@@ -168,11 +173,12 @@ export class WebAudioWaveformSource {
     this.output.disconnect();
   }
 
-  private createBranch(waveform: OscillatorWaveform, fadeInStartedAt: number | null): OscillatorBranch {
+  private createBranch(settings: OscillatorSettings, fadeInStartedAt: number | null): OscillatorBranch {
+    const {waveform} = settings;
     const gain = this.context.createGain();
     gain.gain.setValueAtTime(fadeInStartedAt === null ? 1 : 0, fadeInStartedAt ?? this.context.currentTime);
     const branch = waveform === 'variablePulse' ?
-      this.createPulseBranch(this.pulseWorklet.create(), gain, fadeInStartedAt) : this.createNativeBranch(waveform, gain, fadeInStartedAt);
+      this.createPulseBranch(this.pulseWorklet.create(), gain, fadeInStartedAt) : this.createNativeBranch(waveform, gain, fadeInStartedAt, settings.cycleEnvelope ?? DEFAULT_CYCLE_ENVELOPE);
     gain.connect(this.output);
     this.branches.add(branch);
     return branch;
@@ -195,9 +201,15 @@ export class WebAudioWaveformSource {
   }
 
   private createNativeBranch(waveform: Exclude<OscillatorWaveform, 'variablePulse'>,
-    gain: GainNode, fadeInStartedAt: number | null): OscillatorBranch {
-    const oscillator = this.createOscillator(waveform === 'sineTriangle' || waveform === 'foldedSine' || waveform === 'peakedSine' ? 'sine' : waveform);
+    gain: GainNode, fadeInStartedAt: number | null, cycleEnvelope: CycleEnvelope): OscillatorBranch {
+    const oscillator = this.createOscillator(waveform === 'sineTriangle' || waveform === 'foldedSine' || waveform === 'peakedSine' || waveform === 'cycleEnvelope' ? 'sine' : waveform);
     const branch = {clock: oscillator, waveform, gain, frequency: oscillator.frequency, detune: oscillator.detune, fadeInStartedAt};
+    if (waveform === 'cycleEnvelope') {
+      const shapeControl = this.createShapeControl();
+      const secondary = this.createOscillator('sine');
+      secondary.setPeriodicWave(createCycleEnvelopeWave(this.context,cycleEnvelope));
+      return {...branch, cycleEnvelope, shapeControl, blend: this.createShapeBlend(oscillator,secondary,gain,shapeControl.boundedShape)};
+    }
     if (waveform === 'sineTriangle' || waveform === 'peakedSine') {
       const shapeControl = this.createShapeControl();
       const secondary = waveform === 'peakedSine' ? this.createPeakedSineOscillator() : this.createOscillator('triangle');
@@ -218,7 +230,7 @@ export class WebAudioWaveformSource {
     return oscillator;
   }
 
-  private createOscillator(waveform: Exclude<OscillatorWaveform, 'sineTriangle' | 'variablePulse' | 'foldedSine' | 'peakedSine'>): OscillatorNode {
+  private createOscillator(waveform: Exclude<OscillatorWaveform, 'sineTriangle' | 'variablePulse' | 'foldedSine' | 'peakedSine' | 'cycleEnvelope'>): OscillatorNode {
     const oscillator = this.context.createOscillator();
     oscillator.type = waveform;
     oscillator.frequency.value = 0;

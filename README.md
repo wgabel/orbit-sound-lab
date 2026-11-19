@@ -149,6 +149,8 @@ Choose **Variable Pulse** to shape the width of the pulse from 5% to 95%. At 50%
 
 Choose **Peaked Sine** for narrow, symmetric peaks. **Shape** blends a clean sine at 0% into a ninth-power sine at 100%. The note keeps its pitch and gains odd harmonics. Use **Shape LFO** in the Drone editor, or connect an **LFO** or **Automation** output to the **Shape** input on a **Wave** node. Try a slow sweep from 0% to 60%.
 
+Choose **Cycle Envelope** in the oscillator or Wave node waveform menu to shape each sine cycle. Set Attack, Decay and Release as percentages of one cycle. The remaining time is spent at the Sustain level. The preview shows the original sine, the gain envelope and the resulting wave before filtering. At 0% Amount you hear the sine. At 100% you hear the full cycle shape. In the Drone editor, use **Shape LFO** to modulate Amount. In the Patch Editor, connect an LFO or Automation to **Amount**. The envelope follows the oscillator pitch and repeats with every cycle.
+
 Choose **Folded Sine** and raise **Fold Amount** to bend the sine peaks back inward, adding harmonics at the same oscillator pitch. At 0% the signal is a clean sine. Use **Shape LFO** to sweep from a mellow tone into brighter or metallic textures, or use a square LFO to alternate settings.
 
 ## Drone shelf EQ

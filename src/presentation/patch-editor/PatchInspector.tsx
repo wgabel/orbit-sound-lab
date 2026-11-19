@@ -1,3 +1,5 @@
+import { DEFAULT_CYCLE_ENVELOPE } from '../../domain/cycle-envelope';
+import { CycleEnvelopeControls } from '../CycleEnvelopeControls';
 import { ReverbControls } from '../ReverbControls';
 import { ChordProgressionSettings } from './ChordProgressionSettings';
 import { AutomationSettings } from './AutomationSettings';
@@ -62,8 +64,10 @@ function ModuleSettings({module, sampleRate, onChange}: {module: PatchModule; sa
       </select></label>
       <NumericSlider label="Base frequency" unit="Hz" min={40} max={880} step={0.1} value={module.settings.frequency}
         onChange={frequency => onChange({...module,settings:{...module.settings,frequency}})}/>
-      {supportsOscillatorShape(module.settings.waveform) && <NumericSlider label="Base shape" unit="%" displayFactor={100}
+      {supportsOscillatorShape(module.settings.waveform) && <NumericSlider label={module.settings.waveform === 'cycleEnvelope' ? 'Amount' : 'Base shape'} unit="%" displayFactor={100}
         min={0} max={1} step={0.01} value={module.settings.shape} onChange={shape => onChange({...module,settings:{...module.settings,shape}})}/>}
+      {module.settings.waveform === 'cycleEnvelope' && <CycleEnvelopeControls envelope={module.settings.cycleEnvelope ?? DEFAULT_CYCLE_ENVELOPE}
+        amount={module.settings.shape} onChange={cycleEnvelope => onChange({...module,settings:{...module.settings,cycleEnvelope}})}/>}
     </div>;
     case 'pitchShift': return <div className="patch-fields">
       <NumericSlider label="Transpose" unit="st" min={-24} max={24} step={1}

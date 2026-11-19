@@ -92,7 +92,7 @@ export function createPatchRuntimeModule(
     case 'wave': {
       const settings = definition.settings;
       const voice = new WebAudioWaveformSource(context, {...defaultWave, waveform:settings.waveform,
-        frequencyHz:settings.frequency, shape:settings.shape, detuneCents:0}, pulse);
+        frequencyHz:settings.frequency, shape:settings.shape, cycleEnvelope:settings.cycleEnvelope, detuneCents:0}, pulse);
       const level = context.createGain();
       level.gain.value = 0.18;
       voice.output.connect(level);

@@ -1,3 +1,5 @@
+import { validateCycleEnvelope } from './cycle-envelope';
+import type { CycleEnvelope } from './cycle-envelope';
 import { OSCILLATOR_WAVEFORMS } from './oscillator-waveforms';
 import type { OscillatorWaveform } from './oscillator-waveforms';
 
@@ -15,7 +17,7 @@ export type { OscillatorWaveform } from './oscillator-waveforms';
 export const MINIMUM_PULSE_WIDTH = 0.05;
 export const MAXIMUM_PULSE_WIDTH = 0.95;
 export function supportsOscillatorShape(waveform: OscillatorWaveform): boolean {
-  return waveform === 'sineTriangle' || waveform === 'variablePulse' || waveform === 'foldedSine' || waveform === 'peakedSine';
+  return waveform === 'sineTriangle' || waveform === 'variablePulse' || waveform === 'foldedSine' || waveform === 'peakedSine' || waveform === 'cycleEnvelope';
 }
 export interface LowPassFilterSettings {
   readonly enabled: boolean;
@@ -36,6 +38,7 @@ export interface OscillatorSettings {
   readonly enabled: boolean;
   readonly waveform: OscillatorWaveform;
   readonly shape?: number;
+  readonly cycleEnvelope?: CycleEnvelope;
   readonly filter: LowPassFilterSettings;
 }
 export const MAX_SHELF_GAIN_DECIBELS = 12;
@@ -129,6 +132,7 @@ export function validateOscillatorSettings(oscillator: OscillatorSettings): void
   if (oscillator.shape !== undefined && (!Number.isFinite(oscillator.shape) || oscillator.shape < 0 || oscillator.shape > 1)) {
     throw new Error('Oscillator shape must be between 0 and 1.');
   }
+  if (oscillator.cycleEnvelope !== undefined) validateCycleEnvelope(oscillator.cycleEnvelope);
   validateLowPassFilterSettings(oscillator.filter);
   validateFadeSettings(oscillator.fade);
 }

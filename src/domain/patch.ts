@@ -1,3 +1,5 @@
+import { validateCycleEnvelope } from './cycle-envelope';
+import type { CycleEnvelope } from './cycle-envelope';
 import { DEFAULT_REVERB, validateReverb } from './reverb';
 import type { ReverbSettings } from './reverb';
 import { DEFAULT_CHORD_PROGRESSION, validateChordProgression } from './chord-progression';
@@ -20,7 +22,7 @@ import type { PatchAutomation } from './patch-automation';
 export interface PatchModuleSettings {
   chord: ChordSettings;
   chordProgression: ChordProgression;
-  wave: {readonly waveform: OscillatorWaveform; readonly frequency: number; readonly shape: number};
+  wave: {readonly waveform: OscillatorWaveform; readonly frequency: number; readonly shape: number; readonly cycleEnvelope?: CycleEnvelope};
   drone: {
     readonly voice: DroneSettings;
     readonly modulation?: readonly LowFrequencyOscillatorSettings[];
@@ -128,7 +130,7 @@ export function getPatchPorts(module: PatchModule): readonly PatchPort[] {
     case 'wave': return [
       audioOutput,
       {id:'frequency', label:'Frequency', direction:'input', signal:'control', parameter:{unit:'Hz', minimum:40, maximum:880}},
-      ...(supportsOscillatorShape(module.settings.waveform) ? [shape] : [])
+      ...(supportsOscillatorShape(module.settings.waveform) ? [module.settings.waveform === 'cycleEnvelope' ? {...shape,label:'Amount'} : shape] : [])
     ];
     case 'drone': return [audioOutput];
     case 'chord': return [{id:'chords',label:'Chords',direction:'input',signal:'chords'},audioOutput];
@@ -252,7 +254,10 @@ export function validatePatch(patch: Patch): void {
       validateShelfEq(module.settings);
       continue;
     }
-    if (module.kind === 'wave' && !OSCILLATOR_WAVEFORMS.includes(module.settings.waveform)) throw new Error('Unknown waveform.');
+    if (module.kind === 'wave') {
+      if (!OSCILLATOR_WAVEFORMS.includes(module.settings.waveform)) throw new Error('Unknown waveform.');
+      if (module.settings.cycleEnvelope !== undefined) validateCycleEnvelope(module.settings.cycleEnvelope);
+    }
     for (const port of getPatchPorts(module)) {
       if (!port.parameter) continue;
       const settings: Readonly<Record<string, unknown>> = module.settings;
