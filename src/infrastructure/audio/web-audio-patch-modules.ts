@@ -1,3 +1,4 @@
+import { getChordFrequencies } from '../../domain/chord';
 import { getShelfFrequencyHz } from '../../domain/drone-shelf-response';
 import { WebAudioOutputProtection } from './web-audio-output-protection';
 import { WebAudioPitchShift } from './web-audio-pitch-shift';
@@ -67,6 +68,32 @@ export function createPatchRuntimeModule(
   modulationFactory: WebAudioLowFrequencyOscillatorFactory, lfo: WebAudioLfoWorkletFactory, master: AudioNode, origin: number
 ): PatchRuntimeModule {
   switch (definition.kind) {
+    case 'chord': {
+      const output = context.createGain();
+      output.gain.value = 0.16;
+      const frequencies = getChordFrequencies(definition.settings);
+      const oscillators = frequencies.map((frequency,index) => {
+        const oscillator = context.createOscillator();
+        oscillator.type = index === 0 ? 'sine' : 'triangle';
+        oscillator.frequency.value = frequency;
+        const gain = context.createGain();
+        gain.gain.value = 0;
+        const pan = context.createStereoPanner();
+        pan.pan.value = frequencies.length === 1 ? 0 : (index/(frequencies.length-1)-0.5)*0.65;
+        oscillator.connect(gain).connect(pan).connect(output);
+        const start = context.currentTime;
+        gain.gain.setValueAtTime(0,start);
+        gain.gain.linearRampToValueAtTime(0.75/frequencies.length,start+0.035);
+        oscillator.start(start);
+        return {oscillator,gain,pan};
+      });
+      return {definition,output,dispose() {
+        for (const {oscillator,gain,pan} of oscillators) {
+          oscillator.stop(); oscillator.disconnect(); gain.disconnect(); pan.disconnect();
+        }
+        output.disconnect();
+      }};
+    }
     case 'wave': {
       const settings = definition.settings;
       const voice = new WebAudioWaveformSource(context, {...defaultWave, waveform:settings.waveform,
