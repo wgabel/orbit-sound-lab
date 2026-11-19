@@ -8,8 +8,13 @@
       "volume": 0.7,
       "pan": 0,
       "detuneCents": 0,
-      "filter": { "enabled": false, "cutoffHz": 2400, "resonance": 0.7 }
-    }
+      "filter": {
+        "enabled": false,
+        "cutoffHz": 2400,
+        "resonance": 0.7
+      }
+    },
+    "group": "Fundamentals"
   },
   {
     "id": "soft-triangle",
@@ -20,8 +25,13 @@
       "volume": 0.6,
       "pan": 0,
       "detuneCents": 0,
-      "filter": { "enabled": true, "cutoffHz": 600, "resonance": 0.7 }
-    }
+      "filter": {
+        "enabled": true,
+        "cutoffHz": 600,
+        "resonance": 0.7
+      }
+    },
+    "group": "Fundamentals"
   },
   {
     "id": "warm-saw",
@@ -32,8 +42,13 @@
       "volume": 0.5,
       "pan": 0,
       "detuneCents": 0,
-      "filter": { "enabled": true, "cutoffHz": 440, "resonance": 1.1 }
-    }
+      "filter": {
+        "enabled": true,
+        "cutoffHz": 440,
+        "resonance": 1.1
+      }
+    },
+    "group": "Warm & Airy"
   },
   {
     "id": "hollow-square",
@@ -44,7 +59,154 @@
       "volume": 0.35,
       "pan": 0,
       "detuneCents": 0,
-      "filter": { "enabled": true, "cutoffHz": 1400, "resonance": 0.8 }
+      "filter": {
+        "enabled": true,
+        "cutoffHz": 1400,
+        "resonance": 0.8
+      }
+    },
+    "group": "Pulse & Grit"
+  },
+  {
+    "id": "deep-triangle",
+    "name": "Deep Triangle",
+    "group": "Fundamentals",
+    "settings": {
+      "waveform": "triangle",
+      "frequencyHz": 41.2,
+      "volume": 0.66,
+      "pan": 0,
+      "detuneCents": 0,
+      "filter": {
+        "enabled": true,
+        "cutoffHz": 520,
+        "resonance": 0.7
+      }
+    }
+  },
+  {
+    "id": "silk-blend",
+    "name": "Silk Blend",
+    "group": "Warm & Airy",
+    "settings": {
+      "waveform": "sineTriangle",
+      "frequencyHz": 196,
+      "volume": 0.44,
+      "pan": 0,
+      "detuneCents": 0,
+      "filter": {
+        "enabled": true,
+        "cutoffHz": 1900,
+        "resonance": 0.7
+      },
+      "shape": 0.34
+    }
+  },
+  {
+    "id": "glass-pedal",
+    "name": "Glass Pedal",
+    "group": "Warm & Airy",
+    "settings": {
+      "waveform": "sineTriangle",
+      "frequencyHz": 329.63,
+      "volume": 0.29,
+      "pan": 0.22,
+      "detuneCents": 4,
+      "filter": {
+        "enabled": true,
+        "cutoffHz": 3250,
+        "resonance": 0.7
+      },
+      "shape": 0.71
+    }
+  },
+  {
+    "id": "needle-pulse",
+    "name": "Needle Pulse",
+    "group": "Pulse & Grit",
+    "settings": {
+      "waveform": "variablePulse",
+      "frequencyHz": 110,
+      "volume": 0.35,
+      "pan": 0,
+      "detuneCents": 0,
+      "filter": {
+        "enabled": true,
+        "cutoffHz": 2250,
+        "resonance": 1.15
+      },
+      "shape": 0.18
+    }
+  },
+  {
+    "id": "rusted-saw",
+    "name": "Rusted Saw",
+    "group": "Pulse & Grit",
+    "settings": {
+      "waveform": "sawtooth",
+      "frequencyHz": 73.42,
+      "volume": 0.44,
+      "pan": 0,
+      "detuneCents": -5,
+      "filter": {
+        "enabled": true,
+        "cutoffHz": 840,
+        "resonance": 2.3
+      }
+    }
+  },
+  {
+    "id": "folded-bass",
+    "name": "Folded Bass",
+    "group": "Shaped Sines",
+    "settings": {
+      "waveform": "foldedSine",
+      "frequencyHz": 55,
+      "volume": 0.43,
+      "pan": 0,
+      "detuneCents": 0,
+      "filter": {
+        "enabled": true,
+        "cutoffHz": 1700,
+        "resonance": 0.7
+      },
+      "shape": 0.59
+    }
+  },
+  {
+    "id": "peaked-reed",
+    "name": "Peaked Reed",
+    "group": "Shaped Sines",
+    "settings": {
+      "waveform": "peakedSine",
+      "frequencyHz": 146.83,
+      "volume": 0.45,
+      "pan": 0,
+      "detuneCents": 0,
+      "filter": {
+        "enabled": true,
+        "cutoffHz": 2600,
+        "resonance": 0.7
+      },
+      "shape": 0.63
+    }
+  },
+  {
+    "id": "lantern-harmonics",
+    "name": "Lantern Harmonics",
+    "group": "Shaped Sines",
+    "settings": {
+      "waveform": "peakedSine",
+      "frequencyHz": 261.63,
+      "volume": 0.34,
+      "pan": -0.2,
+      "detuneCents": -3,
+      "filter": {
+        "enabled": true,
+        "cutoffHz": 4700,
+        "resonance": 0.7
+      },
+      "shape": 0.87
     }
   }
 ]

@@ -1,5 +1,7 @@
 import { builtInOscillatorBanks, loadBuiltInOscillatorBank } from '../domain/built-in-oscillator-banks';
-import { builtInOscillatorPresets, createBuiltInOscillatorSnapshot } from '../domain/built-in-oscillator-presets';
+import { listOscillatorPresets, saveOscillatorPreset } from '../infrastructure/storage/oscillator-preset-library';
+import { OscillatorPresetPicker } from './OscillatorPresetPicker';
+import { usePresetCollection } from './usePresetCollection';
 import { OscillatorBankPicker } from './OscillatorBankPicker';
 import { OscillatorControlSection } from './OscillatorControlSection';
 import { OscillatorLfoControls } from './OscillatorLfoControls';
@@ -427,6 +429,7 @@ export function App() {
   }
   const [oscillatorClipboard, setOscillatorClipboard] = useState<OscillatorSnapshot | null>(null);
   const [oscillatorActionStatus, setOscillatorActionStatus] = useState('');
+  const oscillatorPresets = usePresetCollection(listOscillatorPresets);
   function applyOscillatorSnapshot({oscillator, modulations}: OscillatorSnapshot) {
     const engine = controller.current?.layers[activeLayer];
     engine?.updateOscillator({...oscillator,
@@ -457,27 +460,32 @@ export function App() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot load oscillator bank.'); }
   }
 
-  function loadBuiltInOscillatorPreset(presetId: string, oscillator: OscillatorSettings, number: number) {
-    const preset = builtInOscillatorPresets.find(item => item.id === presetId);
-    if (!preset) return;
+  function describeOscillator(number: number): string {
+    return `${patchDroneEdit ? 'Patch drone' : `Drone ${activeLayer}`} · Oscillator ${number}`;
+  }
+  function loadOscillatorPreset(snapshot: OscillatorSnapshot, name: string, number: number) {
     try {
-      applyOscillatorSnapshot(createBuiltInOscillatorSnapshot(preset.id, oscillator));
-      setOscillatorActionStatus(`${preset.name} loaded into Drone ${activeLayer} · Oscillator ${number}`);
+      applyOscillatorSnapshot(snapshot);
+      setOscillatorActionStatus(`${name} loaded into ${describeOscillator(number)}`);
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot load oscillator preset.'); }
   }
-
+  async function saveCustomOscillatorPreset(name: string, snapshot: OscillatorSnapshot): Promise<boolean> {
+    const saved = await oscillatorPresets.update(() => saveOscillatorPreset(name,snapshot));
+    if (saved) setOscillatorActionStatus(`${name} saved to Custom presets`);
+    return saved;
+  }
+  function captureOscillator(oscillator: OscillatorSettings): OscillatorSnapshot {
+    return {oscillator,modulations:lowFrequencyOscillatorSettings.filter(item => item.targetOscillatorId === oscillator.id)};
+  }
   function copyOscillator(oscillator: OscillatorSettings, number: number) {
-    setOscillatorClipboard({
-      oscillator,
-      modulations: lowFrequencyOscillatorSettings.filter(item => item.targetOscillatorId === oscillator.id)
-    });
-    setOscillatorActionStatus(`Drone ${activeLayer} · Oscillator ${number} copied`);
+    setOscillatorClipboard(captureOscillator(oscillator));
+    setOscillatorActionStatus(`${describeOscillator(number)} copied`);
   }
   function pasteOscillator(oscillator: OscillatorSettings, number: number) {
     if (!oscillatorClipboard) return;
     try {
       applyOscillatorSnapshot(retargetOscillatorSnapshot(oscillatorClipboard, oscillator));
-      setOscillatorActionStatus(`Drone ${activeLayer} · Oscillator ${number} pasted`);
+      setOscillatorActionStatus(`${describeOscillator(number)} pasted`);
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot paste oscillator settings.'); }
   }
   function updateDelay(next: DelaySettings) {
@@ -556,6 +564,7 @@ export function App() {
         <OscillatorBankPicker onLoad={loadOscillatorBank}/>
         <span className="oscillator-action-status" role="status">{oscillatorActionStatus}</span>
       </div>
+      {oscillatorPresets.loadError && <p className="error" role="alert">Custom oscillator presets: {oscillatorPresets.loadError}</p>}
       {settings.oscillators.map((oscillator, index) => {
         const expanded = expandedOscillators[activeLayer] === oscillator.id;
         const settingsId = `${activeLayer}-${oscillator.id}-settings`;
@@ -586,11 +595,9 @@ export function App() {
           </div>
           <div id={settingsId} className="oscillator-controls" hidden={!expanded}>
             <div className="oscillator-editor-actions">
-              <select className="oscillator-preset-select" aria-label={`Built-in preset for oscillator ${oscillatorNumber}`}
-                value="" onChange={event => loadBuiltInOscillatorPreset(event.target.value, oscillator, oscillatorNumber)}>
-                <option value="" disabled>PRESETS</option>
-                {builtInOscillatorPresets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
-              </select>
+              <OscillatorPresetPicker oscillatorNumber={oscillatorNumber} snapshot={captureOscillator(oscillator)}
+                customPresets={oscillatorPresets.presets} busy={oscillatorPresets.busy} onSave={saveCustomOscillatorPreset}
+                onLoad={(snapshot,name) => loadOscillatorPreset(snapshot,name,oscillatorNumber)}/>
               <button type="button" className="randomize-button"
                 onClick={() => copyOscillator(oscillator, oscillatorNumber)} aria-label={`Copy oscillator ${oscillatorNumber}`}>COPY</button>
               <button type="button" className="randomize-button" disabled={!oscillatorClipboard}

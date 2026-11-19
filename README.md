@@ -126,7 +126,7 @@ These banks run from the audio clock as soon as the drone plays. Open the oscill
 
 **Grungy** and **Wet** also set the chosen drone’s noise and reverb. The layer low-pass, shelf EQ, and shared echo keep their current settings.
 
-Use **PRESETS** beside **COPY** on any oscillator to load a built-in sound into that slot. The list is bundled in `src/domain/built-in-oscillator-presets.json`.
+Open **Settings → PRESETS** on an oscillator to load a sound from **Fundamentals**, **Warm & Airy**, **Pulse & Grit**, **Shaped Sines**, or **Custom**. Choose **Save as preset** to name and store the current oscillator, including its Shape, filter, and four LFO settings. Custom presets stay in this browser and can be loaded into any oscillator in either drone layer, including when editing a patch Drone node. Loading keeps the destination oscillator’s on/off switch and its existing routes to other oscillators.
 
 Cutoff LFO accepts a cycle duration in seconds and offers finer control at low depths. When the low-pass filter is active, Cutoff shows the live Hz from the LFO and oscillator route together. The displayed sweep range respects the filter’s safe modulation limits.
 

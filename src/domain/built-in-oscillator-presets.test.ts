@@ -15,3 +15,8 @@ it('loads each bundled preset into the chosen oscillator with independent LFO ta
   }
   expect(createBuiltInOscillatorSnapshot('sine-sub', target).oscillator.waveform).toBe('sine');
 });
+
+it('uses the bundled Shape when loading a shaped waveform', () => {
+  const target = {...createDefaultDroneSettings().oscillators[0],shape:0.1};
+  expect(createBuiltInOscillatorSnapshot('peaked-reed',target).oscillator).toMatchObject({waveform:'peakedSine',shape:0.63});
+});
