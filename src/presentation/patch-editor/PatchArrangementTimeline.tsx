@@ -140,7 +140,7 @@ export function PatchArrangementTimeline({patch,arrangement,playing,canPlay,elap
             style={spanStyle(section)} aria-pressed={section.id === selection} onClick={() => setSelection(section.id)}>
             {section.name}</button>)}
         </div>
-        {rows.map(module => <div className="arrangement-track" key={module.id} data-signal={module.kind === 'automation' ? 'control' : 'audio'}>
+        {rows.map(module => <div className="arrangement-track" key={module.id} data-signal={(module.kind === 'automation' || module.kind === 'chordProgression') ? 'control' : 'audio'}>
           <span>{labels.get(module.id)}</span>
           <div className="arrangement-lane">
             {arrangement.clips.filter(clip => clip.moduleId === module.id).map(clip => {
@@ -189,9 +189,10 @@ export function PatchArrangementTimeline({patch,arrangement,playing,canPlay,elap
           onCommit={fadeIn => updateClip({...selectedClip,fadeIn})}/>
         <NumberField label="Fade out (s)" value={selectedClip.fadeOut} max={selectedClip.duration-selectedClip.fadeIn}
           onCommit={fadeOut => updateClip({...selectedClip,fadeOut})}/>
-        <NumberField label={clipModule.kind === 'automation' ? 'Strength (%)' : 'Level (%)'} value={selectedClip.level*100} max={100}
+        <NumberField label={(clipModule.kind === 'automation' || clipModule.kind === 'chordProgression') ? 'Strength (%)' : 'Level (%)'} value={selectedClip.level*100} max={100}
           onCommit={level => updateClip({...selectedClip,level:level/100})}/>
-        {clipModule.kind === 'automation' && <label>Curve phase
+        {(clipModule.kind === 'automation' || clipModule.kind === 'chordProgression') && <label>
+          {clipModule.kind === 'automation' ? 'Curve phase' : 'Progression phase'}
           <select value={selectedClip.phase ?? 'restart'} onChange={event => updateClip({...selectedClip,
             phase:event.target.value === 'continue' ? 'continue' : 'restart'})}>
             <option value="restart">Restart on entry</option><option value="continue">Follow arrangement clock</option>

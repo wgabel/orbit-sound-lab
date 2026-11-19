@@ -39,6 +39,8 @@ The generator produces a normalized value from 0 to 1. Its shape, rate or durati
 | Drawn curve | Time/value points with explicit interpolation and holds. Support long, slow changes over a defined duration. |
 | Steps | A sequence of held values with optional glides and step durations. Preserve manual advance for migrated stepper sequences that use it. |
 
+Chord Progression sends discrete chord steps over the Chords port. The generator applies the chosen root and quality with its own octave, spread, and valid inversion. Keep chord changes on the audio clock. Use complementary fades when switching voicings and return to the generator’s fallback chord where no progression clip is active.
+
 - Support once, loop, and trigger/retrigger behavior with an explicit time origin. Define the value at clip end, on stop, and on retrigger. The shared audio clock drives independent automation lanes and the UI playhead.
 - Put endpoints, inversion, and response curve on the cable. Define how the cable combines with the base value. Absolute ranges suit new patches, while additive modulation around a base preserves legacy LFOs. Preserve per-target safeguards and units. A discrete destination maps to valid values and applies scheduled changes, using a crossfade where the audio adapter supports it.
 - Implement continuous modulation and timed parameter changes through AudioParam scheduling, audio-rate connections, or a worklet where needed. Use a scheduler with an audio-clock time base. React renders a view of playback. Animation frames can draw a playhead, waveform, or meter.

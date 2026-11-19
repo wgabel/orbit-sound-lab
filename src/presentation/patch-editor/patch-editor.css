@@ -37,6 +37,7 @@
 .patch-cables {position:absolute;inset:0;z-index:1;pointer-events:none}
 .patch-wire {fill:none;stroke:var(--patch-audio);stroke-width:3;stroke-linecap:round}
 .patch-wire[data-signal=control] {stroke:var(--patch-control);stroke-dasharray:5 5}
+.patch-wire[data-signal=chords] {stroke:var(--patch-control);stroke-dasharray:9 3 2 3}
 .patch-wire[data-selected=true] {stroke-width:5}
 .patch-wire[data-disabled=true] {opacity:.4;stroke-dasharray:2 7}
 .patch-wire-hit {fill:none;stroke:transparent;stroke-width:17;pointer-events:stroke;cursor:pointer}
@@ -57,7 +58,7 @@
   font:11px ui-monospace,monospace;color:#d2dce5;white-space:nowrap;
 }
 .patch-port-column.output .patch-port-row {justify-content:flex-end;padding:0 15px 0 0}
-.patch-port-row[data-signal=control] {color:var(--patch-control)}
+.patch-port-row:not([data-signal=audio]) {color:var(--patch-control)}
 .patch-control-value {
   position:absolute;left:calc(100% + 14px);top:50%;transform:translateY(-50%);z-index:2;
   width:40px;padding:2px 0;border:1px solid #8f6245;border-radius:4px;
@@ -77,9 +78,10 @@
   background:none;border:0;padding:0;min-height:0;width:24px;height:24px;--port-color:var(--patch-audio);
 }
 .patch-port-column.output .patch-port {left:auto;right:-12px}
-.patch-port-row[data-signal=control] .patch-port {--port-color:var(--patch-control)}
+.patch-port-row:not([data-signal=audio]) .patch-port {--port-color:var(--patch-control)}
 .patch-port::before {content:"";width:11px;height:11px;border:2px solid var(--port-color);border-radius:50%;background:#10161d}
 .patch-port-row[data-signal=control] .patch-port::before {border-radius:3px}
+.patch-port-row[data-signal=chords] .patch-port::before {border-radius:2px;transform:rotate(45deg)}
 .patch-port[data-compatible=true] {outline:1px solid var(--port-color)}
 .patch-port[data-pending=true]::before,.patch-port:hover::before {
   background:var(--port-color);box-shadow:0 0 7px var(--port-color)
@@ -154,3 +156,8 @@
 /* Native select menus vary by browser; the symbols remain visible when option colors are ignored. */
 .patch-editor .patch-module-option-audio {color:var(--patch-audio)}
 .patch-editor .patch-module-option-control {color:var(--patch-control)}
+
+.patch-chord-steps {margin:12px 0;padding-inline-start:24px}
+.patch-chord-steps li {padding:7px 0;border-top:1px solid var(--patch-line)}
+.patch-chord-steps label {display:inline-flex;align-items:center;gap:5px;margin:0 6px 6px 0}
+.patch-chord-steps .patch-actions {display:inline-flex;gap:4px;vertical-align:middle}

@@ -181,17 +181,25 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     const nextCables = new Map<string, RuntimeCable>();
     const createdModules: PatchRuntimeModule[] = [];
     const createdCables: RuntimeCable[] = [];
+    const progressionSources = new Map(patch.modules.filter(module => module.kind === 'chordProgression')
+      .map(module => [module.id,module.settings]));
+    const progressions = new Map(patch.cables.filter(cable => cable.destination.portId === 'chords' && cable.enabled !== false)
+      .map(cable => [cable.destination.moduleId,cable.source.moduleId]));
     try {
       for (const definition of patch.modules) {
         const previous = this.modules.get(definition.id);
-        const module = previous?.definition === definition ? previous :
+        const progressionId = progressions.get(definition.id);
+        const settings = progressionId === undefined ? undefined : progressionSources.get(progressionId);
+        const chordRoute = settings && progressionId !== undefined
+          ? {settings,clips:this.arrangement?.tracks.get(progressionId)} : undefined;
+        const module = previous?.definition === definition && previous.chordProgression === settings ? previous :
           createPatchRuntimeModule(this.context, definition, this.pulse, this.modulationFactory, this.lfo, this.master, this.origin,
-            this.arrangement?.tracks.get(definition.id));
+            this.arrangement?.tracks.get(definition.id),chordRoute);
         if (module !== previous) createdModules.push(module);
         nextModules.set(definition.id, module);
       }
       for (const definition of patch.cables) {
-        if (definition.enabled === false) continue;
+        if (definition.enabled === false || definition.destination.portId === 'chords') continue;
         const source = nextModules.get(definition.source.moduleId);
         const destination = nextModules.get(definition.destination.moduleId);
         if (!source || !destination) throw new Error('Missing runtime module.');

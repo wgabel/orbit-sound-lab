@@ -13,6 +13,8 @@ const INTERVALS: Readonly<Record<ChordType,readonly number[]>> = {
   sus2:[0,2,7], sus4:[0,5,7], major7:[0,4,7,11], minor7:[0,3,7,10],
   dominant7:[0,4,7,10], minor9:[0,3,7,10,14]
 };
+export const MINIMUM_CHORD_ROOT = 36;
+export const MAXIMUM_CHORD_ROOT = 72;
 export const DEFAULT_CHORD_SETTINGS: ChordSettings = {rootNote:48,chord:'major',inversion:0,octave:0,spread:0};
 export function getMaximumChordInversion(chord: ChordType): number {
   return INTERVALS[chord].length - 1;
@@ -24,7 +26,7 @@ export function isLegacyTriadInversion(chord: unknown, inversion: unknown): bool
 }
 
 export function validateChordSettings(settings: ChordSettings): void {
-  if (!settings || !Number.isInteger(settings.rootNote) || settings.rootNote < 36 || settings.rootNote > 72 ||
+  if (!settings || !Number.isInteger(settings.rootNote) || settings.rootNote < MINIMUM_CHORD_ROOT || settings.rootNote > MAXIMUM_CHORD_ROOT ||
     !CHORD_TYPES.includes(settings.chord) || !Number.isInteger(settings.inversion) || settings.inversion < 0 || settings.inversion > getMaximumChordInversion(settings.chord) ||
     !Number.isInteger(settings.octave) || settings.octave < -1 || settings.octave > 1 ||
     !Number.isInteger(settings.spread) || settings.spread < 0 || settings.spread > 1)
@@ -43,7 +45,8 @@ export function getChordMidiNotes(settings: ChordSettings): readonly number[] {
 export function getChordFrequencies(settings: ChordSettings): readonly number[] {
   return getChordMidiNotes(settings).map(note=>440*Math.pow(2,(note-69)/12));
 }
-export function getNoteName(note: number): string {
-  const names=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+export function getNoteName(note: number, preferFlats = false): string {
+  const names = preferFlats ? ['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'] :
+    ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
   return names[((note%12)+12)%12]+(Math.floor(note/12)-1);
 }
