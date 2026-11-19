@@ -5,6 +5,7 @@ import { WebAudioOscillatorModulation } from './web-audio-oscillator-modulation'
 import type { DroneVoice } from '../../application/audio-contracts';
 import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../../domain/drone';
 import { validateDroneSettings, validateLowPassFilterSettings } from '../../domain/drone';
+import type { WebAudioPulseWorkletFactory } from './web-audio-pulse-worklet';
 import { WebAudioWaveformSource } from './web-audio-waveform-source';
 import { WebAudioDroneMix } from './web-audio-drone-mix';
 import { PLAYBACK_FADE_SECONDS, fadeGain } from './web-audio-fade';
@@ -58,8 +59,9 @@ export class WebAudioDrone implements DroneVoice {
   private disposed = false;
   private stopPromise: Promise<void> | null = null;
   private finishStop: (() => void) | null = null;
-  constructor(private readonly context: AudioContext, settings: DroneSettings) {
+  constructor(private readonly context: AudioContext, settings: DroneSettings, pulseWorklet: WebAudioPulseWorkletFactory) {
     validateDroneSettings(settings);
+    if (settings.oscillators.some(oscillator => oscillator.waveform === 'variablePulse')) pulseWorklet.assertAvailable();
     this.oscillatorVolumeScale = 2 / settings.oscillators.length;
     this.pitchBend = context.createConstantSource();
     this.pitchBend.offset.value = 0;
@@ -68,7 +70,7 @@ export class WebAudioDrone implements DroneVoice {
     this.mixSettings = settings.mix;
     this.mix = new WebAudioDroneMix(context, settings.mix, this.output);
     for (const oscillatorSettings of settings.oscillators) {
-      const source = new WebAudioWaveformSource(context, oscillatorSettings);
+      const source = new WebAudioWaveformSource(context, oscillatorSettings, pulseWorklet);
       this.pitchBend.connect(source.detune);
       const filter = context.createBiquadFilter();
       const secondFilter = context.createBiquadFilter();
@@ -164,7 +166,7 @@ export class WebAudioDrone implements DroneVoice {
       }
       return Promise.resolve();
     }
-    const firstSource = this.oscillators.values().next().value?.source.activeOscillator;
+    const firstSource = this.oscillators.values().next().value?.source.activeClock;
     if (!firstSource) return Promise.resolve();
     const end = now + PLAYBACK_FADE_SECONDS;
     this.stopPromise = new Promise(resolve => {

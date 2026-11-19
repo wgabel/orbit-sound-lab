@@ -1,22 +1,32 @@
-import { DEFAULT_OSCILLATOR_SHAPE } from '../../domain/drone';
+import { DEFAULT_OSCILLATOR_SHAPE, MAXIMUM_PULSE_WIDTH, MINIMUM_PULSE_WIDTH } from '../../domain/drone';
 import type { OscillatorSettings, OscillatorWaveform } from '../../domain/drone';
 import { applyPitchOffset } from '../../domain/modulation';
+import type { WebAudioPulseWorkletFactory } from './web-audio-pulse-worklet';
 import { PLAYBACK_FADE_SECONDS } from './web-audio-fade';
+
+function getBaseShape(settings: OscillatorSettings): number {
+  const shape = settings.shape ?? DEFAULT_OSCILLATOR_SHAPE;
+  return settings.waveform === 'variablePulse' ? Math.max(MINIMUM_PULSE_WIDTH, Math.min(MAXIMUM_PULSE_WIDTH, shape)) : shape;
+}
 
 interface ShapeBlend {
   readonly triangle: OscillatorNode;
   readonly smoother: BiquadFilterNode;
   readonly boundedShape: WaveShaperNode;
   readonly levels: readonly GainNode[];
-  preview?: {analyser: AnalyserNode; samples: Float32Array<ArrayBuffer>};
 }
 
 interface OscillatorBranch {
-  readonly oscillator: OscillatorNode;
+  readonly clock: AudioScheduledSourceNode;
+  readonly frequency: AudioParam;
+  readonly detune: AudioParam;
+  readonly pulse?: AudioWorkletNode;
+  readonly pulseShape?: AudioParam;
   readonly waveform: OscillatorWaveform;
   readonly blend?: ShapeBlend;
   readonly gain: GainNode;
   readonly fadeInStartedAt: number | null;
+  shapePreview?: {analyser: AnalyserNode; samples: Float32Array<ArrayBuffer>};
 }
 
 /** Keeps pitch modulation connected while replacing the waveform generator. */
@@ -34,7 +44,8 @@ export class WebAudioWaveformSource {
   private started = false;
   private stopped = false;
 
-  constructor(private readonly context: AudioContext, settings: OscillatorSettings) {
+  constructor(private readonly context: AudioContext, settings: OscillatorSettings,
+    private readonly pulseWorklet: WebAudioPulseWorkletFactory) {
     this.output = context.createGain();
     this.sharedDetune = context.createConstantSource();
     this.detune = this.sharedDetune.offset;
@@ -44,11 +55,11 @@ export class WebAudioWaveformSource {
     this.frequency.value = settings.frequencyHz;
     this.sharedShape = context.createConstantSource();
     this.shape = this.sharedShape.offset;
-    this.shape.value = settings.shape ?? DEFAULT_OSCILLATOR_SHAPE;
+    this.shape.value = getBaseShape(settings);
     this.current = this.createBranch(settings.waveform, null);
   }
 
-  get activeOscillator(): OscillatorNode { return this.current.oscillator; }
+  get activeClock(): AudioScheduledSourceNode { return this.current.clock; }
 
   readEffectiveFrequency(): number | null {
     if (!this.started || this.stopped || this.context.state !== 'running') return null;
@@ -71,19 +82,20 @@ export class WebAudioWaveformSource {
   }
 
   readEffectiveShape(): number | null {
-    const blend = this.current.blend;
-    if (!blend || !this.started || this.stopped || this.context.state !== 'running') return null;
-    if (!blend.preview) {
+    const branch = this.current;
+    if ((!branch.blend && !branch.pulse) || !this.started || this.stopped || this.context.state !== 'running') return null;
+    if (!branch.shapePreview) {
       const analyser = this.context.createAnalyser();
       const samples = new Float32Array(32);
       analyser.fftSize = samples.length;
-      blend.boundedShape.connect(analyser);
-      blend.preview = {analyser, samples};
+      (branch.blend?.boundedShape ?? this.sharedShape).connect(analyser);
+      branch.shapePreview = {analyser, samples};
       return null;
     }
-    const {analyser, samples} = blend.preview;
+    const {analyser, samples} = branch.shapePreview;
     analyser.getFloatTimeDomainData(samples);
-    return samples[samples.length - 1];
+    const shape = samples[samples.length - 1];
+    return branch.pulse ? Math.max(MINIMUM_PULSE_WIDTH, Math.min(MAXIMUM_PULSE_WIDTH, shape)) : shape;
   }
 
   start(now: number): void {
@@ -108,23 +120,23 @@ export class WebAudioWaveformSource {
         previous.gain.gain.cancelScheduledValues(now);
         previous.gain.gain.setValueAtTime(outgoingLevel, now);
         previous.gain.gain.linearRampToValueAtTime(0, end);
-        previous.oscillator.onended = () => this.removeBranch(previous);
+        previous.clock.onended = () => this.removeBranch(previous);
         this.stopBranch(previous, end);
       } else {
         this.removeBranch(previous);
       }
     }
     this.frequency.setTargetAtTime(settings.frequencyHz, now, 0.015);
-    this.shape.setTargetAtTime(settings.shape ?? DEFAULT_OSCILLATOR_SHAPE, now, 0.015);
+    this.shape.setTargetAtTime(getBaseShape(settings), now, 0.015);
   }
 
   private startBranch(branch: OscillatorBranch, when: number): void {
-    branch.oscillator.start(when);
+    branch.clock.start(when);
     branch.blend?.triangle.start(when);
   }
 
   private stopBranch(branch: OscillatorBranch, when: number): void {
-    branch.oscillator.stop(when);
+    branch.clock.stop(when);
     branch.blend?.triangle.stop(when);
   }
 
@@ -147,18 +159,40 @@ export class WebAudioWaveformSource {
   }
 
   private createBranch(waveform: OscillatorWaveform, fadeInStartedAt: number | null): OscillatorBranch {
-    const oscillator = this.createOscillator(waveform === 'sineTriangle' ? 'sine' : waveform);
     const gain = this.context.createGain();
     gain.gain.setValueAtTime(fadeInStartedAt === null ? 1 : 0, fadeInStartedAt ?? this.context.currentTime);
-    const blend = waveform === 'sineTriangle' ? this.createShapeBlend(oscillator, gain) : undefined;
-    if (!blend) oscillator.connect(gain);
+    const branch = waveform === 'variablePulse' ?
+      this.createPulseBranch(this.pulseWorklet.create(), gain, fadeInStartedAt) : this.createNativeBranch(waveform, gain, fadeInStartedAt);
     gain.connect(this.output);
-    const branch = {oscillator, waveform, blend, gain, fadeInStartedAt};
     this.branches.add(branch);
     return branch;
   }
 
-  private createOscillator(waveform: Exclude<OscillatorWaveform, 'sineTriangle'>): OscillatorNode {
+  private createPulseBranch(pulse: AudioWorkletNode, gain: GainNode, fadeInStartedAt: number | null): OscillatorBranch {
+    const frequency = pulse.parameters.get('frequency');
+    const detune = pulse.parameters.get('detune');
+    const pulseShape = pulse.parameters.get('shape');
+    const gate = pulse.parameters.get('gate');
+    if (!frequency || !detune || !pulseShape || !gate) throw new Error('Variable Pulse could not initialize.');
+    const clock = this.context.createConstantSource();
+    // A scheduled gate and native ended event share the context clock with the other waveforms.
+    clock.connect(gate);
+    this.sharedFrequency.connect(frequency);
+    this.sharedDetune.connect(detune);
+    this.sharedShape.connect(pulseShape);
+    pulse.connect(gain);
+    return {clock, waveform: 'variablePulse', gain, frequency, detune, pulse, pulseShape, fadeInStartedAt};
+  }
+
+  private createNativeBranch(waveform: Exclude<OscillatorWaveform, 'variablePulse'>,
+    gain: GainNode, fadeInStartedAt: number | null): OscillatorBranch {
+    const oscillator = this.createOscillator(waveform === 'sineTriangle' ? 'sine' : waveform);
+    const blend = waveform === 'sineTriangle' ? this.createShapeBlend(oscillator, gain) : undefined;
+    if (!blend) oscillator.connect(gain);
+    return {clock: oscillator, waveform, blend, gain, frequency: oscillator.frequency, detune: oscillator.detune, fadeInStartedAt};
+  }
+
+  private createOscillator(waveform: Exclude<OscillatorWaveform, 'sineTriangle' | 'variablePulse'>): OscillatorNode {
     const oscillator = this.context.createOscillator();
     oscillator.type = waveform;
     oscillator.frequency.value = 0;
@@ -197,15 +231,23 @@ export class WebAudioWaveformSource {
   }
 
   private removeBranch(branch: OscillatorBranch): void {
-    branch.oscillator.onended = null;
-    this.disconnectOscillator(branch.oscillator);
+    branch.clock.onended = null;
+    this.sharedDetune.disconnect(branch.detune);
+    this.sharedFrequency.disconnect(branch.frequency);
+    branch.clock.disconnect();
+    if (branch.pulse && branch.pulseShape) {
+      this.sharedShape.disconnect(branch.pulseShape);
+      branch.pulse.port.postMessage('stop');
+      branch.pulse.disconnect();
+      if (branch.shapePreview) this.sharedShape.disconnect(branch.shapePreview.analyser);
+    }
+    branch.shapePreview?.analyser.disconnect();
     const {blend} = branch;
     if (blend) {
       this.disconnectOscillator(blend.triangle);
       this.sharedShape.disconnect(blend.smoother);
       blend.smoother.disconnect();
       blend.boundedShape.disconnect();
-      blend.preview?.analyser.disconnect();
       for (const level of blend.levels) level.disconnect();
     }
     branch.gain.disconnect();

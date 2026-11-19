@@ -99,6 +99,8 @@ Choose **Sine ↔ Triangle** under **Frequency & Waveform** to reveal **Shape**.
 
 Expand **Shape LFO** to automate the blend independently of the other LFOs. Depth is in percentage points, so a base Shape of 35% and a depth of 20 pp give a 15–55% sweep. The sweep is bounded by 0% and 100%. The live readout shows the actual blend during playback. Presets and oscillator copy/paste retain the Shape and its LFO settings.
 
+Choose **Variable Pulse** to shape the width of the pulse from 5% to 95%. At 50% it has the familiar square-wave tone. Use **Shape LFO** for pulse-width modulation. Try a slow sine for a gradual sweep, or a square LFO for two alternating widths. Two pulsed voices with the same synced rate and a 180° phase difference move in opposite directions. Presets keep the waveform, pulse width and Shape LFO.
+
 ## Drone shelf EQ
 
 Each **Drone Mix** has a **Low shelf** and **High shelf**. Frequency sets the center of the shelf’s transition, and Gain sets how much to boost or cut in dB. Try +3 dB at 150 Hz on the low shelf for more body, or −4 dB at 2,400 Hz on the high shelf to soften the top end. Both are flat at 0 dB. The response graph shows the combined gain from both shelves across frequency, with a blue marker for the low shelf and amber for the high shelf. The shelves shape the whole drone before its reverb, and saved presets retain the settings.

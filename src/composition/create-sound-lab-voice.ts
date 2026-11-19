@@ -10,6 +10,7 @@ import type { SoundLabVoiceController } from '../application/audio-contracts';
 import { tuneSceneLayer } from '../domain/sound-scene';
 import type { SoundScene } from '../domain/sound-scene';
 import { WebAudioModulationMatrix } from '../infrastructure/audio/web-audio-modulation-matrix';
+import type { WebAudioPulseWorkletFactory } from '../infrastructure/audio/web-audio-pulse-worklet';
 import { WebAudioLfoWorkletFactory } from '../infrastructure/audio/web-audio-lfo-worklet';
 import { WebAudioLowFrequencyOscillatorFactory } from '../infrastructure/audio/web-audio-low-frequency-oscillator';
 import { DroneController } from '../application/drone-controller';
@@ -21,7 +22,8 @@ export interface SoundLabVoice extends SoundLabVoiceController {
 }
 
 export function createSoundLabVoice(context: AudioContext, destination: AudioNode,
-  lfoWorklet: WebAudioLfoWorkletFactory, modulationFactory: WebAudioLowFrequencyOscillatorFactory,
+  lfoWorklet: WebAudioLfoWorkletFactory, pulseWorklet: WebAudioPulseWorkletFactory,
+  modulationFactory: WebAudioLowFrequencyOscillatorFactory,
   scene?: SoundScene): SoundLabVoice {
   const graph = new WebAudioGraph();
   let delaySettings: DelaySettings = scene?.delay ?? createDefaultDelaySettings();
@@ -45,7 +47,7 @@ export function createSoundLabVoice(context: AudioContext, destination: AudioNod
   function createLayerController(id: DroneLayerId) {
     const layer = scene?.layers[id] ?? createDefaultDroneLayer(id);
     gates[id].setEnvelope(layer.drone.envelope);
-    return new DroneController(context, new WebAudioDroneFactory(context), graph, new WebAudioModulationMatrix(),
+    return new DroneController(context, new WebAudioDroneFactory(context, pulseWorklet), graph, new WebAudioModulationMatrix(),
       modulationFactory, tuneSceneLayer(layer), layer.modulation, `drone-${id}`, {moduleId: 'performance', portId: id});
   }
 
@@ -86,7 +88,7 @@ export function createSoundLabVoice(context: AudioContext, destination: AudioNod
       continuousPlayback = true;
       try {
         // Resume on Start even when both layers are disabled.
-        await Promise.all([context.resume(), lfoWorklet.prepare()]);
+        await Promise.all([context.resume(), lfoWorklet.prepare(), pulseWorklet.prepare()]);
         await synchronizeLayers();
       } catch (error) {
         playing = false;
@@ -126,7 +128,7 @@ export function createSoundLabVoice(context: AudioContext, destination: AudioNod
       layers[id].setPitchBend(0);
       playing = true;
       try {
-        await Promise.all([context.resume(), lfoWorklet.prepare()]);
+        await Promise.all([context.resume(), lfoWorklet.prepare(), pulseWorklet.prepare()]);
         if (pressedKeys.get(id) !== press) return;
         if (!layers[id].isPlaying) {
           armedLayers.add(id);

@@ -1,4 +1,4 @@
-import { DEFAULT_OSCILLATOR_SHAPE, OSCILLATOR_WAVEFORMS } from './drone';
+import { DEFAULT_OSCILLATOR_SHAPE, MAXIMUM_PULSE_WIDTH, MINIMUM_PULSE_WIDTH, OSCILLATOR_WAVEFORMS, supportsOscillatorShape } from './drone';
 import type { OscillatorSettings } from './drone';
 import { DEFAULT_SHAPE_LFO_DEPTH } from './modulation';
 import type { LowFrequencyOscillatorSettings, LowFrequencyOscillatorWaveform } from './modulation';
@@ -40,7 +40,8 @@ export function randomizeOscillatorSettings(
       volume: randomizeValue(oscillator.volume, 0, 1, 0.01),
       detuneCents: randomizeValue(oscillator.detuneCents, -100, 100, 1),
       waveform,
-      ...(waveform === 'sineTriangle' ? {shape: randomizeValue(oscillator.shape ?? DEFAULT_OSCILLATOR_SHAPE, 0, 1, 0.01)} : {}),
+      ...(supportsOscillatorShape(waveform) ? {shape: randomizeValue(oscillator.shape ?? DEFAULT_OSCILLATOR_SHAPE,
+        waveform === 'variablePulse' ? MINIMUM_PULSE_WIDTH : 0, waveform === 'variablePulse' ? MAXIMUM_PULSE_WIDTH : 1, 0.01)} : {}),
       filter: {
         enabled: isVariant ? oscillator.filter.enabled : Math.random() < 0.5,
         cutoffHz: randomizeValue(oscillator.filter.cutoffHz, 20, 20000, 1),
@@ -49,7 +50,7 @@ export function randomizeOscillatorSettings(
     },
     modulations: modulations.map(modulation => ({
       ...modulation,
-      enabled: isVariant ? modulation.enabled : (modulation.destination !== 'shape' || waveform === 'sineTriangle') && Math.random() < 0.5,
+      enabled: isVariant ? modulation.enabled : (modulation.destination !== 'shape' || supportsOscillatorShape(waveform)) && Math.random() < 0.5,
       frequencyHz: randomizeValue(modulation.frequencyHz, 0.01, 20, 0.01),
       depthCents: randomizeValue(modulation.depthCents, 0, 300, 1),
       depthHz: randomizeValue(modulation.depthHz, 0, 5000, 10),
