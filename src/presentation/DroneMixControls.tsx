@@ -1,3 +1,4 @@
+import { MAX_SHELF_FREQUENCY_HZ, MAX_SHELF_GAIN_DECIBELS, MIN_SHELF_FREQUENCY_HZ } from '../domain/drone';
 import type { DroneMixSettings } from '../domain/drone';
 import type { DroneLayerId } from '../domain/drone-layers';
 import { NumericSlider } from './NumericSlider';
@@ -7,6 +8,11 @@ interface DroneMixControlsProps {
   readonly settings: DroneMixSettings;
   readonly onChange: (settings: DroneMixSettings) => void;
 }
+
+const shelfControls = [
+  {key: 'lowShelf', label: 'Low shelf'},
+  {key: 'highShelf', label: 'High shelf'}
+] as const;
 
 export function DroneMixControls({layerId, settings, onChange}: DroneMixControlsProps) {
   const {noise, filter, reverb} = settings;
@@ -41,6 +47,20 @@ export function DroneMixControls({layerId, settings, onChange}: DroneMixControls
         <NumericSlider label="REVERB MIX" unit="%" displayFactor={100} min={0} max={1} step={0.01}
           value={reverb.mix} onChange={mix => onChange({...settings, reverb: {...reverb, mix}})}/>
       </div>
+    </div>
+    <div className="drone-mix-controls drone-shelf-controls">
+      {shelfControls.map(({key, label}) => {
+        const shelf = settings[key];
+        return <div key={key}>
+          <h3>{label}</h3>
+          <NumericSlider label={`${label} frequency`} unit="Hz" min={MIN_SHELF_FREQUENCY_HZ} max={MAX_SHELF_FREQUENCY_HZ}
+            step={1} scale="logarithmic" value={shelf.frequencyHz}
+            onChange={frequencyHz => onChange({...settings, [key]: {...shelf, frequencyHz}})}/>
+          <NumericSlider label={`${label} gain`} unit="dB" min={-MAX_SHELF_GAIN_DECIBELS} max={MAX_SHELF_GAIN_DECIBELS}
+            step={0.5} value={shelf.gainDecibels}
+            onChange={gainDecibels => onChange({...settings, [key]: {...shelf, gainDecibels}})}/>
+        </div>;
+      })}
     </div>
   </section>;
 }

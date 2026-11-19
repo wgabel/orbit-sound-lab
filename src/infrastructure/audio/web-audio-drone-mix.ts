@@ -1,4 +1,4 @@
-import type { DroneMixSettings } from '../../domain/drone';
+import type { DroneMixSettings, DroneShelfSettings } from '../../domain/drone';
 import { fadeGain } from './web-audio-fade';
 import { WebAudioReverb } from './web-audio-reverb';
 
@@ -14,6 +14,8 @@ export class WebAudioDroneMix {
   private readonly filter: BiquadFilterNode;
   private readonly dryGain: GainNode;
   private readonly wetGain: GainNode;
+  private readonly lowShelf: BiquadFilterNode;
+  private readonly highShelf: BiquadFilterNode;
   private readonly reverb: WebAudioReverb;
   private noiseSource: AudioBufferSourceNode | null = null;
 
@@ -33,8 +35,11 @@ export class WebAudioDroneMix {
     this.wetGain = context.createGain();
     this.wetGain.gain.value = settings.filter.enabled ? 1 : 0;
     this.reverb = new WebAudioReverb(context, settings.reverb, output);
-    this.sourceLevel.connect(this.dryGain).connect(this.reverb.input);
-    this.sourceLevel.connect(this.filter).connect(this.wetGain).connect(this.reverb.input);
+    this.lowShelf = this.createShelf('lowshelf', settings.lowShelf);
+    this.highShelf = this.createShelf('highshelf', settings.highShelf);
+    this.sourceLevel.connect(this.dryGain).connect(this.lowShelf);
+    this.sourceLevel.connect(this.filter).connect(this.wetGain).connect(this.lowShelf);
+    this.lowShelf.connect(this.highShelf).connect(this.reverb.input);
   }
 
   fadeSources(start: number, end: number): void {
@@ -46,9 +51,28 @@ export class WebAudioDroneMix {
     this.filter.frequency.setTargetAtTime(settings.filter.cutoffHz, now, 0.02);
     this.dryGain.gain.setTargetAtTime(settings.filter.enabled ? 0 : 1, now, 0.015);
     this.wetGain.gain.setTargetAtTime(settings.filter.enabled ? 1 : 0, now, 0.015);
+    this.updateShelf(this.lowShelf, settings.lowShelf, now);
+    this.updateShelf(this.highShelf, settings.highShelf, now);
     this.reverb.update(settings.reverb, now);
     if (settings.noise.enabled && !this.noiseSource) this.startNoise(now);
     fadeGain(this.noiseGain.gain, settings.noise.enabled ? settings.noise.volume * MAX_NOISE_GAIN : 0, now);
+  }
+
+  private createShelf(type: 'lowshelf' | 'highshelf', settings: DroneShelfSettings): BiquadFilterNode {
+    const filter = this.context.createBiquadFilter();
+    filter.type = type;
+    filter.frequency.value = this.getShelfFrequency(settings.frequencyHz);
+    filter.gain.value = settings.gainDecibels;
+    return filter;
+  }
+
+  private updateShelf(filter: BiquadFilterNode, settings: DroneShelfSettings, now: number): void {
+    filter.frequency.setTargetAtTime(this.getShelfFrequency(settings.frequencyHz), now, 0.02);
+    filter.gain.setTargetAtTime(settings.gainDecibels, now, 0.02);
+  }
+
+  private getShelfFrequency(frequencyHz: number): number {
+    return Math.min(frequencyHz, this.context.sampleRate * 0.49);
   }
 
   private startNoise(now: number): void {
@@ -79,6 +103,8 @@ export class WebAudioDroneMix {
     this.dryGain.disconnect();
     this.filter.disconnect();
     this.wetGain.disconnect();
+    this.lowShelf.disconnect();
+    this.highShelf.disconnect();
     this.reverb.dispose();
   }
 }

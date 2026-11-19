@@ -59,7 +59,12 @@ function validateLayerSound(settings: DroneSettings, modulationSettings: readonl
   const drone: DroneSettings = {
     ...settings,
     envelope: settings.envelope === undefined ? DEFAULT_DRONE_ENVELOPE : settings.envelope,
-    mix: mix && mix.reverb === undefined ? {...mix, reverb: defaults.reverb} : mix,
+    mix: mix && {
+      ...mix,
+      reverb: mix.reverb === undefined ? defaults.reverb : mix.reverb,
+      lowShelf: mix.lowShelf === undefined ? defaults.lowShelf : mix.lowShelf,
+      highShelf: mix.highShelf === undefined ? defaults.highShelf : mix.highShelf
+    },
     oscillators: settings.oscillators.map(oscillator =>
       oscillator.pan === undefined ? {...oscillator, pan: 0} : oscillator)
   };
