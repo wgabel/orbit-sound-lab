@@ -1,8 +1,8 @@
 import { getPatchPorts, MAXIMUM_NODE_POSITION, MINIMUM_NODE_POSITION, PATCH_CANVAS_MINIMUM } from '../../domain/patch';
 import type { NodePosition, PatchModule } from '../../domain/patch';
 
-interface Size {readonly width: number; readonly height: number}
-interface Rectangle extends NodePosition, Size {}
+export interface Size {readonly width: number; readonly height: number}
+export interface Rectangle extends NodePosition, Size {}
 
 export const PATCH_NODE_WIDTH = 174;
 export const PATCH_NODE_TITLE_HEIGHT = 40;
@@ -37,8 +37,19 @@ export function findVisibleNodePosition(view: Rectangle, size: Size, obstacles: 
   const top = Math.max(MINIMUM_NODE_POSITION,view.y);
   const right = Math.min(MAXIMUM_NODE_POSITION,view.x + view.width - size.width);
   const bottom = Math.min(MAXIMUM_NODE_POSITION,view.y + view.height - size.height);
-  const columns = new Set([center.x, left, right]);
-  const rows = new Set([center.y, top, bottom]);
+  return findNearestFreeNodePosition(center,size,obstacles,{left,top,right,bottom}) ?? center;
+}
+
+export function nodesOverlap(first: Rectangle, second: Rectangle, gap = 0): boolean {
+  return first.x < second.x + second.width + gap && first.x > second.x - first.width - gap &&
+    first.y < second.y + second.height + gap && first.y > second.y - first.height - gap;
+}
+
+export function findNearestFreeNodePosition(origin: NodePosition, size: Size, obstacles: readonly Rectangle[],
+  bounds: {left: number; top: number; right: number; bottom: number}): NodePosition | undefined {
+  const {left,top,right,bottom} = bounds;
+  const columns = new Set([origin.x, left, right]);
+  const rows = new Set([origin.y, top, bottom]);
   for (const obstacle of obstacles) {
     columns.add(obstacle.x - size.width - NODE_GAP);
     columns.add(obstacle.x + obstacle.width + NODE_GAP);
@@ -46,16 +57,16 @@ export function findVisibleNodePosition(view: Rectangle, size: Size, obstacles: 
     rows.add(obstacle.y + obstacle.height + NODE_GAP);
   }
 
-  let nearest = center;
+  let nearest: NodePosition | undefined;
   let distance = Infinity;
   for (const x of columns) {
     if (x < left || x > right) continue;
     for (const y of rows) {
       if (y < top || y > bottom) continue;
-      const candidateDistance = (x - center.x) ** 2 + (y - center.y) ** 2;
-      if (candidateDistance >= distance || obstacles.some(obstacle =>
-        x < obstacle.x + obstacle.width + NODE_GAP && x + size.width + NODE_GAP > obstacle.x &&
-        y < obstacle.y + obstacle.height + NODE_GAP && y + size.height + NODE_GAP > obstacle.y)) continue;
+      const candidateDistance = (x - origin.x) ** 2 + (y - origin.y) ** 2;
+      if (candidateDistance >= distance) continue;
+      const candidate = {...size,x,y};
+      if (obstacles.some(obstacle => nodesOverlap(candidate,obstacle,NODE_GAP))) continue;
       nearest = {x,y};
       distance = candidateDistance;
     }

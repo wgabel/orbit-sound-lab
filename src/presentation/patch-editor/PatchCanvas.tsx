@@ -235,7 +235,7 @@ export function PatchCanvas({patch, positions, selection, pending, scale, playin
           const position = positions[module.id];
           if (!position) return null;
           const highlighted = selection?.kind === 'module' && selection.id === module.id;
-          return <article key={module.id} aria-label={getPatchModuleLabel(module)} className="patch-node"
+          return <article key={module.id} data-node-id={module.id} aria-label={getPatchModuleLabel(module)} className="patch-node"
             data-selected={highlighted} style={{
               left:position.x-PATCH_CANVAS_MINIMUM,top:position.y-PATCH_CANVAS_MINIMUM,width:PATCH_NODE_WIDTH
             }}>
