@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { DroneLayer, DroneLayerId } from '../../domain/drone-layers';
 import type { PatchPlayback } from '../../application/patch-playback';
-import { connectPatchPorts, copyDroneLayerToPatch, createExamplePatch, createPatchModule, getPatchPort, hasPatchCycle,
-  MODULE_LABELS, sameEndpoint, validatePatch } from '../../domain/patch';
+import { connectPatchPorts, createExamplePatch, createPatchModule, getPatchPort, hasPatchCycle,
+  MODULE_LABELS, sameEndpoint, setPatchDroneLayer, validatePatch } from '../../domain/patch';
 import type { CableMapping, PatchCable, NodePosition, PatchLayout, Patch, PatchDrone, PatchEndpoint, PatchModule, PatchModuleKind, PatchPort } from '../../domain/patch';
 import { createExampleLayout, PatchCanvas } from './PatchCanvas';
 import type { PatchSelection } from './PatchCanvas';
@@ -162,7 +162,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   }
 
   function copyDrone(module: PatchDrone, layerId: DroneLayerId) {
-    const snapshot = copyDroneLayerToPatch(module,layerId,droneLayers[layerId]);
+    const snapshot = setPatchDroneLayer(module,droneLayers[layerId],layerId);
     if (apply({...patch, modules:patch.modules.map(item => item.id === module.id ? snapshot : item)})) {
       setMessage(`Copied Drone ${layerId} into this node.`);
     }
@@ -264,7 +264,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
           onSelect={item => {setSelection(item); setPending(null); setError('');}}
           onMove={(id,position) => setPositions(previous => ({...previous,[id]:position}))}/>
         <p className="patch-status" role={error ? 'alert' : 'status'}>{error || message}</p>
-        <PatchInspector patch={patch} sampleRate={engine.current?.sampleRate} selection={selection} onModule={updateModule} onCopyDrone={copyDrone} onMapping={updateMapping} onRemove={remove}/>
+        {!hidden && <PatchInspector patch={patch} sampleRate={engine.current?.sampleRate} selection={selection} onModule={updateModule} onCopyDrone={copyDrone} onMapping={updateMapping} onRemove={remove}/>}
       </div>
     </div>
   </main>;

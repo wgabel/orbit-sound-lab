@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { createDefaultDroneLayer } from './drone-layers';
-import { copyDroneLayerToPatch, createExamplePatch, createPatchModule } from './patch';
+import { createExamplePatch, createPatchModule, setPatchDroneLayer } from './patch';
 import { readPatchPreset } from './patch-preset';
 
 function createPresetFixture() {
   const example = createExamplePatch();
   const drone = example.modules[0];
   if (drone.kind !== 'drone') throw new Error('Expected a Drone node.');
-  const patch = {...example,modules:[copyDroneLayerToPatch(drone,'B',createDefaultDroneLayer('B')),
+  const patch = {...example,modules:[setPatchDroneLayer(drone,createDefaultDroneLayer('B'),'B'),
     ...example.modules.slice(1),createPatchModule('lfo','module-1'),createPatchModule('oscilloscope','module-2')]};
   const layout = Object.fromEntries(patch.modules.map((module,index) => [module.id,{x:25+index*173,y:99+index*13}]));
   return {kind:'orbit-patch',schemaVersion:1,id:'patch',name:' Whole patch ',createdAt:'2026-11-19T10:00:00.000Z',

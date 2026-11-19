@@ -3,7 +3,9 @@ import { createDefaultDroneSettings, createDefaultShelfEq, MAX_SHELF_FREQUENCY_H
 import type { DroneSettings, OscillatorWaveform, ShelfEqSettings } from './drone';
 import type { DroneLayer, DroneLayerId } from './drone-layers';
 import type { LowFrequencyOscillatorSettings } from './modulation';
-import { tuneSceneLayer } from './sound-scene';
+import { createDefaultLowFrequencyOscillators } from './modulation';
+import { DEFAULT_HARMONY_SETTINGS, validateHarmonySettings } from './harmony';
+import type { HarmonySettings } from './harmony';
 import { DEFAULT_PATCH_LFO, validatePatchLfo } from './patch-lfo';
 import type { PatchLfo } from './patch-lfo';
 import { validateAutomation } from './patch-automation';
@@ -14,6 +16,7 @@ export interface PatchModuleSettings {
   drone: {
     readonly voice: DroneSettings;
     readonly modulation?: readonly LowFrequencyOscillatorSettings[];
+    readonly harmony?: HarmonySettings;
     readonly copiedFrom?: DroneLayerId;
   };
   automation: PatchAutomation;
@@ -33,9 +36,19 @@ export type PatchModule = {
 
 export type PatchDrone = Extract<PatchModule, {kind: 'drone'}>;
 
-export function copyDroneLayerToPatch(module: PatchDrone, layerId: DroneLayerId, layer: DroneLayer): PatchDrone {
+export function readPatchDroneLayer(module: PatchDrone): DroneLayer {
+  const {voice, modulation, harmony} = module.settings;
+  return {
+    drone:voice,
+    modulation:modulation ?? createDefaultLowFrequencyOscillators(voice.oscillators.map(oscillator => oscillator.id)),
+    harmony:harmony ?? DEFAULT_HARMONY_SETTINGS,
+    enabled:true
+  };
+}
+
+export function setPatchDroneLayer(module: PatchDrone, layer: DroneLayer, copiedFrom?: DroneLayerId): PatchDrone {
   return {...module, settings:structuredClone({
-    voice:tuneSceneLayer(layer), modulation:layer.modulation, copiedFrom:layerId
+    voice:layer.drone, modulation:layer.modulation, harmony:layer.harmony, copiedFrom
   })};
 }
 
@@ -179,6 +192,7 @@ export function validatePatch(patch: Patch): void {
     }
     if (module.kind === 'drone') {
       validateDroneSettings(module.settings.voice);
+      if (module.settings.harmony !== undefined) validateHarmonySettings(module.settings.harmony);
       continue;
     }
     if (module.kind === 'shelfEq') {

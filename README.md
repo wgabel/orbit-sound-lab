@@ -28,7 +28,7 @@ Select a node or cable to edit it. Connect ports by selecting an output and then
 
 Select an automation cable to show **Flip** and **On/Off** beside its source port. Flip reverses its modulation range. Off restores the destination’s base value while keeping the cable and its settings. Other cables from the same source keep running. These controls are saved with the patch.
 
-Select a **Drone** node and choose **Copy Drone A** or **Copy Drone B** to take a snapshot of that layer’s oscillator settings, harmony-adjusted tuning, layer mix, and modulation. The copy is independent of later edits in the drone editor. It plays through its patch cables regardless of the source layer’s on/off switch.
+Select a **Drone** node and choose **Copy Drone A** or **Copy Drone B** to take a snapshot of that layer’s oscillator settings, harmony-adjusted tuning, layer mix, and modulation. The copy is independent of later edits in the drone editor. It plays through its patch cables regardless of the source layer’s on/off switch. The node inspector also offers the same grouped **5-oscillator preset** menu and shared **Drone presets** library as the Drone editor. Load a named preset or save the node with **Save preset** or **Save snapshot**. The node uses the preset’s selected drone sound, including harmony and modulation. Shared echo and master level belong to the editor where the sound plays.
 
 To combine two sources, connect them to **Audio A** and **Audio B** on a **Mixer**, then connect its **Audio out** to a filter, gain stage, or other audio input. Set each channel’s level in the inspector or automate it via **Level A** and **Level B**.
 

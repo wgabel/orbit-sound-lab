@@ -24,6 +24,11 @@ export interface SoundPreset {
   readonly sourceLayer: DroneLayerId;
 }
 const DATABASE_NAME = 'orbit-sound-lab-presets';
+export const DRONE_PRESET_NAME_LIMIT = 120;
+
+export function createDroneSnapshotName(): string {
+  return `Snapshot ${new Date().toLocaleString()}`;
+}
 export function normalizePresetModulations(modulations: readonly LowFrequencyOscillatorSettings[], oscillatorIds: readonly string[]): readonly LowFrequencyOscillatorSettings[] {
   return createDefaultLowFrequencyOscillators(oscillatorIds).map(defaults =>
     modulations.find(item => item.targetOscillatorId === defaults.targetOscillatorId &&
@@ -64,7 +69,7 @@ export function validatePreset(value: unknown): SoundPreset {
   const preset = value as Partial<SoundPreset>;
   const {schemaVersion, id, name, createdAt, delay, harmony} = preset;
   if (schemaVersion !== 1) throw new Error('Unsupported preset version.');
-  if (typeof id !== 'string' || !id || typeof name !== 'string' || !name.trim() || name.length > 120 || typeof createdAt !== 'string') throw new Error('Invalid preset metadata.');
+  if (typeof id !== 'string' || !id || typeof name !== 'string' || !name.trim() || name.length > DRONE_PRESET_NAME_LIMIT || typeof createdAt !== 'string') throw new Error('Invalid preset metadata.');
   if (!preset.drone || !preset.modulation || !delay) throw new Error('Incomplete preset.');
   validateDelaySettings(delay);
   if (harmony !== undefined) validateHarmonySettings(harmony);
