@@ -620,6 +620,7 @@ export function App() {
                   <option value="sineTriangle">Sine ↔ Triangle</option>
                   <option value="variablePulse">Variable Pulse</option>
                   <option value="foldedSine">Folded Sine</option>
+                  <option value="peakedSine">Peaked Sine</option>
                 </select>
               </label>
               {supportsOscillatorShape(oscillator.waveform) && <OscillatorShapeControls oscillator={oscillator}

@@ -145,6 +145,8 @@ Expand **Shape LFO** to automate the blend independently of the other LFOs. Dept
 
 Choose **Variable Pulse** to shape the width of the pulse from 5% to 95%. At 50% it has the familiar square-wave tone. Use **Shape LFO** for pulse-width modulation. Try a slow sine for a gradual sweep, or a square LFO for two alternating widths. Two pulsed voices with the same synced rate and a 180° phase difference move in opposite directions. Presets keep the waveform, pulse width and Shape LFO.
 
+Choose **Peaked Sine** for narrow, symmetric peaks. **Shape** blends a clean sine at 0% into a ninth-power sine at 100%. The note keeps its pitch and gains odd harmonics. Use **Shape LFO** in the Drone editor, or connect an **LFO** or **Automation** output to the **Shape** input on a **Wave** node. Try a slow sweep from 0% to 60%.
+
 Choose **Folded Sine** and raise **Fold Amount** to bend the sine peaks back inward, adding harmonics at the same oscillator pitch. At 0% the signal is a clean sine. Use **Shape LFO** to sweep from a mellow tone into brighter or metallic textures, or use a square LFO to alternate settings.
 
 ## Drone shelf EQ
