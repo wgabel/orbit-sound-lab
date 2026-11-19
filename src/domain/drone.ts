@@ -59,15 +59,22 @@ export interface DroneMixSettings extends ShelfEqSettings {
   readonly filter: {readonly enabled: boolean; readonly cutoffHz: number};
   readonly reverb: DroneReverbSettings;
 }
+export const MAX_DRONE_KEY_GAIN = 0.4;
+
 export interface DroneSettings {
   readonly id: string;
   readonly name: string;
   readonly gain: number;
+  readonly keyGain?: number;
   readonly envelope: DroneEnvelope;
   readonly oscillatorModulations?: readonly OscillatorModulationRoute[];
   readonly oscillators: readonly OscillatorSettings[];
   readonly mix: DroneMixSettings;
 }
+export function readDroneKeyGain(settings: Pick<DroneSettings,'gain' | 'keyGain'>): number {
+  return settings.keyGain ?? Math.min(settings.gain, MAX_DRONE_KEY_GAIN);
+}
+
 export function createDefaultShelfEq(): ShelfEqSettings {
   return {lowShelf:{frequencyHz:150,gainDecibels:0}, highShelf:{frequencyHz:2400,gainDecibels:0}};
 }
@@ -118,6 +125,9 @@ export function validateDroneSettings(settings: DroneSettings): void {
   validateDroneEnvelope(settings.envelope);
   if (settings.oscillators.length !== OSCILLATORS_PER_DRONE) throw new Error('A drone must contain exactly five oscillators.');
   if (!Number.isFinite(settings.gain) || settings.gain < 0 || settings.gain > 1) throw new Error('Invalid drone gain.');
+  if (settings.keyGain !== undefined && (!Number.isFinite(settings.keyGain) || settings.keyGain < 0 || settings.keyGain > MAX_DRONE_KEY_GAIN)) {
+    throw new Error('Drone key level must be between 0% and 40%.');
+  }
   if (new Set(settings.oscillators.map(oscillator => oscillator.id)).size !== OSCILLATORS_PER_DRONE) throw new Error('Oscillator identifiers must be unique.');
   for (const oscillator of settings.oscillators) validateOscillatorSettings(oscillator);
   if (settings.oscillatorModulations !== undefined) validateOscillatorModulationRoutes(settings.oscillatorModulations, settings.oscillators);

@@ -1,3 +1,5 @@
+import { readDroneKeyGain } from '../domain/drone';
+import type { DroneSettings } from '../domain/drone';
 import { MAX_DRONE_BEND_CENTS } from '../domain/drone-envelope';
 import { WebAudioDroneGate } from '../infrastructure/audio/web-audio-drone-gate';
 import { createDefaultDelaySettings } from '../domain/delay';
@@ -44,8 +46,9 @@ export function createSoundLabVoice(context: AudioContext, destination: AudioNod
   graph.connect({sourceModuleId: 'effects', sourcePortId: 'audio', destinationModuleId: 'master-level', destinationPortId: 'audio'});
   graph.connect({sourceModuleId: 'master-level', sourcePortId: 'audio', destinationModuleId: 'master', destinationPortId: 'audio'});
 
+  const initialLayers = scene?.layers ?? {A:createDefaultDroneLayer('A'),B:createDefaultDroneLayer('B')};
   function createLayerController(id: DroneLayerId) {
-    const layer = scene?.layers[id] ?? createDefaultDroneLayer(id);
+    const layer = initialLayers[id];
     gates[id].setEnvelope(layer.drone.envelope);
     return new DroneController(context, new WebAudioDroneFactory(context, pulseWorklet), graph, new WebAudioModulationMatrix(),
       modulationFactory, tuneSceneLayer(layer), layer.modulation, `drone-${id}`, {moduleId: 'performance', portId: id});
@@ -54,12 +57,21 @@ export function createSoundLabVoice(context: AudioContext, destination: AudioNod
   const layers = {A: createLayerController('A'), B: createLayerController('B')};
   let enabled: Readonly<Record<DroneLayerId, boolean>> = {A: scene?.layers.A.enabled ?? true, B: scene?.layers.B.enabled ?? false};
   const holdModes = {A: false, B: false};
+  const layerLevels: Record<DroneLayerId,Pick<DroneSettings,'gain' | 'keyGain'>> = {
+    A:initialLayers.A.drone,B:initialLayers.B.drone
+  };
   const armedLayers = new Set<DroneLayerId>();
   const pressedKeys = new Map<DroneLayerId, symbol>();
   let continuousPlayback = false;
   let playing = false;
   let disposed = false;
   let transition = Promise.resolve();
+
+  function applyLayerLevel(id: DroneLayerId): void {
+    const levels = layerLevels[id];
+    const gain = holdModes[id] ? readDroneKeyGain(levels) : levels.gain;
+    if (gain !== layers[id].settings.gain) layers[id].setGain(gain);
+  }
 
   function synchronizeLayers(): Promise<void> {
     // Serialize graph changes while oscillator fades complete.
@@ -112,6 +124,7 @@ export function createSoundLabVoice(context: AudioContext, destination: AudioNod
     setLayerHoldMode(id, holding) {
       if (holding === holdModes[id]) return Promise.resolve();
       holdModes[id] = holding;
+      applyLayerLevel(id);
       pressedKeys.delete(id);
       armedLayers.delete(id);
       layers[id].setPitchBend(0);
@@ -119,6 +132,10 @@ export function createSoundLabVoice(context: AudioContext, destination: AudioNod
       if (layers[id].isPlaying) gates[id].setContinuous(!holding);
       else gates[id].reset(!holding);
       return playing ? synchronizeLayers() : Promise.resolve();
+    },
+    setLayerLevels(id, {gain,keyGain}) {
+      layerLevels[id] = {gain,keyGain};
+      applyLayerLevel(id);
     },
     setLayerEnvelope: (id, envelope) => gates[id].setEnvelope(envelope),
     async pressLayerKey(id) {
