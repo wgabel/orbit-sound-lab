@@ -42,6 +42,14 @@ Choose **Add module → LFO** for repeating modulation. Select a waveform, set t
 
 Use an **Oscilloscope** node to display the waveform at any patch audio connection. Connect it inline through **Audio in** and **Audio out**, or connect its input in parallel and leave its output free. The display uses a mono preview at 4× vertical scale. Inline audio keeps its original channels and level.
 
+### Compose a piece
+
+Open **Arrangement** in the patch editor. Choose a Wave, Drone, Chord Generator, or Automation node and select **Add clip**. Select a clip to edit its start, length, level or modulation strength, and fades. Tracks can be named from any clip. During arrangement playback, source nodes and Automation cables are active where their clips run. LFOs and effects continue to run in the patch.
+
+Add section labels to mark the form. **Duplicate section at end** copies the clips fully inside that section. A clip spanning several sections stays in place. An Automation clip can restart its curve, follow the arrangement clock, or use its own editable curve. **Play from start** or **Play from cursor** uses a ruler in seconds. The effect-tail setting leaves time for effects downstream of the source before playback stops.
+
+Try **Factory patch presets → Arrangements → Drone in Five Sections** for a ready-to-play 90-second example. **Save snapshot** and **My patch presets** save the arrangement with the patch and support JSON import and export.
+
 ## Current scope
 Two drone layers with five oscillators each, modulation, effects and a stereo performance mix. Use **Start Drones** and each layer’s **On** switch for continuous playback. The playback bar stays visible while scrolling.
 

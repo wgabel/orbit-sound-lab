@@ -1,3 +1,5 @@
+import { findArrangementClipAt, readClipElapsed } from '../../domain/patch-arrangement';
+import type { PatchArrangement } from '../../domain/patch-arrangement';
 import { AudioWaveform } from '../AudioWaveform';
 import { useEffect, useMemo, useRef } from 'react';
 import type { PointerEvent, RefObject } from 'react';
@@ -20,6 +22,7 @@ export function createExampleLayout(): PatchLayout {
 
 interface PatchCanvasProps {
   readonly patch: Patch;
+  readonly arrangement?: PatchArrangement;
   readonly viewportRef: RefObject<HTMLDivElement | null>;
   readonly scale: number;
   readonly positions: PatchLayout;
@@ -58,7 +61,7 @@ function controlPath(readValue: (phase: number) => number): string {
 function AutomationScope({moduleId, settings}: {moduleId: string; settings: PatchAutomation}) {
   const path = useMemo(() => controlPath(phase => readAutomationValue(settings,phase)), [settings]);
   return <svg className="patch-scope" viewBox="0 0 140 32" role="img" aria-label="Automation shape and playhead">
-    <path d={path}/><line data-automation-playhead={moduleId} x1="0" x2="0" y1="0" y2="32"/>
+    <path d={path} data-automation-curve=""/><line data-automation-playhead={moduleId} x1="0" x2="0" y1="0" y2="32"/>
   </svg>;
 }
 
@@ -80,7 +83,7 @@ interface NodeDrag {
   lastFrame?: number;
 }
 
-export function PatchCanvas({patch, positions, selection, pending, scale, playing, readAudibleElapsed, readLfoPhase, readControlValue, getWaveformAnalyser, outputLevel, viewportRef,
+export function PatchCanvas({patch, arrangement, positions, selection, pending, scale, playing, readAudibleElapsed, readLfoPhase, readControlValue, getWaveformAnalyser, outputLevel, viewportRef,
   onSelect, onCableChange, onPort, canConnect, onMove}: PatchCanvasProps) {
   const canvas = useRef<HTMLDivElement>(null);
   const controlBadges = useRef(new Map<string,HTMLSpanElement>());
@@ -102,8 +105,10 @@ export function PatchCanvas({patch, positions, selection, pending, scale, playin
     const playheads = Array.from(lines, line => {
       const module = modulesById.get(line.dataset.automationPlayhead ?? '');
       const trace = line.parentElement?.querySelector<SVGPathElement>('[data-lfo-random-trace]');
+      const curve = line.parentElement?.querySelector<SVGPathElement>('[data-automation-curve]');
+      const clips = arrangement?.clips.filter(clip => clip.moduleId === module?.id);
       trace?.setAttribute('d','');
-      return {line,module,trace, lastColumn:-1, history:''};
+      return {line,module,trace,curve,clips,settings:undefined as PatchAutomation | undefined,lastColumn:-1,history:''};
     });
     let frame = 0;
     let lastBadgeUpdate = -Infinity;
@@ -112,10 +117,20 @@ export function PatchCanvas({patch, positions, selection, pending, scale, playin
       const updateBadges = timestamp - lastBadgeUpdate >= 80;
       if (updateBadges) lastBadgeUpdate = timestamp;
       for (const playhead of playheads) {
-        const {line,module,trace} = playhead;
+        const {line,module,trace,curve,clips} = playhead;
         if (!module || (module.kind !== 'automation' && module.kind !== 'lfo')) continue;
-        const phase = module.kind === 'automation' ? readAutomationPhase(module.settings,elapsed) :
-          (playing ? readLfoPhase(module.id,elapsed) : undefined) ?? readPatchLfoPhase(module.settings,elapsed);
+        const clip = clips && findArrangementClipAt(clips,elapsed);
+        let phase: number;
+        if (module.kind === 'automation') {
+          const settings = clip?.automation ?? module.settings;
+          if (curve && playhead.settings !== settings) {
+            curve.setAttribute('d',controlPath(value => readAutomationValue(settings,value)));
+            playhead.settings = settings;
+          }
+          phase = readAutomationPhase(settings,clip ? readClipElapsed(clip,elapsed) : clips ? 0 : elapsed);
+        } else {
+          phase = (playing ? readLfoPhase(module.id,elapsed) : undefined) ?? readPatchLfoPhase(module.settings,elapsed);
+        }
         const badge = updateBadges ? controlBadges.current.get(module.id) : undefined;
         const sample = playing && (badge || trace) ? readControlValue(module.id) : undefined;
         if (badge) badge.textContent = sample?.toFixed(2) ?? '—';
@@ -136,7 +151,7 @@ export function PatchCanvas({patch, positions, selection, pending, scale, playin
     }
     draw(performance.now());
     return () => cancelAnimationFrame(frame);
-  }, [patch.modules, playing, readAudibleElapsed, readLfoPhase, readControlValue]);
+  }, [patch.modules, arrangement, playing, readAudibleElapsed, readLfoPhase, readControlValue]);
 
   function endpointPosition(endpoint: PatchEndpoint) {
     const module = modules.get(endpoint.moduleId);

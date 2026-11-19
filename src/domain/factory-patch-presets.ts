@@ -1,3 +1,4 @@
+import { ARRANGEMENT_DEMO } from './arrangement-demo';
 import { createDefaultDroneSettings } from './drone';
 import type { OscillatorWaveform } from './drone';
 import { applyHarmonicsPreset } from './patch-harmonics';
@@ -148,5 +149,6 @@ export const FACTORY_PATCH_GROUPS: readonly FactoryPatchGroup[] = [
       ],[firstToMixer,secondToMixer,audio('mixer','eq'),audio('eq','output'),
         control('notes','second','frequency',130.81,261.62),control('accent','mixer','levelB',0.22,0.64)])
     ]
-  }
+  },
+  {label:'Arrangements',presets:[ARRANGEMENT_DEMO]}
 ];

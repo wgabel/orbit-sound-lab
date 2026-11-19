@@ -1,3 +1,5 @@
+import { readClipElapsed } from '../../domain/patch-arrangement';
+import type { ArrangementClip } from '../../domain/patch-arrangement';
 import { getChordFrequencies } from '../../domain/chord';
 import { getShelfFrequencyHz } from '../../domain/drone-shelf-response';
 import { WebAudioPitchShift } from './web-audio-pitch-shift';
@@ -36,7 +38,7 @@ export interface PatchRuntimeModule {
   dispose(): void;
 }
 
-function createAutomationSignal(context: AudioContext, settings: PatchAutomation, origin: number): AudioBufferSourceNode {
+function createAutomationBuffer(context: AudioContext, settings: PatchAutomation): AudioBuffer {
   // Generate normalized control samples once. Web Audio advances the source on its own clock.
   const sampleRate = 8000;
   const activeFrames = Math.round(settings.duration * sampleRate);
@@ -45,18 +47,23 @@ function createAutomationSignal(context: AudioContext, settings: PatchAutomation
   const samples = buffer.getChannelData(0);
   for (let index = 0; index < activeFrames; index++) samples[index] = readAutomationValue(settings, index / activeFrames);
   if (holdFrames) samples.fill(readAutomationValue(settings, 1), activeFrames);
+  return buffer;
+}
+
+function startAutomationSignal(context: AudioContext, settings: PatchAutomation, buffer: AudioBuffer,
+  start: number, elapsed: number, end?: number): AudioBufferSourceNode {
   const source = context.createBufferSource();
   source.buffer = buffer;
   source.loop = true;
-  if (holdFrames) source.loopStart = activeFrames / sampleRate;
-  const now = context.currentTime;
-  const elapsed = Math.max(0, now - origin);
+  const once = settings.mode === 'once';
+  const bufferDuration = (buffer.length - (once ? 128 : 0)) / buffer.sampleRate;
+  if (once) source.loopStart = bufferDuration;
   // Keep the audio loop period equal to the editor duration after rounding to buffer frames.
-  const bufferDuration = activeFrames / sampleRate;
   const rate = bufferDuration / settings.duration;
   source.playbackRate.value = rate;
-  const position = holdFrames ? Math.min(settings.duration, elapsed) : elapsed % settings.duration;
-  source.start(now, position * rate);
+  const position = once ? Math.min(settings.duration, elapsed) : elapsed % settings.duration;
+  source.start(start, position * rate);
+  if (end !== undefined) source.stop(end);
   return source;
 }
 
@@ -64,7 +71,7 @@ const defaultWave = createDefaultDroneSettings().oscillators[0];
 
 export function createPatchRuntimeModule(
   context: AudioContext, definition: PatchModule, pulse: WebAudioPulseWorkletFactory,
-  modulationFactory: WebAudioLowFrequencyOscillatorFactory, lfo: WebAudioLfoWorkletFactory, master: AudioNode, origin: number
+  modulationFactory: WebAudioLowFrequencyOscillatorFactory, lfo: WebAudioLfoWorkletFactory, master: AudioNode, origin: number, clips?: readonly ArrangementClip[]
 ): PatchRuntimeModule {
   switch (definition.kind) {
     case 'chord': {
@@ -128,17 +135,41 @@ export function createPatchRuntimeModule(
       return {definition, output:signal.output, readLfoPhase:signal.readPhase, readControlValue:signal.readValue, dispose:signal.dispose};
     }
     case 'automation': {
-      const source = createAutomationSignal(context, definition.settings, origin);
       const smoothing = context.createBiquadFilter();
       smoothing.type = 'lowpass';
       smoothing.frequency.value = 80;
       smoothing.Q.value = -3;
       const bounds = context.createWaveShaper();
       bounds.curve = new Float32Array([0, 0, 1]);
-      source.connect(smoothing).connect(bounds);
+      smoothing.connect(bounds);
+      const sources: AudioBufferSourceNode[] = [];
+      const buffers = new Map<string,AudioBuffer>();
+      function startSignal(settings: PatchAutomation, start: number, elapsed: number, end?: number) {
+        const key = JSON.stringify(settings);
+        let buffer = buffers.get(key);
+        if (!buffer) {
+          buffer = createAutomationBuffer(context,settings);
+          buffers.set(key,buffer);
+        }
+        const source = startAutomationSignal(context,settings,buffer,start,elapsed,end);
+        sources.push(source);
+        source.connect(smoothing);
+      }
+      if (clips) {
+        for (const clip of clips) {
+          const end = origin + clip.start + clip.duration;
+          const start = Math.max(context.currentTime,origin+clip.start);
+          if (start < end) startSignal(clip.automation ?? definition.settings,start,Math.max(0,readClipElapsed(clip,start-origin)),end);
+        }
+      } else {
+        const start = context.currentTime;
+        startSignal(definition.settings,start,Math.max(0,start-origin));
+      }
       const monitor = createControlMonitor(context,bounds);
       return {definition, output:bounds, readControlValue:monitor.read, dispose() {
-        source.stop(); source.disconnect(); smoothing.disconnect(); bounds.disconnect();
+        for (const source of sources) {source.stop(); source.disconnect();}
+        smoothing.disconnect();
+        bounds.disconnect();
       }};
     }
     case 'pitchShift': {

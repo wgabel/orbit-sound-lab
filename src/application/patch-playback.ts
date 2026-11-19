@@ -1,8 +1,9 @@
+import type { PatchArrangement } from '../domain/patch-arrangement';
 import type { Patch } from '../domain/patch';
 
 export interface PatchPlayback {
   readonly sampleRate: number;
-  start(patch: Patch): Promise<void>;
+  start(patch: Patch, arrangement?: {readonly plan: PatchArrangement; readonly from: number}): Promise<void>;
   update(patch: Patch): void;
   readAudibleElapsed(): number;
   readOutputLevel(): number;

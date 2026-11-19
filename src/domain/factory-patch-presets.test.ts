@@ -5,10 +5,10 @@ import { readPatchPreset } from './patch-preset';
 describe('factory patch presets', () => {
   const presets = FACTORY_PATCH_GROUPS.flatMap(group => group.presets);
 
-  it('provides ten uniquely named patches in three groups', () => {
-    expect(FACTORY_PATCH_GROUPS.map(group => group.presets.length)).toEqual([3,4,3]);
-    expect(new Set(presets.map(preset => preset.id)).size).toBe(10);
-    expect(new Set(presets.map(preset => preset.name)).size).toBe(10);
+  it('provides uniquely named patches in four groups', () => {
+    expect(FACTORY_PATCH_GROUPS.map(group => group.presets.length)).toEqual([3,4,3,1]);
+    expect(new Set(presets.map(preset => preset.id)).size).toBe(11);
+    expect(new Set(presets.map(preset => preset.name)).size).toBe(11);
   });
 
   it.each(presets)('loads and can be saved with every module connected in $name', preset => {

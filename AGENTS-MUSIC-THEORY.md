@@ -72,9 +72,10 @@ A useful comparison is to play this once with the drone fixed, then again with t
 | Sustain a pitch or chord | Wave, Drone, and Chord Generator provide sustained sound. A chord choice, voicing, or inversion shapes the sonority. |
 | Repeat or vary a short pattern | Automation steps or curves can drive a compatible pitch, level, or filter input. An LFO can supply recurring movement. Cable mapping sets what the control values mean at the destination. |
 | Bring parts forward and send them back | Mixer, Gain, Low-pass filter, and Shelf EQ shape balance and texture. A gain contour can create pulses and gaps. |
-| Hear several sounds in sequence | The Drone editor’s Scene Timeline captures sound snapshots with explicit hold and blend times. The node editor’s patch presets store a graph and its layout. |
+| Arrange individual parts | The patch editor’s Arrangement timeline schedules Wave, Drone, Chord Generator, and Automation clips in seconds. A sustained part can cross section boundaries while other tracks change. The patch preset stores the arrangement alongside the graph and layout. |
+| Move between complete sounds | The Drone editor’s Scene Timeline captures sound snapshots with explicit hold and blend times. |
 
-See [patch modules](src/domain/patch.ts), [patch automation](src/domain/patch-automation.ts), [patch preset format](src/domain/patch-preset.ts), and [scene arrangement](src/domain/sound-scene.ts).
+See [patch arrangements](src/domain/patch-arrangement.ts), [patch modules](src/domain/patch.ts), [patch automation](src/domain/patch-automation.ts), [patch preset format](src/domain/patch-preset.ts), and [scene arrangement](src/domain/sound-scene.ts).
 
 Keep these meanings distinct when changing the app:
 

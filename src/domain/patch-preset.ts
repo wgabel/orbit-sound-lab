@@ -1,3 +1,5 @@
+import { readPatchArrangement } from './patch-arrangement';
+import type { PatchArrangement } from './patch-arrangement';
 import { readAutomationSettings } from './automation-preset';
 import { isLegacyTriadInversion } from './chord';
 import { validateLowFrequencyOscillatorBank } from './modulation';
@@ -11,6 +13,7 @@ export interface PatchSnapshot {
   readonly patch: Patch;
   readonly layout: PatchLayout;
   readonly viewport: NodePosition;
+  readonly arrangement?: PatchArrangement;
 }
 
 export interface PatchPreset extends PatchSnapshot {
@@ -110,5 +113,6 @@ export function readPatchPreset(value: unknown): PatchPreset {
   const positions = Object.fromEntries(patch.modules.map(module =>
     [module.id,readPosition(Object.hasOwn(layout,module.id) ? layout[module.id] : undefined,MINIMUM_NODE_POSITION,MAXIMUM_NODE_POSITION)]));
   return {kind:'orbit-patch',schemaVersion:1,id,name:name.trim(),createdAt,patch:structuredClone(patch),
-    layout:positions,viewport:readPosition(viewport,PATCH_CANVAS_MINIMUM,Number.MAX_SAFE_INTEGER)};
+    layout:positions,viewport:readPosition(viewport,PATCH_CANVAS_MINIMUM,Number.MAX_SAFE_INTEGER),
+    ...(value.arrangement === undefined ? {} : {arrangement:readPatchArrangement(value.arrangement,patch)})};
 }

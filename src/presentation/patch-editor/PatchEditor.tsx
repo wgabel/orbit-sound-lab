@@ -1,3 +1,6 @@
+import { EMPTY_PATCH_ARRANGEMENT, readArrangementEnd, readPatchArrangement } from '../../domain/patch-arrangement';
+import type { PatchArrangement } from '../../domain/patch-arrangement';
+import { PatchArrangementTimeline } from './PatchArrangementTimeline';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { DroneLayer, DroneLayerId } from '../../domain/drone-layers';
 import type { PatchPlayback } from '../../application/patch-playback';
@@ -17,6 +20,7 @@ import { usePresetCollection } from './usePresetCollection';
 import { PatchViewControls } from './PatchViewControls';
 import { resolvePatchOverlaps } from './patch-overlap';
 import './patch-editor.css';
+import './patch-arrangement.css';
 
 export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   hidden: boolean;
@@ -35,6 +39,13 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   const [message, setMessage] = useState('Select an output, then a highlighted input to connect it.');
   const [error, setError] = useState('');
   const [playing, setPlaying] = useState(false);
+  const [arrangement, setArrangement] = useState<PatchArrangement>(EMPTY_PATCH_ARRANGEMENT);
+  const [showArrangement, setShowArrangement] = useState(false);
+  const [arrangementPlaying, setArrangementPlaying] = useState(false);
+  const [arrangementElapsed, setArrangementElapsed] = useState(0);
+  const [timelineVersion, setTimelineVersion] = useState(0);
+  const transportBusy = useRef(false);
+  const arrangementEnd = readArrangementEnd(arrangement) + arrangement.tail;
   const [zoom, setZoom] = useState(100);
   const [expanded, setExpanded] = useState(false);
   const scale = zoom / 100;
@@ -57,22 +68,49 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
       setError(reason instanceof Error ? reason.message : 'Could not save patch snapshot.');
     }
   }
+  const stopPlayback = useCallback(async (): Promise<boolean> => {
+    if (transportBusy.current) return false;
+    transportBusy.current = true;
+    setTransition(true);
+    try {
+      await engine.current?.stop();
+      setPlaying(false);
+      setArrangementPlaying(false);
+      setOutputLevel(0);
+      return true;
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not stop playback.');
+      return false;
+    } finally {
+      transportBusy.current = false;
+      setTransition(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!playing) return;
     const interval = window.setInterval(() => {
       const playback = engine.current;
-      if (playback) setOutputLevel(playback.readOutputLevel());
+      if (!playback) return;
+      if (!showArrangement) setOutputLevel(playback.readOutputLevel());
+      if (!arrangementPlaying) return;
+      const elapsed = playback.readAudibleElapsed();
+      setArrangementElapsed(elapsed);
+      if (elapsed >= arrangementEnd) {
+        window.clearInterval(interval);
+        void stopPlayback().then(stopped => {if (stopped) setMessage('Arrangement finished.');});
+      }
     }, 80);
     return () => window.clearInterval(interval);
-  }, [playing]);
+  }, [playing, showArrangement, arrangementPlaying, arrangementEnd, stopPlayback]);
 
   useLayoutEffect(() => {
     const position = pendingViewport.current;
-    if (!position || !viewport.current || hidden) return;
+    if (!position || !viewport.current || hidden || showArrangement) return;
     const offset = getPatchScrollOffset(position,scale);
     viewport.current.scrollTo(offset.x,offset.y);
     pendingViewport.current = null;
-  }, [positions, scale, hidden]);
+  }, [positions, scale, hidden, showArrangement]);
 
   function changeZoom(nextZoom: number) {
     const element = viewport.current;
@@ -102,27 +140,45 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
     }
   }
 
-  async function togglePlayback(close = false) {
-    if (transition) return;
-    if (close && !playing) {closeEditor(); return;}
-    setTransition(true);
-    setError('');
+  function toggleArrangementView() {
+    if (!showArrangement && viewport.current) pendingViewport.current = readPatchViewportOrigin(viewport.current,scale);
+    setShowArrangement(!showArrangement);
+  }
+
+  function updateArrangement(next: PatchArrangement): boolean {
     try {
-      if (playing) {
-        await engine.current?.stop();
-        setPlaying(false);
-        setOutputLevel(0);
-      } else {
-        const playback = engine.current ?? createPlayback();
-        engine.current = playback;
-        await playback.start(patch);
-        if (engine.current !== playback) return;
-        setPlaying(true);
-      }
-      if (close) closeEditor();
+      setArrangement(readPatchArrangement(next,patch));
+      setError('');
+      setMessage('');
+      return true;
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not update the arrangement.');
+      return false;
+    }
+  }
+
+  async function togglePlayback(close = false, from?: number) {
+    if (transportBusy.current) return;
+    setError('');
+    if (close || playing) {
+      if ((!playing || await stopPlayback()) && close) closeEditor();
+      return;
+    }
+
+    transportBusy.current = true;
+    setTransition(true);
+    try {
+      const playback = engine.current ?? createPlayback();
+      engine.current = playback;
+      await playback.start(patch,from === undefined ? undefined : {plan:arrangement,from});
+      if (engine.current !== playback) return;
+      setArrangementElapsed(from ?? 0);
+      setArrangementPlaying(from !== undefined);
+      setPlaying(true);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not play the patch.');
     } finally {
+      transportBusy.current = false;
       setTransition(false);
     }
   }
@@ -210,6 +266,10 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
     if (!apply(next)) return;
     if (item.kind === 'module') setPositions(previous => Object.fromEntries(
       Object.entries(previous).filter(([id]) => id !== item.id)));
+    if (item.kind === 'module') setArrangement(previous => ({
+      ...previous,clips:previous.clips.filter(clip => clip.moduleId !== item.id),
+      trackNames:previous.trackNames && Object.fromEntries(Object.entries(previous.trackNames).filter(([id]) => id !== item.id))
+    }));
     setPending(null);
     setSelection(null);
     setMessage(item.kind === 'module' ? 'Module removed.' : 'Cable disconnected.');
@@ -219,6 +279,9 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
     const snapshot = structuredClone(preset);
     if (!apply(snapshot.patch)) return;
     pendingViewport.current = snapshot.viewport;
+    setArrangement(snapshot.arrangement ?? EMPTY_PATCH_ARRANGEMENT);
+    setTimelineVersion(version => version+1);
+    if (snapshot.arrangement?.clips.length) setShowArrangement(true);
     setPositions(snapshot.layout);
     setPending(null);
     setSelection(null);
@@ -227,12 +290,17 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
 
   function saveCurrentPatch(name: string) {
     return savePatchPreset(name,{patch,layout:positions,
-      viewport:viewport.current ? readPatchViewportOrigin(viewport.current,scale) : {x:0,y:0}});
+      viewport:pendingViewport.current ?? (viewport.current ? readPatchViewportOrigin(viewport.current,scale) : {x:0,y:0}),
+      ...(arrangement.clips.length || arrangement.sections.length || arrangement.trackNames || arrangement.tail !== EMPTY_PATCH_ARRANGEMENT.tail
+        ? {arrangement} : {})});
   }
 
   function loadPatch(example: boolean) {
     if (!apply(example ? createExamplePatch() : {version:1,modules:[],cables:[]})) return;
     pendingViewport.current = {x:0,y:0};
+    setArrangement(EMPTY_PATCH_ARRANGEMENT);
+    setTimelineVersion(version => version+1);
+    setShowArrangement(false);
     setPositions(example ? createExampleLayout() : {});
     setPending(null);
     setSelection(example ? {kind:'cable',id:'filter-control'} : null);
@@ -250,17 +318,21 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
       <div><span>ORBIT SOUND LAB</span><h1>Patch editor</h1></div>
       <div className="patch-actions">
         <div className="patch-transport">
-          <button type="button" className="patch-play" disabled={transition} onClick={() => void togglePlayback()}>
-            {transition ? 'Please wait' : playing ? 'Stop patch' : 'Play patch'}</button>
+          {!showArrangement && <button type="button" className="patch-play" disabled={transition} onClick={() => void togglePlayback()}>
+            {transition ? 'Please wait' : playing ? (arrangementPlaying ? 'Stop arrangement' : 'Stop patch') : 'Play patch'}</button>}
+          {showArrangement && playing && !arrangementPlaying && <button type="button" disabled={transition}
+            onClick={() => void togglePlayback()}>Stop patch</button>}
+          <button type="button" aria-pressed={showArrangement} onClick={toggleArrangementView} disabled={transition}>
+            {showArrangement ? 'Patch canvas' : 'Arrangement'}</button>
           <button type="button" disabled={transition} onClick={() => void togglePlayback(true)}>Drone editor</button>
         </div>
-        <PatchViewControls zoom={zoom} expanded={expanded} onZoom={changeZoom}
+        <PatchViewControls zoom={zoom} expanded={expanded} showZoom={!showArrangement} onZoom={changeZoom}
           onToggleExpanded={() => setExpanded(value => !value)}/>
       </div>
     </header>
     <div className="patch-workspace" inert={transition}>
-      <div className="patch-toolbar">
-        <select aria-label="Add module" value="" onChange={event => addModule(event.target.value as PatchModuleKind)}>
+      <div className="patch-toolbar" inert={arrangementPlaying}>
+        <select disabled={showArrangement} aria-label="Add module" value="" onChange={event => addModule(event.target.value as PatchModuleKind)}>
           <option value="" disabled>Add module</option>
           <optgroup label="● Sound sources">
             {(['wave','drone','chord'] as const).map(kind =>
@@ -293,19 +365,25 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
           {presetCollection.presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
         </select>
         <button type="button" disabled={presetCollection.busy} onClick={() => void saveSnapshot()}>Save snapshot</button>
-        <button type="button" disabled={patch.modules.length < 2} onClick={cleanUpOverlaps}>Clean up overlaps</button>
+        <button type="button" disabled={showArrangement || patch.modules.length < 2} onClick={cleanUpOverlaps}>Clean up overlaps</button>
         <button type="button" onClick={() => loadPatch(true)}>Load example</button>
         <button type="button" onClick={() => loadPatch(false)}>Empty patch</button>
         <span className="patch-legend"><span>Audio</span><span>Automation</span></span>
       </div>
-      <details className="patch-presets">
+      <details className="patch-presets" inert={arrangementPlaying}>
         <summary>My patch presets</summary>
         <PresetLibraryPanel<PatchPreset> label="Patch" nameLimit={PATCH_PRESET_NAME_LIMIT} showHeading={false} collection={presetCollection}
           save={saveCurrentPatch} importFile={importPatchPreset} exportFile={exportPatchPreset}
           remove={deletePatchPreset} onLoad={loadNamedPatch}/>
       </details>
-      <div className="patch-workspace-content">
-        <PatchCanvas viewportRef={viewport} scale={scale} patch={patch} positions={positions} selection={selection} pending={pending}
+      <div hidden={!showArrangement}>
+        {!hidden && <PatchArrangementTimeline key={timelineVersion} patch={patch} arrangement={arrangement}
+          playing={arrangementPlaying} canPlay={!playing} elapsed={arrangementElapsed} onChange={updateArrangement}
+          onPlay={from => void togglePlayback(false,from)} onStop={() => void stopPlayback()}/>}
+      </div>
+      {showArrangement && (error || message) && <p className="patch-status" role={error ? 'alert' : 'status'}>{error || message}</p>}
+      <div className="patch-workspace-content" hidden={showArrangement} inert={arrangementPlaying}>
+        <PatchCanvas arrangement={arrangementPlaying ? arrangement : undefined} viewportRef={viewport} scale={scale} patch={patch} positions={positions} selection={selection} pending={pending}
           playing={playing} readAudibleElapsed={readAudibleElapsed} readLfoPhase={readLfoPhase} readControlValue={readControlValue} getWaveformAnalyser={getWaveformAnalyser} outputLevel={outputLevel}
           onPort={handlePort} canConnect={canConnect} onCableChange={updateCable}
           onSelect={item => {setSelection(item); setPending(null); setError('');}}
