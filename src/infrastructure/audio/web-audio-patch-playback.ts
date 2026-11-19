@@ -24,8 +24,9 @@ function createRuntimeCable(context: AudioContext, definition: PatchCable,
   level.gain.value = 0;
   const mapping = definition.mapping;
   if (!mapping) {
-    if (!destination.input) throw new Error('Missing runtime audio input.');
-    level.connect(destination.input);
+    const input = destination.inputs?.[definition.destination.portId];
+    if (!input) throw new Error('Missing runtime audio input.');
+    level.connect(input);
     let connected = false;
     return {definition, source, destination, level,
       connect() {output.connect(level); connected = true;},

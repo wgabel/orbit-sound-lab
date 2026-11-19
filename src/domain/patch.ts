@@ -9,6 +9,7 @@ export interface PatchModuleSettings {
   automation: PatchAutomation;
   filter: {readonly cutoff: number; readonly resonance: number};
   gain: {readonly level: number};
+  mixer: {readonly levelA: number; readonly levelB: number};
   output: {readonly level: number};
 }
 
@@ -45,7 +46,8 @@ export interface PatchPort {
 }
 
 export const MODULE_LABELS: Readonly<Record<PatchModuleKind, string>> = {
-  wave: 'Wave', drone: 'Drone', automation: 'Automation', filter: 'Low-pass filter', gain: 'Gain', output: 'Output'
+  wave: 'Wave', drone: 'Drone', automation: 'Automation', filter: 'Low-pass filter', gain: 'Gain',
+  mixer: 'Mixer', output: 'Output'
 };
 
 const audioInput: PatchPort = {id:'in', label:'Audio in', direction:'input', signal:'audio'};
@@ -70,6 +72,13 @@ export function getPatchPorts(module: PatchModule): readonly PatchPort[] {
       {id:'resonance', label:'Resonance', direction:'input', signal:'control', parameter:{unit:'Q', minimum:0.1, maximum:12}}
     ];
     case 'gain': return [audioInput, audioOutput, level];
+    case 'mixer': return [
+      {...audioInput, id:'inputA', label:'Audio A'},
+      {...audioInput, id:'inputB', label:'Audio B'},
+      {...level, id:'levelA', label:'Level A'},
+      {...level, id:'levelB', label:'Level B'},
+      audioOutput
+    ];
     case 'output': return [audioInput, level];
   }
 }
@@ -167,6 +176,7 @@ export function createPatchModule(kind: PatchModuleKind, id: string): PatchModul
       points:[0, 0.75, 0.25, 1, 0.1, 0.58, 0.23, 0.87, 0.87].map((value, index) => ({position:index / 8, value}))}};
     case 'filter': return {id, kind, settings:{cutoff:900, resonance:0.7}};
     case 'gain': return {id, kind, settings:{level:0.55}};
+    case 'mixer': return {id, kind, settings:{levelA:0.5, levelB:0.5}};
     case 'output': return {id, kind, settings:{level:0.7}};
   }
 }

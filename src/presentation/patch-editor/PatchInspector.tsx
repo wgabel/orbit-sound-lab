@@ -65,6 +65,12 @@ function ModuleSettings({module, onChange}: {module: PatchModule; onChange(modul
       <NumericSlider label="Base resonance" unit="Q" min={0.1} max={12} step={0.1} value={module.settings.resonance}
         onChange={resonance => onChange({...module,settings:{...module.settings,resonance}})}/>
     </div>;
+    case 'mixer': return <div className="patch-fields">
+      <NumericSlider label="Level A" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+        value={module.settings.levelA} onChange={levelA => onChange({...module,settings:{...module.settings,levelA}})}/>
+      <NumericSlider label="Level B" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+        value={module.settings.levelB} onChange={levelB => onChange({...module,settings:{...module.settings,levelB}})}/>
+    </div>;
     case 'gain':
     case 'output': return <div className="patch-fields">
       <NumericSlider label="Base level" unit="%" displayFactor={100} min={0} max={1} step={0.01} value={module.settings.level}

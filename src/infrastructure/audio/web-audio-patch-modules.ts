@@ -13,7 +13,7 @@ interface ParameterBinding {
 
 export interface PatchRuntimeModule {
   readonly definition: PatchModule;
-  readonly input?: AudioNode;
+  readonly inputs?: Readonly<Partial<Record<string, AudioNode>>>;
   readonly output?: AudioNode;
   readonly parameters?: Readonly<Record<string, ParameterBinding>>;
   dispose(): void;
@@ -82,17 +82,31 @@ export function createPatchRuntimeModule(
       filter.type = 'lowpass';
       filter.frequency.value = definition.settings.cutoff;
       filter.Q.value = definition.settings.resonance;
-      return {definition, input:filter, output:filter, parameters:{
+      return {definition, inputs:{in:filter}, output:filter, parameters:{
         cutoff:{parameter:filter.frequency,base:definition.settings.cutoff},
         resonance:{parameter:filter.Q,base:definition.settings.resonance}
       }, dispose:() => filter.disconnect()};
+    }
+    case 'mixer': {
+      const channelA = context.createGain();
+      const channelB = context.createGain();
+      const output = context.createGain();
+      const {levelA, levelB} = definition.settings;
+      channelA.gain.value = levelA;
+      channelB.gain.value = levelB;
+      channelA.connect(output);
+      channelB.connect(output);
+      return {definition, inputs:{inputA:channelA, inputB:channelB}, output, parameters:{
+        levelA:{parameter:channelA.gain, base:levelA},
+        levelB:{parameter:channelB.gain, base:levelB}
+      }, dispose() {channelA.disconnect(); channelB.disconnect(); output.disconnect();}};
     }
     case 'gain':
     case 'output': {
       const gain = context.createGain();
       gain.gain.value = definition.settings.level;
       if (definition.kind === 'output') gain.connect(master);
-      return {definition, input:gain, output:gain,
+      return {definition, inputs:{in:gain}, output:gain,
         parameters:{level:{parameter:gain.gain,base:definition.settings.level}}, dispose:() => gain.disconnect()};
     }
   }
