@@ -12,7 +12,8 @@ import { FACTORY_PATCH_GROUPS } from '../../domain/factory-patch-presets';
 import { PATCH_PRESET_NAME_LIMIT } from '../../domain/patch-preset';
 import type { PatchPreset, PatchSnapshot } from '../../domain/patch-preset';
 import { deletePatchPreset, exportPatchPreset, importPatchPreset, listPatchPresets, savePatchPreset } from '../../infrastructure/storage/patch-preset-library';
-import { PresetLibrary } from './PresetLibrary';
+import { PresetLibraryPanel } from './PresetLibrary';
+import { usePresetCollection } from './usePresetCollection';
 import { PatchViewControls } from './PatchViewControls';
 import './patch-editor.css';
 
@@ -26,7 +27,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   const viewport = useRef<HTMLDivElement>(null);
   const pendingViewport = useRef<NodePosition | null>(null);
   const [patch, setPatch] = useState(createExamplePatch);
-  const [savedPresets, setSavedPresets] = useState<PatchPreset[]>([]);
+  const presetCollection = usePresetCollection(listPatchPresets);
   const [positions, setPositions] = useState<PatchLayout>(createExampleLayout);
   const [selection, setSelection] = useState<PatchSelection | null>({kind:'cable',id:'filter-control'});
   const [pending, setPending] = useState<PatchEndpoint | null>(null);
@@ -45,18 +46,10 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   const readAudibleElapsed = useCallback(() => engine.current?.readAudibleElapsed() ?? 0, []);
 
   useEffect(() => () => {engine.current?.dispose(); engine.current = null;}, []);
-  useEffect(() => {
-    void listPatchPresets().then(setSavedPresets).catch(() => {});
-  }, []);
-
-  async function refreshSavedPresets() {
-    setSavedPresets(await listPatchPresets());
-  }
-
   async function saveSnapshot() {
     try {
-      await saveCurrentPatch(`Patch ${new Date().toLocaleString()}`);
-      await refreshSavedPresets();
+      const saved = await presetCollection.update(() => saveCurrentPatch(`Patch ${new Date().toLocaleString()}`));
+      if (!saved) return;
       setError('');
       setMessage('Patch snapshot saved.');
     } catch (reason) {
@@ -277,24 +270,24 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
             {group.presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
           </optgroup>)}
         </select>
-        <select aria-label="Saved patch preset" value="" onFocus={() => void refreshSavedPresets().catch(() => {})}
+        <select aria-label="Saved patch preset" value="" disabled={presetCollection.busy}
           onChange={event => {
-            const preset = savedPresets.find(item => item.id === event.target.value);
+            const preset = presetCollection.presets.find(item => item.id === event.target.value);
             if (preset) loadNamedPatch(preset);
           }}>
           <option value="" disabled>My saved patches</option>
-          {savedPresets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+          {presetCollection.presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
         </select>
-        <button type="button" onClick={() => void saveSnapshot()}>Save snapshot</button>
+        <button type="button" disabled={presetCollection.busy} onClick={() => void saveSnapshot()}>Save snapshot</button>
         <button type="button" onClick={() => loadPatch(true)}>Load example</button>
         <button type="button" onClick={() => loadPatch(false)}>Empty patch</button>
         <span className="patch-legend"><span>Audio</span><span>Automation</span></span>
       </div>
       <details className="patch-presets">
         <summary>My patch presets</summary>
-        <PresetLibrary<PatchPreset> label="Patch" nameLimit={PATCH_PRESET_NAME_LIMIT} showHeading={false} list={listPatchPresets}
+        <PresetLibraryPanel<PatchPreset> label="Patch" nameLimit={PATCH_PRESET_NAME_LIMIT} showHeading={false} collection={presetCollection}
           save={saveCurrentPatch} importFile={importPatchPreset} exportFile={exportPatchPreset}
-          remove={deletePatchPreset} onLoad={loadNamedPatch} onLibraryChanged={() => void refreshSavedPresets()}/>
+          remove={deletePatchPreset} onLoad={loadNamedPatch}/>
       </details>
       <div className="patch-workspace-content">
         <PatchCanvas viewportRef={viewport} scale={scale} patch={patch} positions={positions} selection={selection} pending={pending}

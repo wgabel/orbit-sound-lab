@@ -1,4 +1,5 @@
 import { readAutomationSettings } from './automation-preset';
+import { isLegacyTriadInversion } from './chord';
 import { validateLowFrequencyOscillatorBank } from './modulation';
 import type { LowFrequencyOscillatorSettings } from './modulation';
 import { MAXIMUM_NODE_POSITION, MODULE_LABELS, validatePatch } from './patch';
@@ -52,12 +53,12 @@ function assertDroneSnapshot(settings: Record<string, unknown>): void {
   validateLowFrequencyOscillatorBank(modulation as LowFrequencyOscillatorSettings[],oscillatorIds);
 }
 
-function assertPatch(value: unknown): asserts value is Patch {
+function readPatch(value: unknown): Patch {
   if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.modules) || !Array.isArray(value.cables) ||
       value.modules.length > 64 || value.cables.length > 192) {
     throw new Error('Unsupported patch size or version.');
   }
-  for (const module of value.modules as readonly unknown[]) {
+  const modules = (value.modules as readonly unknown[]).map(module => {
     if (!isRecord(module) || !isIdentifier(module.id) || typeof module.kind !== 'string' ||
         !Object.hasOwn(MODULE_LABELS,module.kind) || !isRecord(module.settings)) {
       throw new Error('Invalid patch module.');
@@ -68,17 +69,22 @@ function assertPatch(value: unknown): asserts value is Patch {
         !Number.isFinite(module.settings.shape) || module.settings.shape < 0 || module.settings.shape > 1)) {
       throw new Error('Invalid Wave shape.');
     }
-  }
+    // Previous presets could save inversion 3 for a triad, which played in root position.
+    return module.kind === 'chord' && isLegacyTriadInversion(module.settings.chord,module.settings.inversion)
+      ? {...module,settings:{...module.settings,inversion:0}} : module;
+  });
   for (const cable of value.cables as readonly unknown[]) {
     if (!isRecord(cable) || !isIdentifier(cable.id) || !isEndpoint(cable.source) || !isEndpoint(cable.destination) ||
         (cable.mapping !== undefined && !isRecord(cable.mapping))) throw new Error('Invalid patch cable.');
   }
+  const patch = {...value,modules} as unknown as Patch;
   try {
-    validatePatch(value as unknown as Patch);
+    validatePatch(patch);
   } catch (error) {
     if (error instanceof TypeError) throw new Error('Invalid patch settings.');
     throw error;
   }
+  return patch;
 }
 
 function readPosition(value: unknown, maximum: number): NodePosition {
@@ -94,12 +100,12 @@ export function readPatchPreset(value: unknown): PatchPreset {
   if (!isRecord(value) || value.kind !== 'orbit-patch' || value.schemaVersion !== 1) {
     throw new Error('Choose a supported Patch preset JSON file.');
   }
-  const {id,name,createdAt,patch,layout,viewport} = value;
+  const {id,name,createdAt,layout,viewport} = value;
   if (typeof name !== 'string' || !name.trim() || name.trim().length > PATCH_PRESET_NAME_LIMIT ||
       !isIdentifier(id) || typeof createdAt !== 'string' || !Number.isFinite(Date.parse(createdAt))) {
     throw new Error('Invalid patch preset metadata.');
   }
-  assertPatch(patch);
+  const patch = readPatch(value.patch);
   if (!isRecord(layout) || Object.keys(layout).length !== patch.modules.length) throw new Error('Invalid patch layout.');
   const positions = Object.fromEntries(patch.modules.map(module =>
     [module.id,readPosition(Object.hasOwn(layout,module.id) ? layout[module.id] : undefined,MAXIMUM_NODE_POSITION)]));

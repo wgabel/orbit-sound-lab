@@ -1,6 +1,5 @@
 import { getChordFrequencies } from '../../domain/chord';
 import { getShelfFrequencyHz } from '../../domain/drone-shelf-response';
-import { WebAudioOutputProtection } from './web-audio-output-protection';
 import { WebAudioPitchShift } from './web-audio-pitch-shift';
 import { WebAudioShelfEq } from './web-audio-shelf-eq';
 import { createDefaultDroneSettings } from '../../domain/drone';
@@ -190,19 +189,11 @@ export function createPatchRuntimeModule(
       return {definition, inputs:{in:signal}, output:signal, waveformAnalyser:analyser,
         dispose() {signal.disconnect(); analyser.disconnect();}};
     }
-    case 'output': {
-      const gain = context.createGain();
-      gain.gain.value = definition.settings.level;
-      const protection = new WebAudioOutputProtection(context);
-      gain.connect(protection.input);
-      protection.output.connect(master);
-      return {definition, inputs:{in:gain}, output:protection.output,
-        parameters:{level:{parameter:gain.gain,base:definition.settings.level}},
-        dispose() {gain.disconnect(); protection.dispose();}};
-    }
+    case 'output':
     case 'gain': {
       const gain = context.createGain();
       gain.gain.value = definition.settings.level;
+      if (definition.kind === 'output') gain.connect(master);
       return {definition, inputs:{in:gain}, output:gain,
         parameters:{level:{parameter:gain.gain,base:definition.settings.level}}, dispose:() => gain.disconnect()};
     }
