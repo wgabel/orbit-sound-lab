@@ -70,6 +70,14 @@ Choose **Sine ↔ Triangle** under **Frequency & Waveform** to reveal **Shape**.
 
 Expand **Shape LFO** to automate the blend independently of the other LFOs. Depth is in percentage points, so a base Shape of 35% and a depth of 20 pp give a 15–55% sweep. The sweep is bounded by 0% and 100%. The live readout shows the actual blend during playback. Presets and oscillator copy/paste retain the Shape and its LFO settings.
 
+## Step Sequencer
+
+Under **Performance**, select the drone you want to shape. Choose a pad, set a value in the oscillator rack, and **Capture** that control into the pad. Repeat to add or update controls on the same pad. Steps can drive oscillator **Volume**, enabled filter **Cutoff**, and the **FM Depth** of an enabled Waveform-to-Frequency route. **Glide** sets the time to reach those values and **Hold** sets how long they stay before the next step. Empty pads are skipped.
+
+Start the selected drone in continuous mode. Use **Apply step** to set up your opening sound, then choose **Play once** or **Loop**. **Manual** waits after each glide until you press **Next step**. You can also use **Next step** to advance early during automatic playback. **Stop steps** leaves the current sound playing. To compose an ending that fades to silence, capture zero volume for the remaining audible oscillators on the last pad.
+
+Each layer has its own sequence with up to eight pads. Steps stay until the page reloads. Starting a Morph or Scene Timeline preview, stopping the drone, or switching the selected drone ends step playback. Keep the tab active for the smoothest glides.
+
 ## Preset Morph and Scene Timeline
 
 Enable **Preset Morph**, select two presets, and move the slider to hear their full stereo sounds crossfade. Each preset keeps its own tuning, modulation, waveforms, layer switches and echo. Set **Travel time** and choose **Play A → B** to start at A and settle at B. Enable **Loop back and forth** to repeat the transition, using the selected travel time in each direction. Choose **Hold blend** to keep the current mix playing or drag the slider to take over manually. Turn Morph off to return to the sound in the editor.

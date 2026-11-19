@@ -308,3 +308,21 @@ body{margin:0;background:#0c1016;color:#e8e9df;font-family:system-ui,sans-serif}
 }
 
 .oscillator-shape-endpoints{display:flex;justify-content:space-between;margin-top:4px;color:#a8b9b0;font-size:11px}
+
+.oscillator-step-sequencer{margin-top:14px;padding:14px;border:1px solid #43594d;border-radius:8px;background:#101e21}
+.oscillator-step-sequencer h3{margin:0 0 12px;color:#a6efab;font-size:13px}
+.oscillator-step-sequencer button{min-height:36px;padding:6px 10px;border:1px solid #53665c;border-radius:5px;background:#1e3330;color:#e8e9df;cursor:pointer}
+.oscillator-step-sequencer button:disabled{opacity:.45;cursor:default}
+.oscillator-step-sequencer input,.oscillator-step-sequencer select{width:100%;min-width:0;min-height:36px;padding:5px 7px;border:1px solid #53665c;border-radius:5px;background:#182b2b;color:#e8e9df}
+.step-pad-row,.step-transport{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.step-pad-row button{min-width:60px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center}
+.step-pad-row button span,.step-transport span,.oscillator-step-sequencer p{font-size:12px;color:#b9cac1}
+.step-pad-row button[aria-pressed=true]{border-color:#a6efab;background:#294439}
+.step-pad-row button[aria-current=step]{box-shadow:inset 0 0 0 2px #f5cb77}
+.step-editor{margin:12px 0;padding:10px;min-width:0;border:1px solid #43594d;border-radius:5px}
+.step-editor legend,.step-editor-controls label{font-size:12px;color:#c3d0c9}
+.step-editor-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(98px,1fr));gap:8px;align-items:end;margin-bottom:8px}
+.step-editor-controls label{display:grid;gap:4px}
+.step-captured-values{display:flex;flex-wrap:wrap;gap:6px;list-style:none;padding:0;margin:8px 0}
+.step-captured-values li{display:flex;align-items:center;gap:8px;padding-left:8px;background:#182b2b;border-radius:5px;font-size:12px;color:#e8e9df}
+.oscillator-step-sequencer p{margin:8px 0 0}

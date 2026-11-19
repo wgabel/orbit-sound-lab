@@ -16,7 +16,7 @@ import type { DelaySettings } from '../domain/delay';
 import type { SoundLabController } from '../application/audio-contracts';
 import { applyPitchOffset } from '../domain/modulation';
 import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
-import type { DroneMixSettings, OscillatorSettings } from '../domain/drone';
+import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../domain/drone';
 import { DRONE_LAYER_IDS, createDefaultDroneLayer } from '../domain/drone-layers';
 import type { DroneLayer, DroneLayerId } from '../domain/drone-layers';
 import { randomizeOscillatorSettings } from '../domain/randomize-oscillator-settings';
@@ -36,6 +36,9 @@ import type { SoundPreset } from '../domain/preset-library';
 import { sceneFromPreset, tuneSceneLayer } from '../domain/sound-scene';
 import type { ArrangementScene, SoundScene } from '../domain/sound-scene';
 import { SceneTimeline } from './SceneTimeline';
+import { OscillatorStepSequencer } from './OscillatorStepSequencer';
+import { applyStepValues } from '../domain/oscillator-step-sequence';
+import type { StepValue } from '../domain/oscillator-step-sequence';
 import { getEffectiveOscillatorFrequency } from '../domain/harmony';
 import type { HarmonySettings } from '../domain/harmony';
 import { OscillatorWaveform } from './OscillatorWaveform';
@@ -317,6 +320,23 @@ export function App() {
       setPlaybackTransition(false);
     }
   }
+  function applyOscillatorStep(id: DroneLayerId, drone: DroneSettings, values: readonly StepValue[]): DroneSettings {
+    const next = applyStepValues(drone, values);
+    if (next === drone) return drone;
+    const engine = controller.current?.layers[id];
+    if (engine) {
+      for (const [index, oscillator] of next.oscillators.entries()) {
+        if (oscillator === drone.oscillators[index]) continue;
+        engine.updateOscillator({...oscillator,
+          frequencyHz: getEffectiveOscillatorFrequency(layers[id].harmony, oscillator.frequencyHz, index)});
+      }
+      if (next.oscillatorModulations?.some((route, index) => route !== drone.oscillatorModulations?.[index])) {
+        engine.setOscillatorModulations(next.oscillatorModulations);
+      }
+    }
+    setLayers(previous => ({...previous, [id]: {...previous[id], drone: next}}));
+    return next;
+  }
   function updateOscillator(oscillator: OscillatorSettings) {
     try {
       controller.current?.layers[activeLayer].updateOscillator({...oscillator,
@@ -575,6 +595,10 @@ export function App() {
 
       </div>)}
       </div>
+      {DRONE_LAYER_IDS.map(id => <OscillatorStepSequencer key={id} layerId={id} active={id === activeLayer}
+        canPlay={playing && layers[id].enabled && !holdModes[id] && !previewMode && !playbackTransition} drone={layers[id].drone}
+        readAudioTime={() => controller.current?.readAudioTime() ?? 0}
+        applyValues={(drone, values) => applyOscillatorStep(id, drone, values)}/>)}
     </section>
     <DroneMixControls key={activeLayer} layerId={activeLayer} settings={settings.mix} onChange={updateDroneMix}/>
     <section className="harmony-engine" key={`harmony-${activeLayer}`}><h2>HARMONY ENGINE</h2><div className="harmony-modes">{(['free','natural','piano'] as const).map(mode => <button type="button" key={mode} className={harmony.mode === mode ? 'selected' : ''} aria-pressed={harmony.mode === mode} onClick={() => updateHarmony({...harmony,mode})}>{mode.toUpperCase()}</button>)}</div><div className="harmony-controls"><NumericSlider label="ROOT FREQUENCY" unit="Hz" min={55} max={220} step={1}

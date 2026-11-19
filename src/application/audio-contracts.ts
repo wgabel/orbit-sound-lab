@@ -64,4 +64,5 @@ export interface ScenePlayback {
 
 export interface SoundLabController extends SoundLabVoiceController {
   readonly scenePlayback: ScenePlayback;
+  readAudioTime(): number;
 }
