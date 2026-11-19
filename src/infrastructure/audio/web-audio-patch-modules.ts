@@ -1,3 +1,4 @@
+import type { WebAudioSimplexNoiseFactory } from './web-audio-simplex-noise';
 import { createAutomationTimingSignal } from './web-audio-automation-timing';
 import type { AutomationTimingRoute } from './web-audio-automation-timing';
 import type { WebAudioPitchShiftWorkletFactory } from './web-audio-pitch-shift-worklet';
@@ -78,7 +79,8 @@ const defaultWave = createDefaultDroneSettings().oscillators[0];
 
 export function createPatchRuntimeModule(
   context: AudioContext, definition: PatchModule, pulse: WebAudioPulseWorkletFactory,
-  modulationFactory: WebAudioLowFrequencyOscillatorFactory, lfo: WebAudioLfoWorkletFactory, master: AudioNode, origin: number,
+  modulationFactory: WebAudioLowFrequencyOscillatorFactory, lfo: WebAudioLfoWorkletFactory,
+  simplexNoise: WebAudioSimplexNoiseFactory, master: AudioNode, origin: number,
   {clips,chordRoute,pitchWorklet,automationTiming}: {clips?: readonly ArrangementClip[]; chordRoute?: ChordRoute;
     automationTiming?: AutomationTimingRoute;
     pitchWorklet?: WebAudioPitchShiftWorkletFactory} = {}
@@ -119,6 +121,7 @@ export function createPatchRuntimeModule(
       }
       return {definition, output, dispose};
     }
+    case 'simplexNoise': return {definition,...simplexNoise.create(definition.settings,origin)};
     case 'lfo': {
       const signal = createPatchLfoSignal(context,lfo,definition.settings,origin);
       return {definition, output:signal.output, readLfoPhase:signal.readPhase, readControlValue:signal.readValue, dispose:signal.dispose};

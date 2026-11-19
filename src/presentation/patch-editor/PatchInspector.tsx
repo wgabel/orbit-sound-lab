@@ -1,3 +1,4 @@
+import { MAXIMUM_SIMPLEX_NOISE_RATE, MAXIMUM_SIMPLEX_NOISE_SEED, MINIMUM_SIMPLEX_NOISE_RATE } from '../../domain/simplex-noise';
 import { DEFAULT_CYCLE_ENVELOPE } from '../../domain/cycle-envelope';
 import { CycleEnvelopeControls } from '../CycleEnvelopeControls';
 import { ReverbControls } from '../ReverbControls';
@@ -54,6 +55,13 @@ function ModuleSettings({module, sampleRate, onChange}: {module: PatchModule; sa
       <NumericSlider label="Voicing spread" unit="oct" min={0} max={1} step={1}
         value={module.settings.spread} onChange={spread=>onChange({...module,settings:{...module.settings,spread}})}/>
       <p>Notes: {getChordMidiNotes(module.settings).map(note => getNoteName(note)).join(' · ')}</p>
+    </div>;
+    case 'simplexNoise': return <div className="patch-fields">
+      <NumericSlider label="Rate" unit="cells/s" min={MINIMUM_SIMPLEX_NOISE_RATE} max={MAXIMUM_SIMPLEX_NOISE_RATE}
+        step={0.01} scale="logarithmic" value={module.settings.rate}
+        onChange={rate => onChange({...module,settings:{...module.settings,rate}})}/>
+      <NumericSlider label="Seed" min={0} max={MAXIMUM_SIMPLEX_NOISE_SEED} step={1} value={module.settings.seed}
+        onChange={seed => onChange({...module,settings:{...module.settings,seed:Math.round(seed)}})}/>
     </div>;
     case 'lfo': return <PatchLfoSettings settings={module.settings} onChange={settings => onChange({...module,settings})}/>;
     case 'wave': return <div className="patch-fields">

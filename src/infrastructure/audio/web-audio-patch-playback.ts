@@ -1,3 +1,4 @@
+import { WebAudioSimplexNoiseFactory } from './web-audio-simplex-noise';
 import { WebAudioAutomationTimingFactory } from './web-audio-automation-timing';
 import { WebAudioPitchShiftWorkletFactory } from './web-audio-pitch-shift-worklet';
 import { isArrangementTrack, readArrangementEnd, readPatchArrangement } from '../../domain/patch-arrangement';
@@ -68,6 +69,7 @@ function createRuntimeCable(context: AudioContext, definition: PatchCable,
 }
 
 export class WebAudioPatchPlayback implements PatchPlayback {
+  private readonly simplexNoise: WebAudioSimplexNoiseFactory;
   private readonly lfo: WebAudioLfoWorkletFactory;
   private readonly modulationFactory: WebAudioLowFrequencyOscillatorFactory;
   private readonly pulse: WebAudioPulseWorkletFactory;
@@ -91,6 +93,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     this.pitchShift = new WebAudioPitchShiftWorkletFactory(context);
     this.automationTiming = new WebAudioAutomationTimingFactory(context);
     this.lfo = new WebAudioLfoWorkletFactory(context);
+    this.simplexNoise = new WebAudioSimplexNoiseFactory(context);
     this.modulationFactory = new WebAudioLowFrequencyOscillatorFactory(context,this.lfo);
     this.protection = new WebAudioOutputProtection(context);
     this.master = context.createGain();
@@ -114,7 +117,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     }
     this.state = 'starting';
     try {
-      await Promise.all([this.context.resume(), this.pulse.prepare(), this.lfo.prepare(), this.pitchShift.prepare(), this.automationTiming.prepare()]);
+      await Promise.all([this.context.resume(), this.pulse.prepare(), this.lfo.prepare(), this.pitchShift.prepare(), this.automationTiming.prepare(), this.simplexNoise.prepare()]);
       if (!this.isStarting()) return;
       this.origin = this.context.currentTime - from;
       this.audibleElapsed = from;
@@ -221,7 +224,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
           Boolean(previous.parameters?.semitones) === Boolean(pitchWorklet) &&
           Boolean(previous.parameters?.duration) === duration && Boolean(previous.parameters?.steps) === steps;
         const module = canReuse ? previous :
-          createPatchRuntimeModule(this.context,definition,this.pulse,this.modulationFactory,this.lfo,this.master,this.origin,{
+          createPatchRuntimeModule(this.context,definition,this.pulse,this.modulationFactory,this.lfo,this.simplexNoise,this.master,this.origin,{
             clips:this.arrangement?.tracks.get(definition.id),chordRoute,pitchWorklet,automationTiming
           });
         if (module !== previous) createdModules.push(module);
