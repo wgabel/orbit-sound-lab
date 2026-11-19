@@ -90,3 +90,24 @@ describe('patch automation', () => {
     expect(readAutomationValue({...node.settings,shape:'sine'},0.5)).toBe(1);
   });
 });
+
+describe('Shelf EQ routing', () => {
+  it('accepts audio and separate frequency and gain controls on Shelf EQ', () => {
+    const shelf = createPatchModule('shelfEq','shelf');
+    if (shelf.kind !== 'shelfEq') throw new Error('Expected a Shelf EQ module.');
+    let patch: Patch = {version:1,modules:[
+      createPatchModule('wave','wave'), shelf, createPatchModule('output','output'),
+      createPatchModule('automation','automation')
+    ],cables:[]};
+    patch = connectPatchPorts(patch,'audio-in',{moduleId:'wave',portId:'out'},{moduleId:'shelf',portId:'in'});
+    patch = connectPatchPorts(patch,'audio-out',{moduleId:'shelf',portId:'out'},{moduleId:'output',portId:'in'});
+    for (const portId of ['lowFrequency','lowGain','highFrequency','highGain']) {
+      patch = connectPatchPorts(patch,portId,{moduleId:'automation',portId:'control'},{moduleId:'shelf',portId});
+    }
+    expect(patch.cables.slice(2).map(cable => cable.mapping)).toEqual([
+      {from:20,to:20000}, {from:-12,to:12}, {from:20,to:20000}, {from:-12,to:12}
+    ]);
+    expect(() => validatePatch({...patch,modules:[{...shelf,settings:{...shelf.settings,
+      highShelf:{...shelf.settings.highShelf,gainDecibels:13}}}],cables:[]})).toThrow('Shelf gain');
+  });
+});

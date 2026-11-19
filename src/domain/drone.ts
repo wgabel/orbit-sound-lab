@@ -44,12 +44,14 @@ export interface DroneShelfSettings {
   readonly gainDecibels: number;
 }
 
-export interface DroneMixSettings {
+export interface ShelfEqSettings {
+  readonly lowShelf: DroneShelfSettings;
+  readonly highShelf: DroneShelfSettings;
+}
+export interface DroneMixSettings extends ShelfEqSettings {
   readonly noise: {readonly enabled: boolean; readonly volume: number};
   readonly filter: {readonly enabled: boolean; readonly cutoffHz: number};
   readonly reverb: DroneReverbSettings;
-  readonly lowShelf: DroneShelfSettings;
-  readonly highShelf: DroneShelfSettings;
 }
 export interface DroneSettings {
   readonly id: string;
@@ -60,13 +62,15 @@ export interface DroneSettings {
   readonly oscillators: readonly OscillatorSettings[];
   readonly mix: DroneMixSettings;
 }
+export function createDefaultShelfEq(): ShelfEqSettings {
+  return {lowShelf:{frequencyHz:150,gainDecibels:0}, highShelf:{frequencyHz:2400,gainDecibels:0}};
+}
 export function createDefaultDroneMix(): DroneMixSettings {
   return {
     noise: {enabled: false, volume: 0.2},
     filter: {enabled: false, cutoffHz: 2400},
     reverb: {enabled: false, mix: 0.25},
-    lowShelf: {frequencyHz: 150, gainDecibels: 0},
-    highShelf: {frequencyHz: 2400, gainDecibels: 0}
+    ...createDefaultShelfEq()
   };
 }
 export function createDefaultDroneSettings(): DroneSettings {
@@ -88,12 +92,15 @@ function validateDroneShelf(settings: DroneShelfSettings): void {
     throw new Error('Shelf gain must be between -12 and +12 dB.');
   }
 }
+export function validateShelfEq(settings: ShelfEqSettings): void {
+  validateDroneShelf(settings?.lowShelf);
+  validateDroneShelf(settings?.highShelf);
+}
 export function validateDroneMix(settings: DroneMixSettings): void {
   if (typeof settings?.noise?.enabled !== 'boolean' || typeof settings?.filter?.enabled !== 'boolean') throw new Error('Invalid drone mix.');
   if (!Number.isFinite(settings.noise.volume) || settings.noise.volume < 0 || settings.noise.volume > 1) throw new Error('Noise level must be between 0 and 1.');
   validateCutoffFrequency(settings.filter.cutoffHz);
-  validateDroneShelf(settings.lowShelf);
-  validateDroneShelf(settings.highShelf);
+  validateShelfEq(settings);
   if (typeof settings.reverb?.enabled !== 'boolean' || !Number.isFinite(settings.reverb.mix) || settings.reverb.mix < 0 || settings.reverb.mix > 1) {
     throw new Error('Reverb mix must be between 0 and 1.');
   }

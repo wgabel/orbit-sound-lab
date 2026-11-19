@@ -1,5 +1,6 @@
-import { createDefaultDroneSettings, OSCILLATOR_WAVEFORMS, supportsOscillatorShape, validateDroneSettings } from './drone';
-import type { DroneSettings, OscillatorWaveform } from './drone';
+import { createDefaultDroneSettings, createDefaultShelfEq, MAX_SHELF_FREQUENCY_HZ, MAX_SHELF_GAIN_DECIBELS,
+  MIN_SHELF_FREQUENCY_HZ, OSCILLATOR_WAVEFORMS, supportsOscillatorShape, validateDroneSettings, validateShelfEq } from './drone';
+import type { DroneSettings, OscillatorWaveform, ShelfEqSettings } from './drone';
 import type { DroneLayer, DroneLayerId } from './drone-layers';
 import type { LowFrequencyOscillatorSettings } from './modulation';
 import { tuneSceneLayer } from './sound-scene';
@@ -16,6 +17,7 @@ export interface PatchModuleSettings {
   automation: PatchAutomation;
   filter: {readonly cutoff: number; readonly resonance: number};
   gain: {readonly level: number};
+  shelfEq: ShelfEqSettings;
   mixer: {readonly levelA: number; readonly levelB: number};
   output: {readonly level: number};
 }
@@ -61,6 +63,7 @@ export interface PatchPort {
 }
 
 export const MODULE_LABELS: Readonly<Record<PatchModuleKind, string>> = {
+  shelfEq: 'Shelf EQ',
   wave: 'Wave', drone: 'Drone', automation: 'Automation', filter: 'Low-pass filter', gain: 'Gain',
   mixer: 'Mixer', output: 'Output'
 };
@@ -77,6 +80,9 @@ const level: PatchPort = {id:'level', label:'Level', direction:'input', signal:'
 const shape: PatchPort = {id:'shape', label:'Shape', direction:'input', signal:'control',
   parameter:{unit:'%', minimum:0, maximum:1, displayScale:100}};
 
+const shelfFrequency: PatchParameter = {unit:'Hz',minimum:MIN_SHELF_FREQUENCY_HZ,maximum:MAX_SHELF_FREQUENCY_HZ};
+const shelfGain: PatchParameter = {unit:'dB',minimum:-MAX_SHELF_GAIN_DECIBELS,maximum:MAX_SHELF_GAIN_DECIBELS};
+
 export function getPatchPorts(module: PatchModule): readonly PatchPort[] {
   switch (module.kind) {
     case 'wave': return [
@@ -90,6 +96,13 @@ export function getPatchPorts(module: PatchModule): readonly PatchPort[] {
       audioInput, audioOutput,
       {id:'cutoff', label:'Cutoff', direction:'input', signal:'control', parameter:{unit:'Hz', minimum:40, maximum:6000}},
       {id:'resonance', label:'Resonance', direction:'input', signal:'control', parameter:{unit:'Q', minimum:0.1, maximum:12}}
+    ];
+    case 'shelfEq': return [
+      audioInput, audioOutput,
+      {id:'lowFrequency',label:'Low frequency',direction:'input',signal:'control',parameter:shelfFrequency},
+      {id:'lowGain',label:'Low gain',direction:'input',signal:'control',parameter:shelfGain},
+      {id:'highFrequency',label:'High frequency',direction:'input',signal:'control',parameter:shelfFrequency},
+      {id:'highGain',label:'High gain',direction:'input',signal:'control',parameter:shelfGain}
     ];
     case 'gain': return [audioInput, audioOutput, level];
     case 'mixer': return [
@@ -151,6 +164,10 @@ export function validatePatch(patch: Patch): void {
       validateDroneSettings(module.settings.voice);
       continue;
     }
+    if (module.kind === 'shelfEq') {
+      validateShelfEq(module.settings);
+      continue;
+    }
     if (module.kind === 'wave' && !OSCILLATOR_WAVEFORMS.includes(module.settings.waveform)) throw new Error('Unknown waveform.');
     for (const port of getPatchPorts(module)) {
       if (!port.parameter) continue;
@@ -196,6 +213,7 @@ export function createPatchModule(kind: PatchModuleKind, id: string): PatchModul
       points:[0, 0.75, 0.25, 1, 0.1, 0.58, 0.23, 0.87, 0.87].map((value, index) => ({position:index / 8, value}))}};
     case 'filter': return {id, kind, settings:{cutoff:900, resonance:0.7}};
     case 'gain': return {id, kind, settings:{level:0.55}};
+    case 'shelfEq': return {id, kind, settings:createDefaultShelfEq()};
     case 'mixer': return {id, kind, settings:{levelA:0.5, levelB:0.5}};
     case 'output': return {id, kind, settings:{level:0.7}};
   }

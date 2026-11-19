@@ -1,7 +1,6 @@
-import { MAX_SHELF_FREQUENCY_HZ, MAX_SHELF_GAIN_DECIBELS, MIN_SHELF_FREQUENCY_HZ } from '../domain/drone';
 import type { DroneMixSettings } from '../domain/drone';
 import type { DroneLayerId } from '../domain/drone-layers';
-import { DroneShelfResponse } from './DroneShelfResponse';
+import { ShelfEqControls } from './ShelfEqControls';
 import { NumericSlider } from './NumericSlider';
 
 interface DroneMixControlsProps {
@@ -10,11 +9,6 @@ interface DroneMixControlsProps {
   readonly sampleRate?: number;
   readonly onChange: (settings: DroneMixSettings) => void;
 }
-
-const shelfControls = [
-  {key: 'lowShelf', label: 'Low shelf'},
-  {key: 'highShelf', label: 'High shelf'}
-] as const;
 
 export function DroneMixControls({layerId, settings, sampleRate, onChange}: DroneMixControlsProps) {
   const {noise, filter, reverb} = settings;
@@ -50,20 +44,6 @@ export function DroneMixControls({layerId, settings, sampleRate, onChange}: Dron
           value={reverb.mix} onChange={mix => onChange({...settings, reverb: {...reverb, mix}})}/>
       </div>
     </div>
-    <DroneShelfResponse settings={settings} sampleRate={sampleRate}/>
-    <div className="drone-mix-controls drone-shelf-controls">
-      {shelfControls.map(({key, label}) => {
-        const shelf = settings[key];
-        return <div key={key}>
-          <h3 data-shelf={key}>{label}</h3>
-          <NumericSlider label={`${label} frequency`} unit="Hz" min={MIN_SHELF_FREQUENCY_HZ} max={MAX_SHELF_FREQUENCY_HZ}
-            step={1} scale="logarithmic" value={shelf.frequencyHz}
-            onChange={frequencyHz => onChange({...settings, [key]: {...shelf, frequencyHz}})}/>
-          <NumericSlider label={`${label} gain`} unit="dB" min={-MAX_SHELF_GAIN_DECIBELS} max={MAX_SHELF_GAIN_DECIBELS}
-            step={0.5} value={shelf.gainDecibels}
-            onChange={gainDecibels => onChange({...settings, [key]: {...shelf, gainDecibels}})}/>
-        </div>;
-      })}
-    </div>
+    <ShelfEqControls settings={settings} sampleRate={sampleRate} onChange={shelves => onChange({...settings,...shelves})}/>
   </section>;
 }
