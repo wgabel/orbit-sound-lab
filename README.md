@@ -24,7 +24,7 @@ To restore the main build, run the workflow again with **branch** set to **main*
 
 Stop drone playback and choose **Open patch editor**. The example routes a three-voice drone through a low-pass filter and gain stage. One eight-second automation lane controls the filter cutoff and the level of the entire drone. Press **Play patch** to hear it.
 
-Select a node or cable to edit it. Connect ports by selecting an output and then a highlighted input. Drag a module by its title, or start from **Empty patch**. Choose **Factory patch presets** to load a patch from Foundations, Modulated Drones, or Sequences. Open **My patch presets** to save a named snapshot of the entire canvas, including modules, settings, cables, and layout. Use **My saved patches** in the toolbar to load any saved patch and **Save snapshot** to save one without typing a name. Export and import JSON to move a patch to another browser.
+Select a node or cable to edit it. Connect ports by selecting an output and then a highlighted input. A dashed highlight marks an input whose existing cable will be replaced. Replacing a numeric control cable retains its mapping and Flip setting. Drag a module by its title, or start from **Empty patch**. Choose **Factory patch presets** to load a patch from Foundations, Modulated Drones, or Sequences. Open **My patch presets** to save a named snapshot of the entire canvas, including modules, settings, cables, and layout. Use **My saved patches** in the toolbar to load any saved patch and **Save snapshot** to save one without typing a name. Export and import JSON to move a patch to another browser.
 
 Hold a node near any canvas edge to scroll in that direction while dragging. The patch preset saves node positions and the view on every side of the canvas.
 

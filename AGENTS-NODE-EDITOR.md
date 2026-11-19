@@ -60,7 +60,7 @@ flowchart LR
 Use an eight-second looping stepped lane with one-second holds and normalized values of 0, 0.75, 0.25, 1, 0.1, 0.58, 0.23, and 0.87. Map it to **180–2,400 Hz** on the filter and **8–70%** on the post-filter gain. Both destinations follow the same timing. Let the user switch that lane between steps, a square waveform, and a drawn curve. A Wave module can replace the Drone through the same audio ports.
 
 - Use movable cards with visible, labelled ports and distinct styling for audio and automation. Support click or tap on an output, highlight compatible inputs, then click or tap an input to commit a Bézier cable. Escape cancels a pending connection.
-- Let users select a cable, inspect or edit its mapping, and disconnect it. Make ports and cable controls keyboard-accessible, and distinguish signal types by shape or pattern as well as color. Keep the cable attached as nodes move.
+- Let users select a cable, inspect or edit its mapping, and disconnect it. Make ports and cable controls keyboard-accessible, and distinguish signal types by shape or pattern as well as color. Keep the cable attached as nodes move. Connecting to an occupied input replaces the previous cable in one validated edit. Keep the existing numeric range and polarity when changing control sources.
 - Keep selections and layout edits separate from sound changes. Show the automation shape and playhead, current destination values, and output level. Use actual runtime data for audio meters or scopes.
 
 ## Migration sequence

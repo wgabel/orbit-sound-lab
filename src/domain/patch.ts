@@ -277,10 +277,30 @@ export function validatePatch(patch: Patch): void {
   if (hasPatchCycle(patch.cables)) throw new Error('This cable would create a feedback loop.');
 }
 
+export function getInputCable(patch: Patch, destination: PatchEndpoint): PatchCable | undefined {
+  return patch.cables.find(cable => sameEndpoint(cable.destination,destination));
+}
+
+function replaceInputCable(patch: Patch, cable: PatchCable): readonly PatchCable[] {
+  return [...patch.cables.filter(existing => !sameEndpoint(existing.destination,cable.destination)),cable];
+}
+
+export function canConnectPatchPorts(patch: Patch, source: PatchEndpoint, destination: PatchEndpoint): boolean {
+  const output = getPatchPort(patch,source);
+  const input = getPatchPort(patch,destination);
+  return output?.direction === 'output' && input?.direction === 'input' && output.signal === input.signal &&
+    !hasPatchCycle(replaceInputCable(patch,{id:'pending',source,destination}));
+}
+
 export function connectPatchPorts(patch: Patch, id: string, source: PatchEndpoint, destination: PatchEndpoint): Patch {
-  const parameter = getPatchPort(patch, destination)?.parameter;
-  const mapping = parameter ? {from:parameter.minimum, to:parameter.defaultMaximum ?? parameter.maximum} : undefined;
-  const next = {...patch, cables:[...patch.cables, {id, source, destination, mapping}]};
+  const current = getInputCable(patch,destination);
+  if (current && sameEndpoint(current.source,source)) return patch;
+
+  const parameter = getPatchPort(patch,destination)?.parameter;
+  const mapping = current?.mapping ??
+    (parameter ? {from:parameter.minimum,to:parameter.defaultMaximum ?? parameter.maximum} : undefined);
+  const cable = {id,source,destination,mapping,...(current?.inverted === undefined ? {} : {inverted:current.inverted})};
+  const next = {...patch,cables:replaceInputCable(patch,cable)};
   validatePatch(next);
   return next;
 }
