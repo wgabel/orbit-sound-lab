@@ -38,6 +38,7 @@
 .patch-wire {fill:none;stroke:var(--patch-audio);stroke-width:3;stroke-linecap:round}
 .patch-wire[data-signal=control] {stroke:var(--patch-control);stroke-dasharray:5 5}
 .patch-wire[data-selected=true] {stroke-width:5}
+.patch-wire[data-disabled=true] {opacity:.4;stroke-dasharray:2 7}
 .patch-wire-hit {fill:none;stroke:transparent;stroke-width:17;pointer-events:stroke;cursor:pointer}
 .patch-wire-hit:focus-visible {outline:none;stroke:#fff4}
 .patch-node {
@@ -63,6 +64,14 @@
   background:#24201f;color:var(--patch-control);text-align:center;font-variant-numeric:tabular-nums;
   pointer-events:none;
 }
+.patch-cable-controls {
+  position:absolute;left:calc(100% + 14px);top:calc(50% + 13px);z-index:2;
+  display:flex;gap:4px;
+}
+.patch-editor .patch-cable-controls button {
+  min-height:32px;min-width:38px;padding:0 7px;background:#24201f;
+}
+.patch-editor .patch-cable-controls button[aria-pressed=true] {color:var(--patch-control);border-color:#ba895e}
 .patch-editor .patch-port {
   position:absolute;left:-12px;top:4px;display:grid;place-items:center;z-index:2;
   background:none;border:0;padding:0;min-height:0;width:24px;height:24px;--port-color:var(--patch-audio);

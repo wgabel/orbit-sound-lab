@@ -2,7 +2,7 @@ import { AudioWaveform } from '../AudioWaveform';
 import { useEffect, useMemo, useRef } from 'react';
 import type { PointerEvent, Ref } from 'react';
 import { getPatchModuleLabel, getPatchPorts, sameEndpoint } from '../../domain/patch';
-import type { NodePosition, PatchLayout, Patch, PatchEndpoint, PatchModule, PatchPort } from '../../domain/patch';
+import type { NodePosition, PatchLayout, Patch, PatchCable, PatchEndpoint, PatchModule, PatchPort } from '../../domain/patch';
 import { readAutomationPhase, readAutomationValue } from '../../domain/patch-automation';
 import { readLfoPreviewValue, readPatchLfoPhase } from '../../domain/patch-lfo';
 import type { PatchLfo } from '../../domain/patch-lfo';
@@ -31,6 +31,7 @@ interface PatchCanvasProps {
   readonly outputLevel: number;
   getWaveformAnalyser(moduleId: string): AnalyserNode | null;
   onSelect(selection: PatchSelection): void;
+  onCableChange(cable: PatchCable): void;
   onPort(endpoint: PatchEndpoint, port: PatchPort): void;
   canConnect(endpoint: PatchEndpoint): boolean;
   onMove(id: string, position: NodePosition): void;
@@ -71,7 +72,7 @@ function LfoScope({moduleId, settings}: {moduleId: string; settings: PatchLfo}) 
 }
 
 export function PatchCanvas({patch, positions, selection, pending, scale, playing, readAudibleElapsed, readLfoPhase, readControlValue, getWaveformAnalyser, outputLevel, viewportRef,
-  onSelect, onPort, canConnect, onMove}: PatchCanvasProps) {
+  onSelect, onCableChange, onPort, canConnect, onMove}: PatchCanvasProps) {
   const canvas = useRef<HTMLDivElement>(null);
   const controlBadges = useRef(new Map<string,HTMLSpanElement>());
   const drag = useRef<{id: string; pointer: number; x: number; y: number} | null>(null);
@@ -80,8 +81,11 @@ export function PatchCanvas({patch, positions, selection, pending, scale, playin
     .map(cable => cable.destination.moduleId));
   const connectedControlSources = new Set(patch.cables.filter(cable => cable.mapping)
     .map(cable => cable.source.moduleId));
+  const selectedCable = selection?.kind === 'cable'
+    ? patch.cables.find(cable => cable.id === selection.id) : undefined;
+  const controlCable = selectedCable?.mapping ? selectedCable : undefined;
   const width = Math.max(900, ...Object.entries(positions).map(([id,point]) =>
-    point.x + PATCH_NODE_WIDTH + (connectedControlSources.has(id) ? 66 : 30)));
+    point.x + PATCH_NODE_WIDTH + (controlCable?.source.moduleId === id ? 125 : connectedControlSources.has(id) ? 66 : 30)));
   const height = Math.max(408, ...Object.values(positions).map(point => point.y + 206));
 
   useEffect(() => {
@@ -172,9 +176,9 @@ export function PatchCanvas({patch, positions, selection, pending, scale, playin
             const select = () => onSelect({kind:'cable',id:cable.id});
             return <g key={cable.id}>
               <path d={path} data-signal={cable.mapping ? 'control' : 'audio'} className="patch-wire"
-                data-selected={selection?.kind === 'cable' && selection.id === cable.id}/>
+                data-selected={cable === selectedCable} data-disabled={cable.enabled === false}/>
               <path d={path} className="patch-wire-hit" role="button" tabIndex={0}
-                aria-label={`${getPatchModuleLabel(sourceModule)} to ${getPatchModuleLabel(destinationModule)} ${input?.label}`}
+                aria-label={`${getPatchModuleLabel(sourceModule)} to ${getPatchModuleLabel(destinationModule)} ${input?.label}${cable.enabled === false ? ' (disabled)' : ''}`}
                 onClick={select} onKeyDown={event => {
                   if (event.key !== 'Enter' && event.key !== ' ') return;
                   event.preventDefault();
@@ -211,6 +215,17 @@ export function PatchCanvas({patch, positions, selection, pending, scale, playin
                           if (badge) controlBadges.current.set(module.id,badge);
                           else controlBadges.current.delete(module.id);
                         }}>—</span>}
+                    {controlCable && port.direction === 'output' && sameEndpoint(controlCable.source,endpoint) &&
+                      <div className="patch-cable-controls" role="group" aria-label="Selected automation cable">
+                        <button type="button" aria-pressed={controlCable.inverted === true}
+                          title="Invert the selected cable’s control signal"
+                          onClick={() => onCableChange({...controlCable,inverted:!controlCable.inverted})}>Flip</button>
+                        <button type="button" aria-label="Enable automation cable" aria-pressed={controlCable.enabled !== false}
+                          title="Enable or bypass the selected cable"
+                          onClick={() => onCableChange({...controlCable,enabled:controlCable.enabled === false})}>
+                          {controlCable.enabled === false ? 'Off' : 'On'}
+                        </button>
+                      </div>}
                   </div>;
                 })}
               </div>)}

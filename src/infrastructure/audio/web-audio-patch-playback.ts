@@ -38,8 +38,10 @@ function createRuntimeCable(context: AudioContext, definition: PatchCable,
   }
   const binding = destination.parameters?.[definition.destination.portId];
   if (!binding) throw new Error('Missing runtime parameter input.');
-  const from = binding.constrain?.(mapping.from) ?? mapping.from;
-  const to = binding.constrain?.(mapping.to) ?? mapping.to;
+  const start = definition.inverted ? mapping.to : mapping.from;
+  const end = definition.inverted ? mapping.from : mapping.to;
+  const from = binding.constrain?.(start) ?? start;
+  const to = binding.constrain?.(end) ?? end;
   const scale = context.createGain();
   scale.gain.value = to - from;
   const offset = context.createConstantSource();
@@ -159,6 +161,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
         nextModules.set(definition.id, module);
       }
       for (const definition of patch.cables) {
+        if (definition.enabled === false) continue;
         const source = nextModules.get(definition.source.moduleId);
         const destination = nextModules.get(definition.destination.moduleId);
         if (!source || !destination) throw new Error('Missing runtime module.');
@@ -177,7 +180,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     const oldCables = [...this.cables.values()].filter(cable => nextCables.get(cable.definition.id) !== cable);
     const now = this.context.currentTime;
     const overlaps = [...this.retiringCables, ...oldCables];
-    const immediate = hasPatchCycle([...patch.cables, ...overlaps.map(cable => cable.definition)]);
+    const immediate = hasPatchCycle([...nextCables.values(), ...overlaps].map(cable => cable.definition));
     if (immediate) {
       for (const finish of this.retirement) finish();
       for (const cable of oldCables) cable.dispose();

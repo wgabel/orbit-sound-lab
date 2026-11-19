@@ -23,6 +23,19 @@ describe('whole patch preset files', () => {
     expect(readPatchPreset(JSON.parse(JSON.stringify(preset)))).toEqual(preset);
   });
 
+  it('preserves optional automation cable controls and rejects invalid flags', () => {
+    const fixture = createPresetFixture();
+    const cable = fixture.patch.cables.find(item => item.mapping);
+    if (!cable) throw new Error('Expected a control cable.');
+    const edited = {...cable,inverted:true,enabled:false};
+    const preset = readPatchPreset({...fixture,patch:{...fixture.patch,cables:[edited]}});
+    expect(readPatchPreset(JSON.parse(JSON.stringify(preset))).patch.cables).toEqual([edited]);
+    expect(() => readPatchPreset({...fixture,patch:{...fixture.patch,
+      cables:[{...edited,enabled:'false'}]}})).toThrow('automation cable controls');
+    expect(() => readPatchPreset({...fixture,patch:{...fixture.patch,
+      cables:[{...fixture.patch.cables[0],inverted:true}]}})).toThrow('automation cable controls');
+  });
+
   it('validates supported module kinds, cable compatibility and every node position', () => {
     const fixture = createPresetFixture();
     const invalidCable = {...fixture.patch.cables[0],destination:{moduleId:'missing',portId:'in'}};
