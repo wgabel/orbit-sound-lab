@@ -2,7 +2,7 @@ import { readAutomationSettings } from './automation-preset';
 import { isLegacyTriadInversion } from './chord';
 import { validateLowFrequencyOscillatorBank } from './modulation';
 import type { LowFrequencyOscillatorSettings } from './modulation';
-import { MAXIMUM_NODE_POSITION, MODULE_LABELS, validatePatch } from './patch';
+import { MAXIMUM_NODE_POSITION, MINIMUM_NODE_POSITION, MODULE_LABELS, PATCH_CANVAS_MINIMUM, validatePatch } from './patch';
 import type { NodePosition, Patch, PatchLayout } from './patch';
 
 export const PATCH_PRESET_NAME_LIMIT = 120;
@@ -87,10 +87,10 @@ function readPatch(value: unknown): Patch {
   return patch;
 }
 
-function readPosition(value: unknown, maximum: number): NodePosition {
+function readPosition(value: unknown, minimum: number, maximum: number): NodePosition {
   if (!isRecord(value) || typeof value.x !== 'number' || typeof value.y !== 'number' ||
       !Number.isFinite(value.x) || !Number.isFinite(value.y) ||
-      value.x < 0 || value.y < 0 || value.x > maximum || value.y > maximum) {
+      value.x < minimum || value.y < minimum || value.x > maximum || value.y > maximum) {
     throw new Error('Invalid patch layout.');
   }
   return {x:value.x,y:value.y};
@@ -108,7 +108,7 @@ export function readPatchPreset(value: unknown): PatchPreset {
   const patch = readPatch(value.patch);
   if (!isRecord(layout) || Object.keys(layout).length !== patch.modules.length) throw new Error('Invalid patch layout.');
   const positions = Object.fromEntries(patch.modules.map(module =>
-    [module.id,readPosition(Object.hasOwn(layout,module.id) ? layout[module.id] : undefined,MAXIMUM_NODE_POSITION)]));
+    [module.id,readPosition(Object.hasOwn(layout,module.id) ? layout[module.id] : undefined,MINIMUM_NODE_POSITION,MAXIMUM_NODE_POSITION)]));
   return {kind:'orbit-patch',schemaVersion:1,id,name:name.trim(),createdAt,patch:structuredClone(patch),
-    layout:positions,viewport:readPosition(viewport,Number.MAX_SAFE_INTEGER)};
+    layout:positions,viewport:readPosition(viewport,PATCH_CANVAS_MINIMUM,Number.MAX_SAFE_INTEGER)};
 }
