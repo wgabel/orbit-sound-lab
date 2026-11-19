@@ -10,13 +10,17 @@ function getBaseShape(settings: OscillatorSettings): number {
   return settings.waveform === 'variablePulse' ? Math.max(MINIMUM_PULSE_WIDTH, Math.min(MAXIMUM_PULSE_WIDTH, shape)) : shape;
 }
 
+// Fourier coefficients of sin(phase)^9. PeriodicWave band-limits the harmonics for the active pitch.
+const PEAKED_SINE_HARMONICS = Float32Array.from([0,126,0,-84,0,36,0,-9,0,1], coefficient => coefficient / 256);
+const PEAKED_SINE_COSINE_HARMONICS = new Float32Array(PEAKED_SINE_HARMONICS.length);
+
 interface ShapeControl {
   readonly smoother: BiquadFilterNode;
   readonly boundedShape: WaveShaperNode;
 }
 
 interface ShapeBlend {
-  readonly triangle: OscillatorNode;
+  readonly secondary: OscillatorNode;
   readonly levels: readonly GainNode[];
 }
 
@@ -138,12 +142,12 @@ export class WebAudioWaveformSource {
 
   private startBranch(branch: OscillatorBranch, when: number): void {
     branch.clock.start(when);
-    branch.blend?.triangle.start(when);
+    branch.blend?.secondary.start(when);
   }
 
   private stopBranch(branch: OscillatorBranch, when: number): void {
     branch.clock.stop(when);
-    branch.blend?.triangle.stop(when);
+    branch.blend?.secondary.stop(when);
   }
 
   stop(when: number): void {
@@ -192,11 +196,12 @@ export class WebAudioWaveformSource {
 
   private createNativeBranch(waveform: Exclude<OscillatorWaveform, 'variablePulse'>,
     gain: GainNode, fadeInStartedAt: number | null): OscillatorBranch {
-    const oscillator = this.createOscillator(waveform === 'sineTriangle' || waveform === 'foldedSine' ? 'sine' : waveform);
+    const oscillator = this.createOscillator(waveform === 'sineTriangle' || waveform === 'foldedSine' || waveform === 'peakedSine' ? 'sine' : waveform);
     const branch = {clock: oscillator, waveform, gain, frequency: oscillator.frequency, detune: oscillator.detune, fadeInStartedAt};
-    if (waveform === 'sineTriangle') {
+    if (waveform === 'sineTriangle' || waveform === 'peakedSine') {
       const shapeControl = this.createShapeControl();
-      return {...branch, shapeControl, blend: this.createShapeBlend(oscillator, gain, shapeControl.boundedShape)};
+      const secondary = waveform === 'peakedSine' ? this.createPeakedSineOscillator() : this.createOscillator('triangle');
+      return {...branch, shapeControl, blend: this.createShapeBlend(oscillator, secondary, gain, shapeControl.boundedShape)};
     }
     if (waveform === 'foldedSine') {
       const shapeControl = this.createShapeControl();
@@ -206,7 +211,14 @@ export class WebAudioWaveformSource {
     return branch;
   }
 
-  private createOscillator(waveform: Exclude<OscillatorWaveform, 'sineTriangle' | 'variablePulse' | 'foldedSine'>): OscillatorNode {
+  private createPeakedSineOscillator(): OscillatorNode {
+    const oscillator = this.createOscillator('sine');
+    oscillator.setPeriodicWave(this.context.createPeriodicWave(PEAKED_SINE_COSINE_HARMONICS,PEAKED_SINE_HARMONICS,
+      {disableNormalization:true}));
+    return oscillator;
+  }
+
+  private createOscillator(waveform: Exclude<OscillatorWaveform, 'sineTriangle' | 'variablePulse' | 'foldedSine' | 'peakedSine'>): OscillatorNode {
     const oscillator = this.context.createOscillator();
     oscillator.type = waveform;
     oscillator.frequency.value = 0;
@@ -226,20 +238,19 @@ export class WebAudioWaveformSource {
     return {smoother, boundedShape};
   }
 
-  private createShapeBlend(sine: OscillatorNode, output: GainNode, boundedShape: AudioNode): ShapeBlend {
-    const triangle = this.createOscillator('triangle');
+  private createShapeBlend(sine: OscillatorNode, secondary: OscillatorNode, output: GainNode, boundedShape: AudioNode): ShapeBlend {
     const sineLevel = this.context.createGain();
-    const triangleLevel = this.context.createGain();
+    const secondaryLevel = this.context.createGain();
     const invert = this.context.createGain();
     sineLevel.gain.value = 1;
-    triangleLevel.gain.value = 0;
+    secondaryLevel.gain.value = 0;
     invert.gain.value = -1;
     // The two gains always sum to one, including when modulation hits a boundary.
-    boundedShape.connect(triangleLevel.gain);
+    boundedShape.connect(secondaryLevel.gain);
     boundedShape.connect(invert).connect(sineLevel.gain);
     sine.connect(sineLevel).connect(output);
-    triangle.connect(triangleLevel).connect(output);
-    return {triangle, levels: [sineLevel, triangleLevel, invert]};
+    secondary.connect(secondaryLevel).connect(output);
+    return {secondary, levels: [sineLevel, secondaryLevel, invert]};
   }
 
   private createFold(sine: OscillatorNode, output: GainNode, boundedShape: AudioNode) {
@@ -275,7 +286,7 @@ export class WebAudioWaveformSource {
     branch.shapePreview?.analyser.disconnect();
     const {blend} = branch;
     if (blend) {
-      this.disconnectOscillator(blend.triangle);
+      this.disconnectOscillator(blend.secondary);
       for (const level of blend.levels) level.disconnect();
     }
     if (branch.shapeControl) {

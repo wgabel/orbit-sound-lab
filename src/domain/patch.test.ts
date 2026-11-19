@@ -52,6 +52,17 @@ describe('copied drone nodes', () => {
 });
 
 describe('patch routing', () => {
+  it('accepts Shape automation on Peaked Sine and bounds its range', () => {
+    const wave = createPatchModule('wave','wave');
+    if (wave.kind !== 'wave') throw new Error('Expected a Wave module.');
+    const peaked = {...wave,settings:{...wave.settings,waveform:'peakedSine' as const,shape:0.25}};
+    const lfo = createPatchModule('lfo','lfo');
+    const patch: Patch = {version:1,modules:[lfo,peaked],cables:[]};
+    const connected = connectPatchPorts(patch,'shape',{moduleId:'lfo',portId:'control'},{moduleId:'wave',portId:'shape'});
+    expect(connected.cables[0].mapping).toEqual({from:0,to:1});
+    expect(() => validatePatch({...connected,modules:[lfo,wave]})).toThrow('Choose a compatible input.');
+  });
+
   it('allows an LFO to drive multiple control inputs and rejects invalid rates', () => {
     const lfo = createPatchModule('lfo','lfo');
     if (lfo.kind !== 'lfo') throw new Error('Expected an LFO module.');
