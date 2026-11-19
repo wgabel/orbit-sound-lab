@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { DroneLayer, DroneLayerId } from '../../domain/drone-layers';
 import type { PatchPlayback } from '../../application/patch-playback';
-import { connectPatchPorts, createExamplePatch, createPatchModule, getPatchPort, hasPatchCycle,
+import { connectPatchPorts, copyDroneLayerToPatch, createExamplePatch, createPatchModule, getPatchPort, hasPatchCycle,
   MODULE_LABELS, sameEndpoint, validatePatch } from '../../domain/patch';
-import type { CableMapping, Patch, PatchEndpoint, PatchModule, PatchModuleKind, PatchPort } from '../../domain/patch';
+import type { CableMapping, Patch, PatchDrone, PatchEndpoint, PatchModule, PatchModuleKind, PatchPort } from '../../domain/patch';
 import { createExampleLayout, PatchCanvas } from './PatchCanvas';
 import type { PatchSelection } from './PatchCanvas';
 import { placeNewPatchNode } from './patch-layout';
@@ -10,8 +11,9 @@ import type { PatchLayout } from './patch-layout';
 import { PatchInspector } from './PatchInspector';
 import './patch-editor.css';
 
-export function PatchEditor({hidden, onClose, createPlayback}: {
+export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   hidden: boolean;
+  readonly droneLayers: Readonly<Record<DroneLayerId, DroneLayer>>;
   onClose(): void;
   createPlayback(): PatchPlayback;
 }) {
@@ -125,6 +127,13 @@ export function PatchEditor({hidden, onClose, createPlayback}: {
     if (apply({...next,cables}) && cables.length !== patch.cables.length) setMessage('Disconnected a port the new waveform does not support.');
   }
 
+  function copyDrone(module: PatchDrone, layerId: DroneLayerId) {
+    const snapshot = copyDroneLayerToPatch(module,layerId,droneLayers[layerId]);
+    if (apply({...patch, modules:patch.modules.map(item => item.id === module.id ? snapshot : item)})) {
+      setMessage(`Copied Drone ${layerId} into this node.`);
+    }
+  }
+
   function updateMapping(id: string, mapping: CableMapping) {
     apply({...patch,cables:patch.cables.map(cable => cable.id === id ? {...cable,mapping} : cable)});
   }
@@ -179,7 +188,7 @@ export function PatchEditor({hidden, onClose, createPlayback}: {
         onSelect={item => {setSelection(item); setPending(null); setError('');}}
         onMove={(id,position) => setPositions(previous => ({...previous,[id]:position}))}/>
       <p className="patch-status" role={error ? 'alert' : 'status'}>{error || message}</p>
-      <PatchInspector patch={patch} selection={selection} onModule={updateModule} onMapping={updateMapping} onRemove={remove}/>
+      <PatchInspector patch={patch} selection={selection} onModule={updateModule} onCopyDrone={copyDrone} onMapping={updateMapping} onRemove={remove}/>
     </div>
   </main>;
 }

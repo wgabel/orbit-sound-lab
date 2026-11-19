@@ -66,7 +66,15 @@ export class DroneController implements SynthesizerController {
     if (this.disposed) throw new Error('Controller has been disposed.');
     if (this.playing) return;
     await this.context.resume();
-    if (this.disposed || this.playing) return;
+    if (this.stopping) await this.stopping;
+    if (this.disposed) return;
+    this.startPreparedVoice();
+  }
+
+  /** Starts a voice using a context and worklets prepared by the owning transport. */
+  startPreparedVoice(): void {
+    if (this.disposed || this.stopping) throw new Error('Drone voice is unavailable.');
+    if (this.playing) return;
     const voice = this.factory.create(this.settings);
     try {
       this.graph.register({id: this.moduleId, inputs: [], outputs: [{id: 'audio', node: voice.output}]});

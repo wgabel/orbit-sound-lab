@@ -2,6 +2,8 @@ import type { PatchPlayback } from '../../application/patch-playback';
 import { hasPatchCycle, validatePatch } from '../../domain/patch';
 import type { Patch, PatchCable } from '../../domain/patch';
 import { fadeGain, PLAYBACK_FADE_SECONDS } from './web-audio-fade';
+import { WebAudioLfoWorkletFactory } from './web-audio-lfo-worklet';
+import { WebAudioLowFrequencyOscillatorFactory } from './web-audio-low-frequency-oscillator';
 import { readOutputContextTime } from './web-audio-output-clock';
 import { WebAudioOutputProtection } from './web-audio-output-protection';
 import { createPatchRuntimeModule } from './web-audio-patch-modules';
@@ -57,6 +59,8 @@ function createRuntimeCable(context: AudioContext, definition: PatchCable,
 }
 
 export class WebAudioPatchPlayback implements PatchPlayback {
+  private readonly lfo: WebAudioLfoWorkletFactory;
+  private readonly modulationFactory: WebAudioLowFrequencyOscillatorFactory;
   private readonly pulse: WebAudioPulseWorkletFactory;
   private readonly protection: WebAudioOutputProtection;
   private readonly master: GainNode;
@@ -72,6 +76,8 @@ export class WebAudioPatchPlayback implements PatchPlayback {
 
   constructor(private readonly context: AudioContext) {
     this.pulse = new WebAudioPulseWorkletFactory(context);
+    this.lfo = new WebAudioLfoWorkletFactory(context);
+    this.modulationFactory = new WebAudioLowFrequencyOscillatorFactory(context,this.lfo);
     this.protection = new WebAudioOutputProtection(context);
     this.master = context.createGain();
     this.master.gain.value = 0;
@@ -86,7 +92,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     validatePatch(patch);
     this.state = 'starting';
     try {
-      await Promise.all([this.context.resume(), this.pulse.prepare()]);
+      await Promise.all([this.context.resume(), this.pulse.prepare(), this.lfo.prepare()]);
       if (!this.isStarting()) return;
       this.origin = this.context.currentTime;
       this.audibleElapsed = 0;
@@ -132,7 +138,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
       for (const definition of patch.modules) {
         const previous = this.modules.get(definition.id);
         const module = previous?.definition === definition ? previous :
-          createPatchRuntimeModule(this.context, definition, this.pulse, this.master, this.origin);
+          createPatchRuntimeModule(this.context, definition, this.pulse, this.modulationFactory, this.master, this.origin);
         if (module !== previous) createdModules.push(module);
         nextModules.set(definition.id, module);
       }
