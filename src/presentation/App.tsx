@@ -1,3 +1,4 @@
+import { builtInOscillatorBanks, loadBuiltInOscillatorBank } from '../domain/built-in-oscillator-banks';
 import { builtInOscillatorPresets, createBuiltInOscillatorSnapshot } from '../domain/built-in-oscillator-presets';
 import { OscillatorControlSection } from './OscillatorControlSection';
 import { OscillatorLfoControls } from './OscillatorLfoControls';
@@ -352,6 +353,18 @@ export function App() {
       applyOscillatorSnapshot(randomizeOscillatorSettings(oscillator, modulations, mode));
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot randomize oscillator.'); }
   }
+  function loadOscillatorBank(presetId: string) {
+    const preset = builtInOscillatorBanks.find(item => item.id === presetId);
+    if (!preset) return;
+    try {
+      const layer = loadBuiltInOscillatorBank(preset.id, layers[activeLayer]);
+      applyLayer(activeLayer, layer);
+      updateActiveLayer(() => layer);
+      setOscillatorActionStatus(`${preset.name} loaded into Drone ${activeLayer}`);
+      setError('');
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot load oscillator bank.'); }
+  }
+
   function loadBuiltInOscillatorPreset(presetId: string, oscillator: OscillatorSettings, number: number) {
     const preset = builtInOscillatorPresets.find(item => item.id === presetId);
     if (!preset) return;
@@ -411,6 +424,13 @@ export function App() {
     <section className="oscillators" data-layer={activeLayer} aria-labelledby="oscillator-rack-title">
       <div className="oscillator-rack-heading">
         <h2 id="oscillator-rack-title">Drone {activeLayer} oscillators</h2>
+        <label className="oscillator-bank-picker">5-oscillator preset
+          <select value="" aria-label="Load five-oscillator preset"
+            onChange={event => loadOscillatorBank(event.target.value)}>
+            <option value="" disabled>Choose a preset</option>
+            {builtInOscillatorBanks.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+          </select>
+        </label>
         <span className="oscillator-action-status" role="status">{oscillatorActionStatus}</span>
       </div>
       {settings.oscillators.map((oscillator, index) => {
