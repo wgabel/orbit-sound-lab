@@ -17,10 +17,11 @@ interface PresetLibraryProps<Preset extends PresetItem> {
   exportFile(preset: Preset): void;
   remove(id: string): Promise<void>;
   onLoad(preset: Preset): void;
+  onLibraryChanged?(): void;
 }
 
 export function PresetLibrary<Preset extends PresetItem>({label, nameLimit, showHeading = true, list, save, createSnapshotName,
-  importFile, exportFile, remove, onLoad}: PresetLibraryProps<Preset>) {
+  importFile, exportFile, remove, onLoad, onLibraryChanged}: PresetLibraryProps<Preset>) {
   const input = useRef<HTMLInputElement>(null);
   const [presets,setPresets] = useState<Preset[]>([]);
   const [name,setName] = useState('');
@@ -46,6 +47,7 @@ export function PresetLibrary<Preset extends PresetItem>({label, nameLimit, show
     try {
       await operation();
       setPresets(await list());
+      onLibraryChanged?.();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : `Cannot update ${label} presets.`);
     } finally {

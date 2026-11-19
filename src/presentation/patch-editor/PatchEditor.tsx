@@ -26,6 +26,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   const viewport = useRef<HTMLDivElement>(null);
   const pendingViewport = useRef<NodePosition | null>(null);
   const [patch, setPatch] = useState(createExamplePatch);
+  const [savedPresets, setSavedPresets] = useState<PatchPreset[]>([]);
   const [positions, setPositions] = useState<PatchLayout>(createExampleLayout);
   const [selection, setSelection] = useState<PatchSelection | null>({kind:'cable',id:'filter-control'});
   const [pending, setPending] = useState<PatchEndpoint | null>(null);
@@ -44,6 +45,24 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   const readAudibleElapsed = useCallback(() => engine.current?.readAudibleElapsed() ?? 0, []);
 
   useEffect(() => () => {engine.current?.dispose(); engine.current = null;}, []);
+  useEffect(() => {
+    void listPatchPresets().then(setSavedPresets).catch(() => {});
+  }, []);
+
+  async function refreshSavedPresets() {
+    setSavedPresets(await listPatchPresets());
+  }
+
+  async function saveSnapshot() {
+    try {
+      await saveCurrentPatch(`Patch ${new Date().toLocaleString()}`);
+      await refreshSavedPresets();
+      setError('');
+      setMessage('Patch snapshot saved.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not save patch snapshot.');
+    }
+  }
   useEffect(() => {
     if (!playing) return;
     const interval = window.setInterval(() => {
@@ -236,7 +255,18 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
       <div className="patch-toolbar">
         <select aria-label="Add module" value="" onChange={event => addModule(event.target.value as PatchModuleKind)}>
           <option value="" disabled>Add module</option>
-          {Object.entries(MODULE_LABELS).map(([kind,label]) => <option key={kind} value={kind}>{label}</option>)}
+          <optgroup label="● Sound sources">
+            {(['wave','drone'] as const).map(kind =>
+              <option key={kind} value={kind} className="patch-module-option-audio">● {MODULE_LABELS[kind]}</option>)}
+          </optgroup>
+          <optgroup label="◆ Automation sources">
+            {(['lfo','automation'] as const).map(kind =>
+              <option key={kind} value={kind} className="patch-module-option-control">◆ {MODULE_LABELS[kind]}</option>)}
+          </optgroup>
+          <optgroup label="Audio processing &amp; routing">
+            {(['filter','gain','shelfEq','mixer','oscilloscope','pitchShift','output'] as const).map(kind =>
+              <option key={kind} value={kind}>{MODULE_LABELS[kind]}</option>)}
+          </optgroup>
         </select>
         <select aria-label="Factory patch preset" value="" onChange={event => {
           const preset = FACTORY_PATCH_GROUPS.flatMap(group => group.presets).find(item => item.id === event.target.value);
@@ -247,6 +277,15 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
             {group.presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
           </optgroup>)}
         </select>
+        <select aria-label="Saved patch preset" value="" onFocus={() => void refreshSavedPresets().catch(() => {})}
+          onChange={event => {
+            const preset = savedPresets.find(item => item.id === event.target.value);
+            if (preset) loadNamedPatch(preset);
+          }}>
+          <option value="" disabled>My saved patches</option>
+          {savedPresets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+        </select>
+        <button type="button" onClick={() => void saveSnapshot()}>Save snapshot</button>
         <button type="button" onClick={() => loadPatch(true)}>Load example</button>
         <button type="button" onClick={() => loadPatch(false)}>Empty patch</button>
         <span className="patch-legend"><span>Audio</span><span>Automation</span></span>
@@ -255,7 +294,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
         <summary>My patch presets</summary>
         <PresetLibrary<PatchPreset> label="Patch" nameLimit={PATCH_PRESET_NAME_LIMIT} showHeading={false} list={listPatchPresets}
           save={saveCurrentPatch} importFile={importPatchPreset} exportFile={exportPatchPreset}
-          remove={deletePatchPreset} onLoad={loadNamedPatch}/>
+          remove={deletePatchPreset} onLoad={loadNamedPatch} onLibraryChanged={() => void refreshSavedPresets()}/>
       </details>
       <div className="patch-workspace-content">
         <PatchCanvas viewportRef={viewport} scale={scale} patch={patch} positions={positions} selection={selection} pending={pending}
