@@ -26,6 +26,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   const viewport = useRef<HTMLDivElement>(null);
   const pendingViewport = useRef<NodePosition | null>(null);
   const [patch, setPatch] = useState(createExamplePatch);
+  const [savedPresets, setSavedPresets] = useState<PatchPreset[]>([]);
   const [positions, setPositions] = useState<PatchLayout>(createExampleLayout);
   const [selection, setSelection] = useState<PatchSelection | null>({kind:'cable',id:'filter-control'});
   const [pending, setPending] = useState<PatchEndpoint | null>(null);
@@ -44,6 +45,24 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   const readAudibleElapsed = useCallback(() => engine.current?.readAudibleElapsed() ?? 0, []);
 
   useEffect(() => () => {engine.current?.dispose(); engine.current = null;}, []);
+  useEffect(() => {
+    void listPatchPresets().then(setSavedPresets).catch(() => {});
+  }, []);
+
+  async function refreshSavedPresets() {
+    setSavedPresets(await listPatchPresets());
+  }
+
+  async function saveSnapshot() {
+    try {
+      await saveCurrentPatch(`Patch ${new Date().toLocaleString()}`);
+      await refreshSavedPresets();
+      setError('');
+      setMessage('Patch snapshot saved.');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not save patch snapshot.');
+    }
+  }
   useEffect(() => {
     if (!playing) return;
     const interval = window.setInterval(() => {
@@ -247,6 +266,15 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
             {group.presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
           </optgroup>)}
         </select>
+        <select aria-label="Saved patch preset" value="" onFocus={() => void refreshSavedPresets().catch(() => {})}
+          onChange={event => {
+            const preset = savedPresets.find(item => item.id === event.target.value);
+            if (preset) loadNamedPatch(preset);
+          }}>
+          <option value="" disabled>My saved patches</option>
+          {savedPresets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+        </select>
+        <button type="button" onClick={() => void saveSnapshot()}>Save snapshot</button>
         <button type="button" onClick={() => loadPatch(true)}>Load example</button>
         <button type="button" onClick={() => loadPatch(false)}>Empty patch</button>
         <span className="patch-legend"><span>Audio</span><span>Automation</span></span>
