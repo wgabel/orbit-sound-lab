@@ -3,28 +3,10 @@ import { createDefaultDroneSettings } from './drone';
 import type { OscillatorWaveform } from './drone';
 import { applyHarmonicsPreset } from './patch-harmonics';
 import type { PatchLfo } from './patch-lfo';
-import type { PatchCable, PatchModule } from './patch';
-import type { PatchSnapshot } from './patch-preset';
-
-interface FactoryPatchPreset extends PatchSnapshot {
-  readonly id: string;
-  readonly name: string;
-}
-
-interface FactoryPatchGroup {
-  readonly label: string;
-  readonly presets: readonly FactoryPatchPreset[];
-}
-
-type PositionedModule = readonly [module: PatchModule, x: number, y: number];
-
-function preset(id: string, name: string, nodes: readonly PositionedModule[], cables: readonly PatchCable[]): FactoryPatchPreset {
-  return {
-    id,name,patch:{version:1,modules:nodes.map(([module]) => module),cables},
-    layout:Object.fromEntries(nodes.map(([module,x,y]) => [module.id,{x,y}])),
-    viewport:{x:0,y:0}
-  };
-}
+import type { PatchModule } from './patch';
+import { audio, control, filter, mixer, output, preset, shelf } from './factory-patch-builder';
+import type { FactoryPatchGroup } from './factory-patch-builder';
+import { HEAVY_WET_DRONE_PATCHES } from './factory-heavy-wet-drone-patches';
 
 function wave(id: string, waveform: OscillatorWaveform, frequency: number, shape = 0.5): PatchModule {
   return {id,kind:'wave',settings:{waveform,frequency,shape}};
@@ -40,32 +22,6 @@ function harmonicSteps(id: string, pattern: string, duration: number): PatchModu
   return {id,kind:'automation',settings};
 }
 
-function mixer(levelA: number, levelB: number): PatchModule {
-  return {id:'mixer',kind:'mixer',settings:{levelA,levelB}};
-}
-
-function shelf(lowFrequency: number, lowGain: number, highFrequency: number, highGain: number): PatchModule {
-  return {id:'eq',kind:'shelfEq',settings:{
-    lowShelf:{frequencyHz:lowFrequency,gainDecibels:lowGain},
-    highShelf:{frequencyHz:highFrequency,gainDecibels:highGain}
-  }};
-}
-
-function filter(cutoff: number, resonance: number): PatchModule {
-  return {id:'filter',kind:'filter',settings:{cutoff,resonance}};
-}
-
-function audio(source: string, destination: string, portId = 'in'): PatchCable {
-  return {id:`${source}-${destination}-${portId}`,
-    source:{moduleId:source,portId:'out'},destination:{moduleId:destination,portId}};
-}
-
-function control(source: string, destination: string, portId: string, from: number, to: number): PatchCable {
-  return {id:`${source}-${destination}-${portId}`,source:{moduleId:source,portId:'control'},
-    destination:{moduleId:destination,portId},mapping:{from,to}};
-}
-
-const output: PatchModule = {id:'output',kind:'output',settings:{level:0.85}};
 const firstToMixer = audio('first','mixer','inputA');
 const secondToMixer = audio('second','mixer','inputB');
 
@@ -150,5 +106,6 @@ export const FACTORY_PATCH_GROUPS: readonly FactoryPatchGroup[] = [
         control('notes','second','frequency',130.81,261.62),control('accent','mixer','levelB',0.22,0.64)])
     ]
   },
+  {label:'Heavy & Wet Drones',presets:HEAVY_WET_DRONE_PATCHES},
   {label:'Arrangements',presets:[ARRANGEMENT_DEMO]}
 ];
