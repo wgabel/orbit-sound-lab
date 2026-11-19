@@ -79,7 +79,7 @@ function ModuleSettings({module, sampleRate, onChange}: {module: PatchModule; sa
     case 'chord': return <div className="patch-fields">
       <label>Root note<select value={module.settings.rootNote} onChange={event =>
         onChange({...module,settings:{...module.settings,rootNote:Number(event.target.value)}})}>
-        {Array.from({length:49},(_,index)=>index+36).map(note=>
+        {Array.from({length:37},(_,index)=>index+36).map(note=>
           <option key={note} value={note}>{getNoteName(note)}</option>)}
       </select></label>
       <label>Chord type<select value={module.settings.chord} onChange={event =>
@@ -88,9 +88,9 @@ function ModuleSettings({module, sampleRate, onChange}: {module: PatchModule; sa
       </select></label>
       <NumericSlider label="Inversion" unit="" min={0} max={3} step={1}
         value={module.settings.inversion} onChange={inversion=>onChange({...module,settings:{...module.settings,inversion}})}/>
-      <NumericSlider label="Octave shift" unit="oct" min={-2} max={2} step={1}
+      <NumericSlider label="Octave shift" unit="oct" min={-1} max={1} step={1}
         value={module.settings.octave} onChange={octave=>onChange({...module,settings:{...module.settings,octave}})}/>
-      <NumericSlider label="Voicing spread" unit="oct" min={0} max={2} step={1}
+      <NumericSlider label="Voicing spread" unit="oct" min={0} max={1} step={1}
         value={module.settings.spread} onChange={spread=>onChange({...module,settings:{...module.settings,spread}})}/>
       <p>Notes: {getChordMidiNotes(module.settings).map(getNoteName).join(' · ')}</p>
     </div>;
