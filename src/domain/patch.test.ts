@@ -23,6 +23,26 @@ describe('patch routing', () => {
     expect(next.cables).toHaveLength(1);
     expect(patch.cables).toHaveLength(0);
   });
+
+  it('combines two audio inputs and gives each mixer channel its own control input', () => {
+    let patch: Patch = {version:1, modules:[
+      createPatchModule('wave','first'), createPatchModule('wave','second'),
+      createPatchModule('mixer','mixer'), createPatchModule('output','output'),
+      createPatchModule('automation','automation')
+    ], cables:[]};
+    patch = connectPatchPorts(patch,'audio-a',{moduleId:'first',portId:'out'},{moduleId:'mixer',portId:'inputA'});
+    patch = connectPatchPorts(patch,'audio-b',{moduleId:'second',portId:'out'},{moduleId:'mixer',portId:'inputB'});
+    patch = connectPatchPorts(patch,'mix-out',{moduleId:'mixer',portId:'out'},{moduleId:'output',portId:'in'});
+    const control = {moduleId:'automation',portId:'control'};
+    patch = connectPatchPorts(patch,'level-a',control,{moduleId:'mixer',portId:'levelA'});
+    patch = connectPatchPorts(patch,'level-b',control,{moduleId:'mixer',portId:'levelB'});
+    expect(patch.cables.slice(-2).map(cable => cable.mapping)).toEqual([{from:0,to:1},{from:0,to:1}]);
+    expect(() => validatePatch(patch)).not.toThrow();
+    expect(() => connectPatchPorts(patch,'duplicate',{moduleId:'second',portId:'out'},
+      {moduleId:'mixer',portId:'inputA'})).toThrow('already has a cable');
+    expect(() => connectPatchPorts({...patch,cables:[]},'wrong-type',control,
+      {moduleId:'mixer',portId:'inputB'})).toThrow('compatible');
+  });
 });
 
 describe('patch automation', () => {

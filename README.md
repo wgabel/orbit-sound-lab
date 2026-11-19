@@ -26,6 +26,8 @@ Stop drone playback and choose **Open patch editor**. The example routes a three
 
 Select a node or cable to edit it. Connect ports by selecting an output and then a highlighted input. Drag a module by its title, or start from **Empty patch**. Patch edits currently stay in the open session. The drone editor continues to own its presets and arrangements.
 
+To combine two sources, connect them to **Audio A** and **Audio B** on a **Mixer**, then connect its **Audio out** to a filter, gain stage, or other audio input. Set each channel’s level in the inspector or automate it via **Level A** and **Level B**.
+
 ## Current scope
 Two drone layers with five oscillators each, modulation, effects and a stereo performance mix. Use **Start Drones** and each layer’s **On** switch for continuous playback. The playback bar stays visible while scrolling.
 
