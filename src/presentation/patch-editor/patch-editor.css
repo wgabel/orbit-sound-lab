@@ -87,3 +87,8 @@
   .patch-editor .patch-port {inset-block-start:1px;height:30px;width:30px;left:-15px}
   .patch-editor .patch-port-column.output .patch-port {left:auto;right:-15px}
 }
+
+.automation-preset-library {margin-top:16px;padding-top:12px;border-top:1px solid var(--patch-line)}
+.automation-preset-library h3 {font-size:14px;margin:0 0 9px}
+.patch-editor .automation-preset-library [role=alert] {color:#ffaaa5}
+.automation-preset-library .preset-item strong {overflow-wrap:anywhere}

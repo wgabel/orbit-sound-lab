@@ -8,6 +8,7 @@ import type { PatchAutomation } from '../../domain/patch-automation';
 import { applyHarmonicsPreset, HARMONICS_GROUPS, readHarmonicsPresetId } from '../../domain/patch-harmonics';
 import type { PatchSelection } from './PatchCanvas';
 import { NumericSlider } from '../NumericSlider';
+import { AutomationPresetLibrary } from './AutomationPresetLibrary';
 
 interface InspectorProps {
   readonly patch: Patch;
@@ -89,7 +90,13 @@ function ModuleSettings({module, onChange}: {module: PatchModule; onChange(modul
       <NumericSlider label="Base level" unit="%" displayFactor={100} min={0} max={1} step={0.01} value={module.settings.level}
         onChange={level => onChange({...module,settings:{level}})}/>
     </div>;
-    case 'automation': return <AutomationSettings settings={module.settings} onChange={settings => onChange({...module,settings})}/>;
+    case 'automation': {
+      const update = (settings: PatchAutomation) => onChange({...module,settings});
+      return <>
+        <AutomationSettings settings={module.settings} onChange={update}/>
+        <AutomationPresetLibrary key={module.id} settings={module.settings} onLoad={update}/>
+      </>;
+    }
     case 'drone': return <p>{module.settings.voice.oscillators.filter(oscillator => oscillator.enabled).length} active oscillator voices</p>;
   }
 }
