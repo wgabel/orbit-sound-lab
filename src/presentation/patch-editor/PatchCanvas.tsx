@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { PointerEvent, Ref } from 'react';
 import { getPatchPorts, MODULE_LABELS, sameEndpoint } from '../../domain/patch';
 import type { Patch, PatchEndpoint, PatchModule, PatchPort } from '../../domain/patch';
@@ -21,7 +21,8 @@ interface PatchCanvasProps {
   readonly positions: PatchLayout;
   readonly selection: PatchSelection | null;
   readonly pending: PatchEndpoint | null;
-  readonly elapsed: number;
+  readonly playing: boolean;
+  readAudibleElapsed(): number;
   readonly outputLevel: number;
   onSelect(selection: PatchSelection): void;
   onPort(endpoint: PatchEndpoint, port: PatchPort): void;
@@ -45,20 +46,41 @@ function automationPath(settings: PatchAutomation): string {
     `${index === 0 ? 'M' : 'L'}${phase * 140},${29 - 26 * readAutomationValue(settings, phase)}`).join(' ');
 }
 
-function AutomationScope({settings, elapsed}: {settings: PatchAutomation; elapsed: number}) {
-  const x = 140 * readAutomationPhase(settings, elapsed);
+function AutomationScope({moduleId, settings}: {moduleId: string; settings: PatchAutomation}) {
   const path = useMemo(() => automationPath(settings), [settings]);
   return <svg className="patch-scope" viewBox="0 0 140 32" role="img" aria-label="Automation shape and playhead">
-    <path d={path}/><line x1={x} x2={x} y1="0" y2="32"/>
+    <path d={path}/><line data-automation-playhead={moduleId} x1="0" x2="0" y1="0" y2="32"/>
   </svg>;
 }
 
-export function PatchCanvas({patch, positions, selection, pending, elapsed, outputLevel, viewportRef,
+export function PatchCanvas({patch, positions, selection, pending, playing, readAudibleElapsed, outputLevel, viewportRef,
   onSelect, onPort, canConnect, onMove}: PatchCanvasProps) {
+  const canvas = useRef<HTMLDivElement>(null);
   const drag = useRef<{id: string; pointer: number; x: number; y: number} | null>(null);
   const modules = new Map(patch.modules.map(module => [module.id, module]));
   const width = Math.max(900, ...Object.values(positions).map(point => point.x + PATCH_NODE_WIDTH + 30));
   const height = Math.max(408, ...Object.values(positions).map(point => point.y + 206));
+
+  useEffect(() => {
+    const settingsById = new Map(patch.modules.flatMap(module =>
+      module.kind === 'automation' ? [[module.id,module.settings] as const] : []));
+    const lines = canvas.current?.querySelectorAll<SVGLineElement>('[data-automation-playhead]');
+    if (!lines?.length) return;
+    const playheads = Array.from(lines, line => ({line, settings:settingsById.get(line.dataset.automationPlayhead ?? '')}));
+    let frame = 0;
+    function draw() {
+      const elapsed = playing ? readAudibleElapsed() : 0;
+      for (const {line,settings} of playheads) {
+        if (!settings) continue;
+        const x = String(140 * readAutomationPhase(settings, elapsed));
+        line.setAttribute('x1',x);
+        line.setAttribute('x2',x);
+      }
+      if (playing) frame = requestAnimationFrame(draw);
+    }
+    draw();
+    return () => cancelAnimationFrame(frame);
+  }, [patch.modules, playing, readAudibleElapsed]);
 
   function endpointPosition(endpoint: PatchEndpoint) {
     const module = modules.get(endpoint.moduleId);
@@ -80,7 +102,7 @@ export function PatchCanvas({patch, positions, selection, pending, elapsed, outp
   }
 
   return <div ref={viewportRef} className="patch-viewport" tabIndex={0} aria-label="Patch canvas. Scroll to see more nodes.">
-    <div className="patch-canvas" style={{width,height}}>
+    <div ref={canvas} className="patch-canvas" style={{width,height}}>
       <svg className="patch-cables" width={width} height={height} aria-label="Patch cables">
         {patch.cables.map(cable => {
           const from = endpointPosition(cable.source);
@@ -132,7 +154,7 @@ export function PatchCanvas({patch, positions, selection, pending, elapsed, outp
               })}
             </div>)}
           </div>
-          {module.kind === 'automation' && <AutomationScope settings={module.settings} elapsed={elapsed}/>}
+          {module.kind === 'automation' && <AutomationScope moduleId={module.id} settings={module.settings}/>}
           {module.kind === 'output' && <meter className="patch-meter" aria-label="Output level"
             min={0} max={1} value={Math.min(1,outputLevel * 5)}/>}
         </article>;

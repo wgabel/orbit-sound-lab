@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PatchPlayback } from '../../application/patch-playback';
 import { connectPatchPorts, createExamplePatch, createPatchModule, getPatchPort, hasPatchCycle,
   MODULE_LABELS, sameEndpoint, validatePatch } from '../../domain/patch';
@@ -26,14 +26,15 @@ export function PatchEditor({hidden, onClose, createPlayback}: {
   const [error, setError] = useState('');
   const [playing, setPlaying] = useState(false);
   const [transition, setTransition] = useState(false);
-  const [monitor, setMonitor] = useState({elapsed:0,level:0});
+  const [outputLevel, setOutputLevel] = useState(0);
+  const readAudibleElapsed = useCallback(() => engine.current?.readAudibleElapsed() ?? 0, []);
 
   useEffect(() => () => {engine.current?.dispose(); engine.current = null;}, []);
   useEffect(() => {
     if (!playing) return;
     const interval = window.setInterval(() => {
       const playback = engine.current;
-      if (playback) setMonitor({elapsed:playback.readElapsed(),level:playback.readOutputLevel()});
+      if (playback) setOutputLevel(playback.readOutputLevel());
     }, 80);
     return () => window.clearInterval(interval);
   }, [playing]);
@@ -60,7 +61,7 @@ export function PatchEditor({hidden, onClose, createPlayback}: {
       if (playing) {
         await engine.current?.stop();
         setPlaying(false);
-        setMonitor({elapsed:0,level:0});
+        setOutputLevel(0);
       } else {
         const playback = engine.current ?? createPlayback();
         engine.current = playback;
@@ -173,7 +174,8 @@ export function PatchEditor({hidden, onClose, createPlayback}: {
         <span className="patch-legend"><span>Audio</span><span>Automation</span></span>
       </div>
       <PatchCanvas viewportRef={viewport} patch={patch} positions={positions} selection={selection} pending={pending}
-        elapsed={monitor.elapsed} outputLevel={monitor.level} onPort={handlePort} canConnect={canConnect}
+        playing={playing} readAudibleElapsed={readAudibleElapsed} outputLevel={outputLevel}
+        onPort={handlePort} canConnect={canConnect}
         onSelect={item => {setSelection(item); setPending(null); setError('');}}
         onMove={(id,position) => setPositions(previous => ({...previous,[id]:position}))}/>
       <p className="patch-status" role={error ? 'alert' : 'status'}>{error || message}</p>

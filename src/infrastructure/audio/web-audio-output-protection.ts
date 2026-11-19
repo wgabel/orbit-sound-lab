@@ -16,6 +16,8 @@ const peakLimiterCurve = Float32Array.from({length: PEAK_LIMITER_CURVE_STEPS + 1
 
 /** Cleans the combined signal and catches peaks that exceed the compressor's headroom. */
 export class WebAudioOutputProtection {
+  // DynamicsCompressorNode applies the Web Audio spec's fixed 6 ms pre-delay.
+  readonly lookaheadSeconds = 0.006;
   readonly input: BiquadFilterNode;
   readonly output: WaveShaperNode;
   private readonly lowPass: BiquadFilterNode;
