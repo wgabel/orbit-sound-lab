@@ -21,7 +21,8 @@ export function OscillatorShapeControls({
   const pulse = oscillator.waveform === 'variablePulse';
   const folded = oscillator.waveform === 'foldedSine';
   const peaked = oscillator.waveform === 'peakedSine';
-  const label = pulse ? 'Pulse Width' : folded ? 'Fold Amount' : 'Shape';
+  const cycleEnvelope = oscillator.waveform === 'cycleEnvelope';
+  const label = pulse ? 'Pulse Width' : folded ? 'Fold Amount' : cycleEnvelope ? 'Amount' : 'Shape';
   const min = pulse ? MINIMUM_PULSE_WIDTH : 0;
   const max = pulse ? MAXIMUM_PULSE_WIDTH : 1;
   const shape = Math.max(min, Math.min(max, oscillator.shape ?? DEFAULT_OSCILLATOR_SHAPE));
@@ -34,7 +35,7 @@ export function OscillatorShapeControls({
         value={shape} onChange={onChange}
         modulationRange={modulation?.enabled ? [Math.max(min, shape - depth), Math.min(max, shape + depth)] : undefined}
         readLiveValue={playing && modulation?.enabled ? readLiveValue : undefined} showLiveValue/>
-      <div className="oscillator-shape-endpoints" aria-hidden="true"><span>{pulse ? 'Narrow pulse' : folded ? 'Clean sine' : 'Sine'}</span><span>{pulse ? 'Wide pulse' : folded ? 'Deep fold' : peaked ? 'Narrow peaks' : 'Triangle'}</span></div>
+      <div className="oscillator-shape-endpoints" aria-hidden="true"><span>{pulse ? 'Narrow pulse' : folded ? 'Clean sine' : 'Sine'}</span><span>{pulse ? 'Wide pulse' : folded ? 'Deep fold' : peaked ? 'Narrow peaks' : cycleEnvelope ? 'Full envelope' : 'Triangle'}</span></div>
     </div>
     {modulation && <OscillatorLfoControls modulation={modulation} onChange={onModulationChange}/>}
   </>;

@@ -352,3 +352,16 @@ body{margin:0;background:#0c1016;color:#e8e9df;font-family:system-ui,sans-serif}
 .step-captured-values{display:flex;flex-wrap:wrap;gap:6px;list-style:none;padding:0;margin:8px 0}
 .step-captured-values li{display:flex;align-items:center;gap:8px;padding-left:8px;background:#182b2b;border-radius:5px;font-size:12px;color:#e8e9df}
 .oscillator-step-sequencer p{margin:8px 0 0}
+
+.cycle-envelope-controls{grid-column:1/-1;min-width:0}
+.cycle-envelope-preview{width:100%;height:auto;display:block;background:#111b23;border-radius:5px}
+.cycle-envelope-preview path,.cycle-envelope-axis{fill:none;stroke:currentColor;stroke-width:1.5;vector-effect:non-scaling-stroke}
+.cycle-envelope-axis{color:#536372}
+.cycle-envelope-sine{color:#a8b9c7;stroke-dasharray:4 3}
+.cycle-envelope-gain{color:#f1c480}
+.cycle-envelope-result{color:#81ddff}
+.cycle-envelope-axis-labels,.cycle-envelope-legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px}
+.cycle-envelope-axis-labels{justify-content:space-between;color:#a8b9c7;margin:3px 0 6px}
+.cycle-envelope-legend{margin-bottom:10px}
+.cycle-envelope-sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:8px 12px}
+.cycle-envelope-controls p{color:#a8b9c7;font-size:11px;margin:5px 0}

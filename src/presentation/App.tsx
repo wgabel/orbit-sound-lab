@@ -1,3 +1,5 @@
+import { DEFAULT_CYCLE_ENVELOPE } from '../domain/cycle-envelope';
+import { CycleEnvelopeControls } from './CycleEnvelopeControls';
 import { builtInOscillatorBanks, loadBuiltInOscillatorBank } from '../domain/built-in-oscillator-banks';
 import { listOscillatorPresets, saveOscillatorPreset } from '../infrastructure/storage/oscillator-preset-library';
 import { OscillatorPresetPicker } from './OscillatorPresetPicker';
@@ -19,7 +21,7 @@ import type { DelaySettings } from '../domain/delay';
 import type { SoundLabController } from '../application/audio-contracts';
 import { applyPitchOffset } from '../domain/modulation';
 import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
-import { supportsOscillatorShape } from '../domain/drone';
+import { DEFAULT_OSCILLATOR_SHAPE, supportsOscillatorShape } from '../domain/drone';
 import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../domain/drone';
 import { DRONE_LAYER_IDS, createDefaultDroneLayer } from '../domain/drone-layers';
 import type { DroneLayer, DroneLayerId } from '../domain/drone-layers';
@@ -628,8 +630,12 @@ export function App() {
                   <option value="variablePulse">Variable Pulse</option>
                   <option value="foldedSine">Folded Sine</option>
                   <option value="peakedSine">Peaked Sine</option>
+                  <option value="cycleEnvelope">Cycle Envelope</option>
                 </select>
               </label>
+              {oscillator.waveform === 'cycleEnvelope' && <CycleEnvelopeControls envelope={oscillator.cycleEnvelope ?? DEFAULT_CYCLE_ENVELOPE}
+                amount={oscillator.shape ?? DEFAULT_OSCILLATOR_SHAPE}
+                onChange={cycleEnvelope => updateOscillator({...oscillator,cycleEnvelope})}/>}
               {supportsOscillatorShape(oscillator.waveform) && <OscillatorShapeControls oscillator={oscillator}
                 modulation={lowFrequencyOscillatorSettings.find(item =>
                   item.targetOscillatorId === oscillator.id && item.destination === 'shape')}
