@@ -189,7 +189,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
         onSelect={item => {setSelection(item); setPending(null); setError('');}}
         onMove={(id,position) => setPositions(previous => ({...previous,[id]:position}))}/>
       <p className="patch-status" role={error ? 'alert' : 'status'}>{error || message}</p>
-      <PatchInspector patch={patch} selection={selection} onModule={updateModule} onCopyDrone={copyDrone} onMapping={updateMapping} onRemove={remove}/>
+      <PatchInspector patch={patch} sampleRate={engine.current?.sampleRate} selection={selection} onModule={updateModule} onCopyDrone={copyDrone} onMapping={updateMapping} onRemove={remove}/>
     </div>
   </main>;
 }

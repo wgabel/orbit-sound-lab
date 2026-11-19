@@ -1,3 +1,5 @@
+import { getShelfFrequencyHz } from '../../domain/drone-shelf-response';
+import { WebAudioShelfEq } from './web-audio-shelf-eq';
 import { createDefaultDroneSettings } from '../../domain/drone';
 import type { PatchModule } from '../../domain/patch';
 import { readAutomationValue } from '../../domain/patch-automation';
@@ -17,6 +19,7 @@ import { WebAudioWaveformSource } from './web-audio-waveform-source';
 interface ParameterBinding {
   readonly parameter: AudioParam;
   readonly base: number;
+  readonly constrain?: (value: number) => number;
 }
 
 export interface PatchRuntimeModule {
@@ -130,6 +133,17 @@ export function createPatchRuntimeModule(
         levelA:{parameter:channelA.gain, base:levelA},
         levelB:{parameter:channelB.gain, base:levelB}
       }, dispose() {channelA.disconnect(); channelB.disconnect(); output.disconnect();}};
+    }
+    case 'shelfEq': {
+      const shelf = new WebAudioShelfEq(context,definition.settings);
+      const {lowShelf,highShelf} = shelf;
+      const constrain = (value: number) => getShelfFrequencyHz(value,context.sampleRate);
+      return {definition, inputs:{in:lowShelf}, output:highShelf, parameters:{
+        lowFrequency:{parameter:lowShelf.frequency,base:lowShelf.frequency.value,constrain},
+        lowGain:{parameter:lowShelf.gain,base:lowShelf.gain.value},
+        highFrequency:{parameter:highShelf.frequency,base:highShelf.frequency.value,constrain},
+        highGain:{parameter:highShelf.gain,base:highShelf.gain.value}
+      }, dispose:() => shelf.dispose()};
     }
     case 'gain':
     case 'output': {

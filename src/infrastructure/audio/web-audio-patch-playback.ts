@@ -38,10 +38,12 @@ function createRuntimeCable(context: AudioContext, definition: PatchCable,
   }
   const binding = destination.parameters?.[definition.destination.portId];
   if (!binding) throw new Error('Missing runtime parameter input.');
+  const from = binding.constrain?.(mapping.from) ?? mapping.from;
+  const to = binding.constrain?.(mapping.to) ?? mapping.to;
   const scale = context.createGain();
-  scale.gain.value = mapping.to - mapping.from;
+  scale.gain.value = to - from;
   const offset = context.createConstantSource();
-  offset.offset.value = mapping.from - binding.base;
+  offset.offset.value = from - binding.base;
   offset.connect(level);
   scale.connect(level);
   level.connect(binding.parameter);
@@ -86,6 +88,8 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     this.master.connect(this.protection.input);
     this.protection.output.connect(this.analyser).connect(context.destination);
   }
+
+  get sampleRate(): number { return this.context.sampleRate; }
 
   async start(patch: Patch): Promise<void> {
     if (this.state !== 'ready') throw new Error('Patch playback is busy.');

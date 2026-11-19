@@ -3,6 +3,7 @@ import { OSCILLATOR_WAVEFORMS, supportsOscillatorShape } from '../../domain/dron
 import type { OscillatorWaveform } from '../../domain/drone';
 import { DRONE_LAYER_IDS } from '../../domain/drone-layers';
 import type { DroneLayerId } from '../../domain/drone-layers';
+import { ShelfEqControls } from '../ShelfEqControls';
 import { getPatchPort, getPatchModuleLabel } from '../../domain/patch';
 import type { CableMapping, Patch, PatchCable, PatchDrone, PatchModule } from '../../domain/patch';
 import type { PatchAutomation } from '../../domain/patch-automation';
@@ -13,6 +14,7 @@ import { AutomationPresetLibrary } from './AutomationPresetLibrary';
 
 interface InspectorProps {
   readonly patch: Patch;
+  readonly sampleRate?: number;
   readonly selection: PatchSelection | null;
   onCopyDrone(module: PatchDrone, layerId: DroneLayerId): void;
   onModule(module: PatchModule): void;
@@ -61,7 +63,7 @@ function AutomationSettings({settings, onChange}: {settings: PatchAutomation; on
   </>;
 }
 
-function ModuleSettings({module, onChange}: {module: PatchModule; onChange(module: PatchModule): void}) {
+function ModuleSettings({module, sampleRate, onChange}: {module: PatchModule; sampleRate?: number; onChange(module: PatchModule): void}) {
   switch (module.kind) {
     case 'lfo': return <PatchLfoSettings settings={module.settings} onChange={settings => onChange({...module,settings})}/>;
     case 'wave': return <div className="patch-fields">
@@ -81,6 +83,8 @@ function ModuleSettings({module, onChange}: {module: PatchModule; onChange(modul
       <NumericSlider label="Base resonance" unit="Q" min={0.1} max={12} step={0.1} value={module.settings.resonance}
         onChange={resonance => onChange({...module,settings:{...module.settings,resonance}})}/>
     </div>;
+    case 'shelfEq': return <ShelfEqControls settings={module.settings} sampleRate={sampleRate}
+      onChange={settings => onChange({...module,settings})}/>;
     case 'mixer': return <div className="patch-fields">
       <NumericSlider label="Level A" unit="%" displayFactor={100} min={0} max={1} step={0.01}
         value={module.settings.levelA} onChange={levelA => onChange({...module,settings:{...module.settings,levelA}})}/>
@@ -108,7 +112,7 @@ function CableSettings({patch, cable, onChange}: {patch: Patch; cable: PatchCabl
   const mapping = cable.mapping;
   if (!port?.parameter || !mapping) return <p>This cable carries audio.</p>;
   const {minimum,maximum,unit,displayScale} = port.parameter;
-  const step = unit === 'Hz' ? 1 : 0.01;
+  const step = unit === 'Hz' ? 1 : unit === 'dB' ? 0.5 : 0.01;
   return <div className="patch-fields">
     <NumericSlider label={`${port.label} at 0`} unit={unit} displayFactor={displayScale} min={minimum} max={maximum} step={step}
       value={mapping.from} onChange={from => onChange({...mapping,from})}/>
@@ -117,7 +121,7 @@ function CableSettings({patch, cable, onChange}: {patch: Patch; cable: PatchCabl
   </div>;
 }
 
-export function PatchInspector({patch, selection, onModule, onCopyDrone, onMapping, onRemove}: InspectorProps) {
+export function PatchInspector({patch, sampleRate, selection, onModule, onCopyDrone, onMapping, onRemove}: InspectorProps) {
   const module = selection?.kind === 'module' ? patch.modules.find(item => item.id === selection.id) : undefined;
   const cable = selection?.kind === 'cable' ? patch.cables.find(item => item.id === selection.id) : undefined;
   const destination = cable && getPatchPort(patch,cable.destination);
@@ -127,7 +131,7 @@ export function PatchInspector({patch, selection, onModule, onCopyDrone, onMappi
       {selection && (module || cable) && <button type="button" onClick={() => onRemove(selection)}>
         {cable ? 'Disconnect cable' : 'Remove module'}</button>}
     </div>
-    {module && <ModuleSettings module={module} onChange={onModule}/>}
+    {module && <ModuleSettings module={module} sampleRate={sampleRate} onChange={onModule}/>}
     {module?.kind === 'drone' && <div className="patch-actions patch-drone-copy">
       {DRONE_LAYER_IDS.map(layerId => <button key={layerId} type="button" onClick={() => onCopyDrone(module,layerId)}>
         Copy Drone {layerId}</button>)}
