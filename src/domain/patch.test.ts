@@ -164,3 +164,26 @@ describe('oscilloscope routing', () => {
       {moduleId:'gain',portId:'level'})).toThrow('compatible');
   });
 });
+
+describe('Pitch Shift patch module', () => {
+  it('connects between a drone and output and survives JSON serialization', () => {
+    const drone = createPatchModule('drone','drone');
+    const pitch = createPatchModule('pitchShift','pitch');
+    const output = createPatchModule('output','output');
+    const initial: Patch = {version:1,modules:[drone,pitch,output],cables:[]};
+    const connected = connectPatchPorts(connectPatchPorts(initial,'a',
+      {moduleId:'drone',portId:'out'},{moduleId:'pitch',portId:'in'}),'b',
+      {moduleId:'pitch',portId:'out'},{moduleId:'output',portId:'in'});
+    expect(() => validatePatch(JSON.parse(JSON.stringify(connected)))).not.toThrow();
+    expect(getPatchModuleLabel(pitch)).toBe('Pitch Shift');
+  });
+
+  it('rejects out-of-range tuning', () => {
+    const pitch = createPatchModule('pitchShift','pitch');
+    if (pitch.kind !== 'pitchShift') throw new Error('Expected Pitch Shift.');
+    for (const settings of [{semitones:25,cents:0},{semitones:0,cents:-101},
+      {semitones:NaN,cents:0}]) {
+      expect(() => validatePatch({version:1,modules:[{...pitch,settings}],cables:[]})).toThrow('Pitch Shift');
+    }
+  });
+});
