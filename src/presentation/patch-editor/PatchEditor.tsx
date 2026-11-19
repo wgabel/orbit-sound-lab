@@ -256,7 +256,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
         <select aria-label="Add module" value="" onChange={event => addModule(event.target.value as PatchModuleKind)}>
           <option value="" disabled>Add module</option>
           <optgroup label="● Sound sources">
-            {(['wave','drone'] as const).map(kind =>
+            {(['wave','drone','chord'] as const).map(kind =>
               <option key={kind} value={kind} className="patch-module-option-audio">● {MODULE_LABELS[kind]}</option>)}
           </optgroup>
           <optgroup label="◆ Automation sources">

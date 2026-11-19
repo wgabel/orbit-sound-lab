@@ -1,3 +1,5 @@
+import { DEFAULT_CHORD_SETTINGS, validateChordSettings } from './chord';
+import type { ChordSettings } from './chord';
 import { createDefaultDroneSettings, createDefaultShelfEq, MAX_SHELF_FREQUENCY_HZ, MAX_SHELF_GAIN_DECIBELS,
   MIN_SHELF_FREQUENCY_HZ, OSCILLATOR_WAVEFORMS, supportsOscillatorShape, validateDroneSettings, validateShelfEq } from './drone';
 import type { DroneSettings, OscillatorWaveform, ShelfEqSettings } from './drone';
@@ -12,6 +14,7 @@ import { validateAutomation } from './patch-automation';
 import type { PatchAutomation } from './patch-automation';
 
 export interface PatchModuleSettings {
+  chord: ChordSettings;
   wave: {readonly waveform: OscillatorWaveform; readonly frequency: number; readonly shape: number};
   drone: {
     readonly voice: DroneSettings;
@@ -90,7 +93,7 @@ export const MODULE_LABELS: Readonly<Record<PatchModuleKind, string>> = {
   shelfEq: 'Shelf EQ',
   pitchShift: 'Pitch Shift',
   oscilloscope: 'Oscilloscope',
-  wave: 'Wave', drone: 'Drone', automation: 'Automation', filter: 'Low-pass filter', gain: 'Gain',
+  chord: 'Chord Generator', wave: 'Wave', drone: 'Drone', automation: 'Automation', filter: 'Low-pass filter', gain: 'Gain',
   lfo: 'LFO', mixer: 'Mixer', output: 'Output'
 };
 
@@ -116,7 +119,8 @@ export function getPatchPorts(module: PatchModule): readonly PatchPort[] {
       {id:'frequency', label:'Frequency', direction:'input', signal:'control', parameter:{unit:'Hz', minimum:40, maximum:880}},
       ...(supportsOscillatorShape(module.settings.waveform) ? [shape] : [])
     ];
-    case 'drone': return [audioOutput];
+    case 'drone':
+    case 'chord': return [audioOutput];
     case 'lfo':
     case 'automation': return [{id:'control', label:'Value', direction:'output', signal:'control'}];
     case 'filter': return [
@@ -193,6 +197,10 @@ export function validatePatch(patch: Patch): void {
       validatePatchLfo(module.settings);
       continue;
     }
+    if (module.kind === 'chord') {
+      validateChordSettings(module.settings);
+      continue;
+    }
     if (module.kind === 'drone') {
       validateDroneSettings(module.settings.voice);
       if (module.settings.harmony !== undefined) validateHarmonySettings(module.settings.harmony);
@@ -251,6 +259,7 @@ export function connectPatchPorts(patch: Patch, id: string, source: PatchEndpoin
 
 export function createPatchModule(kind: PatchModuleKind, id: string): PatchModule {
   switch (kind) {
+    case 'chord': return {id,kind,settings:{...DEFAULT_CHORD_SETTINGS}};
     case 'wave': return {id, kind, settings:{waveform:'sine', frequency:110, shape:0.5}};
     case 'drone': return {id, kind, settings:{voice:createDefaultDroneSettings()}};
     case 'automation': return {id, kind, settings:{shape:'steps', mode:'loop', duration:8, glide:0,

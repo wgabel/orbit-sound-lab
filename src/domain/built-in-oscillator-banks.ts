@@ -411,11 +411,45 @@ const wetDroneBanks = [
   }
 ] satisfies readonly OscillatorBank[];
 
+const keyboardChordBanks = [
+  {
+    id: 'keyboard-c-major', name: 'Keyboard C Major (C3–G4)',
+    oscillators: [
+      {waveform:'triangle',frequencyHz:130.8128,volume:0.35,pan:-0.12},
+      {waveform:'triangle',frequencyHz:164.8138,volume:0.31,pan:-0.36},
+      {waveform:'triangle',frequencyHz:195.9977,volume:0.29,pan:0.32},
+      {waveform:'sineTriangle',frequencyHz:261.6256,volume:0.19,pan:-0.5,shape:0.25},
+      {waveform:'sineTriangle',frequencyHz:391.9954,volume:0.15,pan:0.5,shape:0.25}
+    ]
+  },
+  {
+    id: 'keyboard-a-minor', name: 'Keyboard A Minor (A2–E4)',
+    oscillators: [
+      {waveform:'triangle',frequencyHz:110,volume:0.36,pan:-0.12},
+      {waveform:'triangle',frequencyHz:130.8128,volume:0.31,pan:-0.34},
+      {waveform:'triangle',frequencyHz:164.8138,volume:0.29,pan:0.34},
+      {waveform:'sineTriangle',frequencyHz:220,volume:0.18,pan:-0.5,shape:0.25},
+      {waveform:'sineTriangle',frequencyHz:329.6276,volume:0.15,pan:0.5,shape:0.25}
+    ]
+  },
+  {
+    id: 'keyboard-c-major-seven', name: 'Keyboard Cmaj7 (C3–B4)',
+    oscillators: [
+      {waveform:'triangle',frequencyHz:130.8128,volume:0.34,pan:-0.12},
+      {waveform:'triangle',frequencyHz:164.8138,volume:0.3,pan:-0.38},
+      {waveform:'triangle',frequencyHz:195.9977,volume:0.27,pan:0.3},
+      {waveform:'sineTriangle',frequencyHz:261.6256,volume:0.18,pan:-0.5,shape:0.25},
+      {waveform:'sineTriangle',frequencyHz:493.8833,volume:0.13,pan:0.5,shape:0.25}
+    ]
+  }
+] satisfies readonly OscillatorBank[];
+
 export const oscillatorBankGroups: readonly {
   readonly label: string;
   readonly presets: readonly OscillatorBank[];
 }[] = [
   {label: 'Drone Foundations', presets: droneBanks},
+  {label: 'Keyboard Chords', presets: keyboardChordBanks},
   {label: 'Cross-Modulation', presets: crossModulationBanks},
   {label: 'Routing Example', presets: routingExampleBanks},
   {label: 'Stepped Drones', presets: steppedDroneBanks},

@@ -1,3 +1,5 @@
+import { CHORD_TYPES, getChordMidiNotes, getNoteName } from '../../domain/chord';
+import type { ChordType } from '../../domain/chord';
 import { PatchLfoSettings } from './PatchLfoSettings';
 import { OSCILLATOR_WAVEFORMS, supportsOscillatorShape } from '../../domain/drone';
 import type { OscillatorWaveform } from '../../domain/drone';
@@ -74,6 +76,24 @@ function AutomationSettings({settings, onChange}: {settings: PatchAutomation; on
 
 function ModuleSettings({module, sampleRate, onChange}: {module: PatchModule; sampleRate?: number; onChange(module: PatchModule): void}) {
   switch (module.kind) {
+    case 'chord': return <div className="patch-fields">
+      <label>Root note<select value={module.settings.rootNote} onChange={event =>
+        onChange({...module,settings:{...module.settings,rootNote:Number(event.target.value)}})}>
+        {Array.from({length:37},(_,index)=>index+36).map(note=>
+          <option key={note} value={note}>{getNoteName(note)}</option>)}
+      </select></label>
+      <label>Chord type<select value={module.settings.chord} onChange={event =>
+        onChange({...module,settings:{...module.settings,chord:event.target.value as ChordType}})}>
+        {CHORD_TYPES.map(chord=><option key={chord} value={chord}>{chord}</option>)}
+      </select></label>
+      <NumericSlider label="Inversion" unit="" min={0} max={3} step={1}
+        value={module.settings.inversion} onChange={inversion=>onChange({...module,settings:{...module.settings,inversion}})}/>
+      <NumericSlider label="Octave shift" unit="oct" min={-1} max={1} step={1}
+        value={module.settings.octave} onChange={octave=>onChange({...module,settings:{...module.settings,octave}})}/>
+      <NumericSlider label="Voicing spread" unit="oct" min={0} max={1} step={1}
+        value={module.settings.spread} onChange={spread=>onChange({...module,settings:{...module.settings,spread}})}/>
+      <p>Notes: {getChordMidiNotes(module.settings).map(getNoteName).join(' · ')}</p>
+    </div>;
     case 'lfo': return <PatchLfoSettings settings={module.settings} onChange={settings => onChange({...module,settings})}/>;
     case 'wave': return <div className="patch-fields">
       <label>Waveform<select value={module.settings.waveform} onChange={event =>
