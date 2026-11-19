@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { connectPatchPorts, createExamplePatch, createPatchModule, getPatchModuleLabel, readPatchDroneLayer, setPatchDroneLayer, validatePatch } from './patch';
+import { canConnectPatchPorts, connectPatchPorts, createExamplePatch, createPatchModule, getPatchModuleLabel, readPatchDroneLayer, setPatchDroneLayer, validatePatch } from './patch';
 import type { Patch } from './patch';
 import { limitAutomationSteps, readAutomationPhase, readAutomationValue } from './patch-automation';
 import { createDefaultDroneLayer } from './drone-layers';
@@ -72,16 +72,39 @@ describe('patch routing', () => {
     expect(JSON.parse(JSON.stringify(patch))).toEqual(patch);
   });
 
-  it('rejects feedback and incompatible or occupied inputs without touching the original patch', () => {
+  it('rejects feedback and incompatible replacements while retaining the existing input cable', () => {
     const patch: Patch = {version:1, modules:[
-      createPatchModule('filter','filter'), createPatchModule('gain','gain'), createPatchModule('automation','automation')
+      createPatchModule('wave','wave'),createPatchModule('filter','filter'),
+      createPatchModule('gain','gain'),createPatchModule('automation','automation')
     ], cables:[]};
-    const next = connectPatchPorts(patch,'filter-gain',{moduleId:'filter',portId:'out'},{moduleId:'gain',portId:'in'});
-    expect(() => connectPatchPorts(next,'loop',{moduleId:'gain',portId:'out'},{moduleId:'filter',portId:'in'})).toThrow('feedback loop');
-    expect(() => connectPatchPorts(next,'kind',{moduleId:'automation',portId:'control'},{moduleId:'filter',portId:'in'})).toThrow('compatible');
-    expect(() => connectPatchPorts(next,'duplicate',{moduleId:'filter',portId:'out'},{moduleId:'gain',portId:'in'})).toThrow('already has a cable');
-    expect(next.cables).toHaveLength(1);
-    expect(patch.cables).toHaveLength(0);
+    const input = {moduleId:'filter',portId:'in'};
+    const connected = connectPatchPorts(patch,'wave-filter',{moduleId:'wave',portId:'out'},input);
+    const next = connectPatchPorts(connected,'filter-gain',{moduleId:'filter',portId:'out'},{moduleId:'gain',portId:'in'});
+    const loop = {moduleId:'gain',portId:'out'};
+    const wrongSignal = {moduleId:'automation',portId:'control'};
+    expect(canConnectPatchPorts(next,loop,input)).toBe(false);
+    expect(canConnectPatchPorts(next,wrongSignal,input)).toBe(false);
+    expect(() => connectPatchPorts(next,'loop',loop,input)).toThrow('feedback loop');
+    expect(() => connectPatchPorts(next,'wrong-type',wrongSignal,input)).toThrow('compatible');
+    expect(next.cables.map(cable => cable.id)).toEqual(['wave-filter','filter-gain']);
+    expect(connectPatchPorts(next,'same',{moduleId:'wave',portId:'out'},input)).toBe(next);
+  });
+
+  it('replaces a control source while retaining the destination range and polarity', () => {
+    const patch: Patch = {version:1,modules:[
+      createPatchModule('automation','first'),createPatchModule('lfo','second'),createPatchModule('wave','wave')
+    ],cables:[]};
+    const input = {moduleId:'wave',portId:'frequency'};
+    const first = {moduleId:'first',portId:'control'};
+    const second = {moduleId:'second',portId:'control'};
+    const initial = connectPatchPorts(patch,'old',first,input);
+    const old = {...initial.cables[0],mapping:{from:120,to:240},inverted:true,enabled:false};
+    const connected = {...initial,cables:[old]};
+    expect(canConnectPatchPorts(connected,second,input)).toBe(true);
+    const next = connectPatchPorts(connected,'new',second,input);
+    expect(next.cables).toEqual([{id:'new',source:second,destination:input,mapping:old.mapping,inverted:true}]);
+    expect(connected.cables).toEqual([old]);
+    expect(() => validatePatch({...next,cables:[old,...next.cables]})).toThrow('already has a cable');
   });
 
   it('combines two audio inputs and gives each mixer channel its own control input', () => {
@@ -98,8 +121,10 @@ describe('patch routing', () => {
     patch = connectPatchPorts(patch,'level-b',control,{moduleId:'mixer',portId:'levelB'});
     expect(patch.cables.slice(-2).map(cable => cable.mapping)).toEqual([{from:0,to:1},{from:0,to:1}]);
     expect(() => validatePatch(patch)).not.toThrow();
-    expect(() => connectPatchPorts(patch,'duplicate',{moduleId:'second',portId:'out'},
-      {moduleId:'mixer',portId:'inputA'})).toThrow('already has a cable');
+    const replaced = connectPatchPorts(patch,'replacement',{moduleId:'second',portId:'out'},
+      {moduleId:'mixer',portId:'inputA'});
+    expect(replaced.cables).toHaveLength(patch.cables.length);
+    expect(replaced.cables.map(cable => cable.id)).toEqual(['audio-b','mix-out','level-a','level-b','replacement']);
     expect(() => connectPatchPorts({...patch,cables:[]},'wrong-type',control,
       {moduleId:'mixer',portId:'inputB'})).toThrow('compatible');
   });

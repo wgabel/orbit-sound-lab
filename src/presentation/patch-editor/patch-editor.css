@@ -83,6 +83,7 @@
 .patch-port-row[data-signal=control] .patch-port::before {border-radius:3px}
 .patch-port-row[data-signal=chords] .patch-port::before {border-radius:2px;transform:rotate(45deg)}
 .patch-port[data-compatible=true] {outline:1px solid var(--port-color)}
+.patch-port[data-replacing=true] {outline-style:dashed}
 .patch-port[data-pending=true]::before,.patch-port:hover::before {
   background:var(--port-color);box-shadow:0 0 7px var(--port-color)
 }

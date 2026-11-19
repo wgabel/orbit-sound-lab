@@ -4,7 +4,7 @@ import { PatchArrangementTimeline } from './PatchArrangementTimeline';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { DroneLayer, DroneLayerId } from '../../domain/drone-layers';
 import type { PatchPlayback } from '../../application/patch-playback';
-import { connectPatchPorts, createExamplePatch, createPatchModule, getPatchPort, hasPatchCycle,
+import { canConnectPatchPorts, connectPatchPorts, createExamplePatch, createPatchModule, getInputCable, getPatchPort,
   MODULE_LABELS, sameEndpoint, setPatchDroneLayer, validatePatch } from '../../domain/patch';
 import type { CableMapping, PatchCable, NodePosition, PatchLayout, Patch, PatchDrone, PatchEndpoint, PatchModule, PatchModuleKind, PatchPort } from '../../domain/patch';
 import { createExampleLayout, PatchCanvas } from './PatchCanvas';
@@ -186,11 +186,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   }
 
   function canConnect(destination: PatchEndpoint): boolean {
-    if (!pending) return false;
-    const input = getPatchPort(patch,destination);
-    return input?.direction === 'input' && input.signal === getPatchPort(patch,pending)?.signal &&
-      !patch.cables.some(cable => sameEndpoint(cable.destination,destination)) &&
-      !hasPatchCycle([...patch.cables,{id:'pending',source:pending,destination}]);
+    return Boolean(pending && canConnectPatchPorts(patch,pending,destination));
   }
 
   function handlePort(endpoint: PatchEndpoint, port: PatchPort) {
@@ -198,7 +194,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
     if (port.direction === 'output') {
       const next = pending && sameEndpoint(pending,endpoint) ? null : endpoint;
       setPending(next);
-      setMessage(next ? 'Choose a highlighted input. Escape cancels the cable.' : 'Cable cancelled.');
+      setMessage(next ? 'Choose an input. Connecting to an occupied input replaces its cable. Escape cancels.' : 'Cable cancelled.');
       return;
     }
     if (!pending) {
@@ -207,11 +203,12 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
     }
     const id = `cable-${crypto.randomUUID()}`;
     try {
-      if (apply(connectPatchPorts(patch,id,pending,endpoint))) {
-        setPending(null);
-        setSelection({kind:'cable',id});
-        setMessage('Cable connected.');
-      }
+      const existing = getInputCable(patch,endpoint);
+      const next = connectPatchPorts(patch,id,pending,endpoint);
+      if (next !== patch && !apply(next)) return;
+      setPending(null);
+      setSelection({kind:'cable',id:next === patch && existing ? existing.id : id});
+      setMessage(next === patch ? 'This cable is already connected.' : existing ? 'Cable replaced.' : 'Cable connected.');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not connect the cable.');
     }

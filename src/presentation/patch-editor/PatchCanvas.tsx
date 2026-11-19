@@ -3,7 +3,7 @@ import type { PatchArrangement } from '../../domain/patch-arrangement';
 import { AudioWaveform } from '../AudioWaveform';
 import { useEffect, useMemo, useRef } from 'react';
 import type { PointerEvent, RefObject } from 'react';
-import { getPatchModuleLabel, getPatchPorts, PATCH_CANVAS_MINIMUM, sameEndpoint } from '../../domain/patch';
+import { getInputCable, getPatchModuleLabel, getPatchPorts, PATCH_CANVAS_MINIMUM, sameEndpoint } from '../../domain/patch';
 import type { NodePosition, PatchLayout, Patch, PatchCable, PatchEndpoint, PatchModule, PatchPort } from '../../domain/patch';
 import { limitAutomationSteps, readAutomationPhase, readAutomationValue } from '../../domain/patch-automation';
 import { readLfoPreviewValue, readPatchLfoPhase } from '../../domain/patch-lfo';
@@ -268,10 +268,14 @@ export function PatchCanvas({patch, arrangement, positions, selection, pending, 
                 {portsOnSide(module,direction).map(port => {
                   const endpoint = {moduleId:module.id,portId:port.id};
                   const label = `${getPatchModuleLabel(module)} ${port.label}${port.signal !== 'audio' ? ` ${port.direction}` : ''}`;
+                  const compatible = Boolean(pending && canConnect(endpoint));
+                  const current = compatible ? getInputCable(patch,endpoint) : undefined;
+                  const replacing = Boolean(current && pending && !sameEndpoint(current.source,pending));
                   return <div className="patch-port-row" key={port.id} data-signal={port.signal}>
-                    <button className="patch-port" type="button" aria-label={label} title={label}
+                    <button className="patch-port" type="button" aria-label={label}
+                      title={replacing ? `Replace connection to ${label}` : label}
                       data-pending={Boolean(pending && sameEndpoint(pending,endpoint))}
-                      data-compatible={Boolean(pending && canConnect(endpoint))}
+                      data-compatible={compatible} data-replacing={replacing}
                       onClick={() => onPort(endpoint,port)}/>
                     <span>{port.label}</span>
                     {port.direction === 'output' && port.signal === 'control' && connectedControlSources.has(module.id) &&
