@@ -24,7 +24,7 @@ To restore the main build, run the workflow again with **branch** set to **main*
 
 Stop drone playback and choose **Open patch editor**. The example routes a three-voice drone through a low-pass filter and gain stage. One eight-second automation lane controls the filter cutoff and the level of the entire drone. Press **Play patch** to hear it.
 
-Select a node or cable to edit it. Connect ports by selecting an output and then a highlighted input. A dashed highlight marks an input whose existing cable will be replaced. Replacing a numeric control cable retains its mapping and Flip setting. Drag a module by its title, or start from **Empty patch**. Choose **Factory patch presets** to load a patch from Foundations, Modulated Drones, or Sequences. Open **My patch presets** to save a named snapshot of the entire canvas, including modules, settings, cables, and layout. Use **My saved patches** in the toolbar to load any saved patch and **Save snapshot** to save one without typing a name. Export and import JSON to move a patch to another browser.
+Select a node or cable to edit it. Connect ports by selecting an output and then a highlighted input. A dashed highlight marks an input whose existing cable will be replaced. Replacing a numeric control cable retains its mapping and Flip setting. Drag a module by its title, or start from **Empty patch**. Choose **Factory patch presets** to load a patch from Foundations, Modulated Drones, Sequences, Heavy & Wet Drones, or Arrangements. Open **My patch presets** to save a named snapshot of the entire canvas, including modules, settings, cables, and layout. Use **My saved patches** in the toolbar to load any saved patch and **Save snapshot** to save one without typing a name. Export and import JSON to move a patch to another browser.
 
 Hold a node near any canvas edge to scroll in that direction while dragging. The patch preset saves node positions and the view on every side of the canvas.
 
@@ -49,6 +49,8 @@ In an **Automation** node, **Smooth waves** loads editable curves with rounded t
 Choose **Add module → LFO** for repeating modulation. Select a waveform, set the rate or cycle duration, and connect **Value** to a control input. The cable sets the modulation range. **Synchronize with patch** aligns the LFO to the patch transport and enables phase offsets. This node uses AudioWorklet.
 
 Use an **Oscilloscope** node to display the waveform at any patch audio connection. Connect it inline through **Audio in** and **Audio out**, or connect its input in parallel and leave its output free. The display uses a mono preview at 4× vertical scale. Inline audio keeps its original channels and level.
+
+The **Heavy & Wet Drones** factory group contains four ready-to-play patches. **Flooded Foundry** fades between a cross-modulated bass drone and a reverberant choir. **Drowned Conveyor** steps filter cutoff and the level of a mechanical drone together. **Silt Pressure** layers random low-pass movement over slower swells. **Blackwater Siren** adds an automated pitch-shifted branch to a folded-sine and noise drone.
 
 ### Compose a piece
 
