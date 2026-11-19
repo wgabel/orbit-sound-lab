@@ -7,7 +7,7 @@ describe('built-in oscillator banks', () => {
   const layer = createDefaultDroneLayer('B');
 
   it('loads five playable oscillators and valid modulation into the destination slots', () => {
-    expect(builtInOscillatorBanks).toHaveLength(20);
+    expect(builtInOscillatorBanks).toHaveLength(26);
     const frequencySets = new Set<string>();
     for (const {id} of builtInOscillatorBanks) {
       const loaded = loadBuiltInOscillatorBank(id, layer);
@@ -18,11 +18,11 @@ describe('built-in oscillator banks', () => {
       expect(loaded.modulation).toHaveLength(20);
       frequencySets.add(oscillators.map(oscillator => oscillator.frequencyHz).join(','));
     }
-    expect(frequencySets.size).toBe(20);
+    expect(frequencySets.size).toBe(26);
   });
 
   it('groups the five advanced routing banks and loads their routes into either drone', () => {
-    expect(oscillatorBankGroups.map(group => group.label)).toEqual(['Drone Foundations', 'Cross-Modulation', 'Routing Example', 'Stepped Drones']);
+    expect(oscillatorBankGroups.map(group => group.label)).toEqual(['Drone Foundations', 'Cross-Modulation', 'Routing Example', 'Stepped Drones', 'Grungy', 'Wet']);
     const examples = oscillatorBankGroups.find(group => group.label === 'Routing Example')?.presets ?? [];
     expect(examples.map(preset => preset.id)).toEqual(['ion-choir', 'relay-bells', 'split-pulse', 'reed-reactor', 'prism-gate']);
     for (const layerId of ['A', 'B'] as const) {
@@ -64,6 +64,32 @@ describe('built-in oscillator banks', () => {
       {destination: 'filterCutoff', frequencyHz: 0.4, phaseDegrees: 180},
       {destination: 'amplitude', frequencyHz: 0.4, phaseDegrees: 180}
     ]);
+  });
+
+  it('applies each new bank’s noise and reverb while preserving other layer settings', () => {
+    const previous = {...layer, drone: {...layer.drone, mix: {...layer.drone.mix,
+      filter: {enabled: true, cutoffHz: 700}, lowShelf: {frequencyHz: 180, gainDecibels: 4},
+      noise: {enabled: true, volume: 0.45}, reverb: {enabled: true, mix: 1}}}};
+    const wet = oscillatorBankGroups.find(group => group.label === 'Wet')?.presets ?? [];
+    const grungy = oscillatorBankGroups.find(group => group.label === 'Grungy')?.presets ?? [];
+    expect(wet).toHaveLength(3);
+    expect(grungy).toHaveLength(3);
+    expect(wet.map(({id}) => loadBuiltInOscillatorBank(id, previous).drone.mix.reverb)).toEqual([
+      {enabled: true, mix: 0.58}, {enabled: true, mix: 0.73}, {enabled: true, mix: 0.86}
+    ]);
+    for (const {id} of [...wet, ...grungy]) {
+      const loaded = loadBuiltInOscillatorBank(id, previous);
+      expect(loaded.drone.mix.filter).toBe(previous.drone.mix.filter);
+      expect(loaded.drone.mix.lowShelf).toBe(previous.drone.mix.lowShelf);
+      expect(loaded.drone.mix.highShelf).toBe(previous.drone.mix.highShelf);
+      expect(loaded.enabled).toBe(previous.enabled);
+      expect(loaded.drone.gain).toBe(previous.drone.gain);
+    }
+    const dusty = loadBuiltInOscillatorBank('shortwave-dust', previous).drone;
+    expect(dusty.mix.noise).toEqual({enabled: true, volume: 0.13});
+    const rust = loadBuiltInOscillatorBank('rust-mouth', previous).drone;
+    expect(rust.mix.noise.enabled).toBe(false);
+    expect(rust.mix.reverb.enabled).toBe(false);
   });
 
   it.each([
