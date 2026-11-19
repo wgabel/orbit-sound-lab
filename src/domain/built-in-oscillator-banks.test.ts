@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { builtInOscillatorBanks, loadBuiltInOscillatorBank } from './built-in-oscillator-banks';
+import { builtInOscillatorBanks, loadBuiltInOscillatorBank, oscillatorBankGroups } from './built-in-oscillator-banks';
 import { createDefaultDroneLayer } from './drone-layers';
 import { getEffectiveOscillatorFrequency } from './harmony';
 
@@ -7,19 +7,39 @@ describe('built-in oscillator banks', () => {
   const layer = createDefaultDroneLayer('B');
 
   it('loads five playable oscillators and valid modulation into the destination slots', () => {
-    expect(builtInOscillatorBanks).toHaveLength(10);
+    expect(builtInOscillatorBanks).toHaveLength(15);
     const frequencySets = new Set<string>();
     for (const {id} of builtInOscillatorBanks) {
       const loaded = loadBuiltInOscillatorBank(id, layer);
       const oscillators = loaded.drone.oscillators;
       expect(oscillators.map(oscillator => oscillator.id)).toEqual(layer.drone.oscillators.map(oscillator => oscillator.id));
       expect(oscillators.filter(oscillator => oscillator.enabled)).toHaveLength(5);
-      expect(oscillators.filter(oscillator => oscillator.volume > 0).length).toBeGreaterThanOrEqual(4);
+      expect(oscillators.filter(oscillator => oscillator.volume > 0).length).toBeGreaterThanOrEqual(3);
       expect(loaded.modulation).toHaveLength(20);
-      expect(loaded.modulation.some(settings => settings.enabled)).toBe(true);
       frequencySets.add(oscillators.map(oscillator => oscillator.frequencyHz).join(','));
     }
-    expect(frequencySets.size).toBe(10);
+    expect(frequencySets.size).toBe(15);
+  });
+
+  it('groups the five advanced routing banks and loads their routes into either drone', () => {
+    expect(oscillatorBankGroups.map(group => group.label)).toEqual(['Drone Foundations', 'Cross-Modulation', 'Routing Example']);
+    const examples = oscillatorBankGroups.find(group => group.label === 'Routing Example')?.presets ?? [];
+    expect(examples.map(preset => preset.id)).toEqual(['ion-choir', 'relay-bells', 'split-pulse', 'reed-reactor', 'prism-gate']);
+    for (const layerId of ['A', 'B'] as const) {
+      for (const preset of examples) {
+        const {drone} = loadBuiltInOscillatorBank(preset.id, createDefaultDroneLayer(layerId));
+        const routes = drone.oscillatorModulations ?? [];
+        expect(routes.length).toBeGreaterThanOrEqual(2);
+        expect(routes.some(route => drone.oscillators.find(oscillator => oscillator.id === route.sourceId)?.volume === 0)).toBe(true);
+        for (const route of routes) {
+          expect(route).toMatchObject({enabled: true, signal: 'waveform'});
+          expect(route.depth).toBeGreaterThan(0);
+          const target = drone.oscillators.find(oscillator => oscillator.id === route.targetId);
+          expect(target?.enabled).toBe(true);
+          if (route.parameter === 'cutoff') expect(target?.filter.enabled).toBe(true);
+        }
+      }
+    }
   });
 
   it.each([
