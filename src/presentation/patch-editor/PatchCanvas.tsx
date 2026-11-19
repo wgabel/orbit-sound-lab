@@ -1,14 +1,15 @@
 import { AudioWaveform } from '../AudioWaveform';
 import { useEffect, useMemo, useRef } from 'react';
-import type { PointerEvent, Ref } from 'react';
-import { getPatchModuleLabel, getPatchPorts, sameEndpoint } from '../../domain/patch';
+import type { PointerEvent, RefObject } from 'react';
+import { getPatchModuleLabel, getPatchPorts, PATCH_CANVAS_MINIMUM, sameEndpoint } from '../../domain/patch';
 import type { NodePosition, PatchLayout, Patch, PatchCable, PatchEndpoint, PatchModule, PatchPort } from '../../domain/patch';
 import { readAutomationPhase, readAutomationValue } from '../../domain/patch-automation';
 import { readLfoPreviewValue, readPatchLfoPhase } from '../../domain/patch-lfo';
 import type { PatchLfo } from '../../domain/patch-lfo';
 import type { PatchAutomation } from '../../domain/patch-automation';
 
-import { boundNodePosition, PATCH_NODE_WIDTH, PATCH_NODE_TITLE_HEIGHT, PATCH_PORT_HEIGHT } from './patch-layout';
+import { boundNodePosition, getEdgeScrollSpeed, getVisiblePatchViewport, PATCH_CANVAS_HEIGHT, PATCH_CANVAS_WIDTH,
+  PATCH_NODE_WIDTH, PATCH_NODE_TITLE_HEIGHT, PATCH_PORT_HEIGHT } from './patch-layout';
 
 export type PatchSelection = {readonly kind: 'module' | 'cable'; readonly id: string};
 
@@ -19,7 +20,7 @@ export function createExampleLayout(): PatchLayout {
 
 interface PatchCanvasProps {
   readonly patch: Patch;
-  readonly viewportRef: Ref<HTMLDivElement>;
+  readonly viewportRef: RefObject<HTMLDivElement | null>;
   readonly scale: number;
   readonly positions: PatchLayout;
   readonly selection: PatchSelection | null;
@@ -71,11 +72,21 @@ function LfoScope({moduleId, settings}: {moduleId: string; settings: PatchLfo}) 
   </svg>;
 }
 
+interface NodeDrag {
+  readonly id: string;
+  readonly pointer: number;
+  readonly offset: NodePosition;
+  pointerPosition: NodePosition;
+  lastFrame?: number;
+}
+
 export function PatchCanvas({patch, positions, selection, pending, scale, playing, readAudibleElapsed, readLfoPhase, readControlValue, getWaveformAnalyser, outputLevel, viewportRef,
   onSelect, onCableChange, onPort, canConnect, onMove}: PatchCanvasProps) {
   const canvas = useRef<HTMLDivElement>(null);
   const controlBadges = useRef(new Map<string,HTMLSpanElement>());
-  const drag = useRef<{id: string; pointer: number; x: number; y: number} | null>(null);
+  const drag = useRef<NodeDrag | null>(null);
+  const dragFrame = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(dragFrame.current), []);
   const modules = new Map(patch.modules.map(module => [module.id, module]));
   const connectedInputs = new Set(patch.cables.filter(cable => cable.destination.portId === 'in')
     .map(cable => cable.destination.moduleId));
@@ -84,10 +95,6 @@ export function PatchCanvas({patch, positions, selection, pending, scale, playin
   const selectedCable = selection?.kind === 'cable'
     ? patch.cables.find(cable => cable.id === selection.id) : undefined;
   const controlCable = selectedCable?.mapping ? selectedCable : undefined;
-  const width = Math.max(900, ...Object.entries(positions).map(([id,point]) =>
-    point.x + PATCH_NODE_WIDTH + (controlCable?.source.moduleId === id ? 125 : connectedControlSources.has(id) ? 66 : 30)));
-  const height = Math.max(408, ...Object.values(positions).map(point => point.y + 206));
-
   useEffect(() => {
     const modulesById = new Map(patch.modules.map(module => [module.id,module]));
     const lines = canvas.current?.querySelectorAll<SVGLineElement>('[data-automation-playhead]');
@@ -138,31 +145,68 @@ export function PatchCanvas({patch, positions, selection, pending, scale, playin
     return module && point && port ? portPosition(module, point, port) : null;
   }
 
-  function getCanvasPoint(event: PointerEvent<HTMLButtonElement>): NodePosition | undefined {
+  function getCanvasPoint(pointer: NodePosition): NodePosition | undefined {
     const bounds = canvas.current?.getBoundingClientRect();
     if (!bounds) return;
-    return {x:(event.clientX-bounds.left)/scale,y:(event.clientY-bounds.top)/scale};
+    return {
+      x:PATCH_CANVAS_MINIMUM + (pointer.x-bounds.left)/scale,
+      y:PATCH_CANVAS_MINIMUM + (pointer.y-bounds.top)/scale
+    };
+  }
+
+  function moveNode(moving: NodeDrag) {
+    const point = getCanvasPoint(moving.pointerPosition);
+    if (point) onMove(moving.id,boundNodePosition({x:point.x-moving.offset.x,y:point.y-moving.offset.y}));
+  }
+
+  function scrollWhileDragging(timestamp: number) {
+    const moving = drag.current;
+    const viewport = viewportRef.current;
+    if (!moving || !viewport) return;
+    const {x,y} = moving.pointerPosition;
+    const rectangle = viewport.getBoundingClientRect();
+    const visible = getVisiblePatchViewport(viewport);
+    const elapsed = Math.min(0.05,(timestamp - (moving.lastFrame ?? timestamp-16)) / 1000);
+    moving.lastFrame = timestamp;
+    const horizontal = getEdgeScrollSpeed(x,rectangle.left+viewport.clientLeft+visible.x,visible.width);
+    const vertical = getEdgeScrollSpeed(y,rectangle.top+viewport.clientTop+visible.y,visible.height);
+    const beforeScroll = {x:viewport.scrollLeft,y:viewport.scrollTop};
+    if (horizontal || vertical) viewport.scrollBy(horizontal*elapsed,vertical*elapsed);
+    if (viewport.scrollLeft !== beforeScroll.x || viewport.scrollTop !== beforeScroll.y) moveNode(moving);
+    dragFrame.current = requestAnimationFrame(scrollWhileDragging);
   }
 
   function beginDrag(event: PointerEvent<HTMLButtonElement>, id: string, position: NodePosition) {
-    if (event.button !== 0) return;
-    const point = getCanvasPoint(event);
+    if (event.button !== 0 || drag.current) return;
+    const pointerPosition = {x:event.clientX,y:event.clientY};
+    const point = getCanvasPoint(pointerPosition);
     if (!point) return;
-    drag.current = {id,pointer:event.pointerId,x:point.x-position.x,y:point.y-position.y};
+    drag.current = {id,pointer:event.pointerId,offset:{x:point.x-position.x,y:point.y-position.y},pointerPosition};
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
   function moveDrag(event: PointerEvent<HTMLButtonElement>) {
     const moving = drag.current;
     if (!moving || moving.pointer !== event.pointerId) return;
-    const point = getCanvasPoint(event);
-    if (point) onMove(moving.id,boundNodePosition({x:point.x-moving.x,y:point.y-moving.y}));
+    moving.pointerPosition = {x:event.clientX,y:event.clientY};
+    moveNode(moving);
+    if (!dragFrame.current) dragFrame.current = requestAnimationFrame(scrollWhileDragging);
   }
 
-  return <div ref={viewportRef} className="patch-viewport" tabIndex={0} aria-label="Patch canvas. Scroll to see more nodes.">
-    <div className="patch-stage" style={{width:width*scale,height:height*scale}}>
-      <div ref={canvas} className="patch-canvas" style={{width,height,transform:`scale(${scale})`}}>
-        <svg className="patch-cables" width={width} height={height} aria-label="Patch cables">
+  function finishDrag(event: PointerEvent<HTMLButtonElement>) {
+    if (drag.current?.pointer !== event.pointerId) return;
+    drag.current = null;
+    cancelAnimationFrame(dragFrame.current);
+    dragFrame.current = 0;
+  }
+
+  return <div ref={viewportRef} className="patch-viewport" tabIndex={0} aria-label="Patch canvas. Scroll in any direction.">
+    <div className="patch-stage" style={{width:PATCH_CANVAS_WIDTH*scale,height:PATCH_CANVAS_HEIGHT*scale}}>
+      <div ref={canvas} className="patch-canvas"
+        style={{width:PATCH_CANVAS_WIDTH,height:PATCH_CANVAS_HEIGHT,transform:`scale(${scale})`}}>
+        <svg className="patch-cables" width={PATCH_CANVAS_WIDTH} height={PATCH_CANVAS_HEIGHT}
+          viewBox={`${PATCH_CANVAS_MINIMUM} ${PATCH_CANVAS_MINIMUM} ${PATCH_CANVAS_WIDTH} ${PATCH_CANVAS_HEIGHT}`}
+          aria-label="Patch cables">
           {patch.cables.map(cable => {
             const from = endpointPosition(cable.source);
             const to = endpointPosition(cable.destination);
@@ -192,12 +236,14 @@ export function PatchCanvas({patch, positions, selection, pending, scale, playin
           if (!position) return null;
           const highlighted = selection?.kind === 'module' && selection.id === module.id;
           return <article key={module.id} aria-label={getPatchModuleLabel(module)} className="patch-node"
-            data-selected={highlighted} style={{left:position.x,top:position.y,width:PATCH_NODE_WIDTH}}>
+            data-selected={highlighted} style={{
+              left:position.x-PATCH_CANVAS_MINIMUM,top:position.y-PATCH_CANVAS_MINIMUM,width:PATCH_NODE_WIDTH
+            }}>
             <button className="patch-node-title" type="button"
               onClick={() => onSelect({kind:'module',id:module.id})}
               onPointerDown={event => beginDrag(event,module.id,position)}
               onPointerMove={moveDrag}
-              onLostPointerCapture={() => {drag.current = null;}}>{getPatchModuleLabel(module)}</button>
+              onLostPointerCapture={finishDrag}>{getPatchModuleLabel(module)}</button>
             <div className="patch-port-columns">
               {(['input','output'] as const).map(direction => <div key={direction} className={`patch-port-column ${direction}`}>
                 {portsOnSide(module,direction).map(port => {

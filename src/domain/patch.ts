@@ -59,6 +59,8 @@ export function setPatchDroneLayer(module: PatchDrone, layer: DroneLayer, copied
 export interface NodePosition {readonly x: number; readonly y: number}
 export type PatchLayout = Readonly<Record<string, NodePosition>>;
 export const MAXIMUM_NODE_POSITION = 2400;
+export const MINIMUM_NODE_POSITION = -MAXIMUM_NODE_POSITION;
+export const PATCH_CANVAS_MINIMUM = MINIMUM_NODE_POSITION - 36;
 
 export interface PatchEndpoint { readonly moduleId: string; readonly portId: string; }
 export interface CableMapping { readonly from: number; readonly to: number; }

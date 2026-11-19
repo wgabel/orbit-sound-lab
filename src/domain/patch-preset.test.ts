@@ -23,6 +23,14 @@ describe('whole patch preset files', () => {
     expect(readPatchPreset(JSON.parse(JSON.stringify(preset)))).toEqual(preset);
   });
 
+  it('round-trips negative node and viewport positions', () => {
+    const fixture = createPresetFixture();
+    const layout = {...fixture.layout,drone:{x:-210,y:-80}};
+    const viewport = {x:-420,y:-180};
+    const preset = readPatchPreset({...fixture,layout,viewport});
+    expect(readPatchPreset(JSON.parse(JSON.stringify(preset)))).toMatchObject({layout,viewport});
+  });
+
   it('preserves optional automation cable controls and rejects invalid flags', () => {
     const fixture = createPresetFixture();
     const cable = fixture.patch.cables.find(item => item.mapping);
@@ -42,7 +50,7 @@ describe('whole patch preset files', () => {
     expect(() => readPatchPreset({...fixture,patch:{...fixture.patch,cables:[invalidCable]}})).toThrow('compatible');
     expect(() => readPatchPreset({...fixture,patch:{...fixture.patch,
       modules:[{...fixture.patch.modules[0],kind:'future'}]}})).toThrow('Invalid patch module');
-    expect(() => readPatchPreset({...fixture,layout:{...fixture.layout,'module-1':{x:-10,y:50}}})).toThrow('Invalid patch layout');
+    expect(() => readPatchPreset({...fixture,layout:{...fixture.layout,'module-1':{x:-10000,y:50}}})).toThrow('Invalid patch layout');
     expect(() => readPatchPreset({...fixture,kind:'orbit-automation'})).toThrow('Patch preset JSON');
   });
 });

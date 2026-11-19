@@ -6,7 +6,7 @@ import { connectPatchPorts, createExamplePatch, createPatchModule, getPatchPort,
 import type { CableMapping, PatchCable, NodePosition, PatchLayout, Patch, PatchDrone, PatchEndpoint, PatchModule, PatchModuleKind, PatchPort } from '../../domain/patch';
 import { createExampleLayout, PatchCanvas } from './PatchCanvas';
 import type { PatchSelection } from './PatchCanvas';
-import { getVisiblePatchViewport, getZoomedCanvasOrigin, placeNewPatchNode } from './patch-layout';
+import { getPatchScrollOffset, getVisiblePatchViewport, getZoomedCanvasOrigin, placeNewPatchNode, readPatchViewportOrigin } from './patch-layout';
 import { PatchInspector } from './PatchInspector';
 import { FACTORY_PATCH_GROUPS } from '../../domain/factory-patch-presets';
 import { PATCH_PRESET_NAME_LIMIT } from '../../domain/patch-preset';
@@ -24,7 +24,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
 }) {
   const engine = useRef<PatchPlayback | null>(null);
   const viewport = useRef<HTMLDivElement>(null);
-  const pendingViewport = useRef<NodePosition | null>(null);
+  const pendingViewport = useRef<NodePosition | null>({x:0,y:0});
   const [patch, setPatch] = useState(createExamplePatch);
   const [savedPresets, setSavedPresets] = useState<PatchPreset[]>([]);
   const [positions, setPositions] = useState<PatchLayout>(createExampleLayout);
@@ -74,16 +74,17 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
 
   useLayoutEffect(() => {
     const position = pendingViewport.current;
-    if (!position || !viewport.current) return;
-    viewport.current.scrollTo(position.x*scale,position.y*scale);
+    if (!position || !viewport.current || hidden) return;
+    const offset = getPatchScrollOffset(position,scale);
+    viewport.current.scrollTo(offset.x,offset.y);
     pendingViewport.current = null;
-  }, [positions, scale]);
+  }, [positions, scale, hidden]);
 
   function changeZoom(nextZoom: number) {
     const element = viewport.current;
     if (element) {
       const visible = getVisiblePatchViewport(element);
-      pendingViewport.current = getZoomedCanvasOrigin({x:element.scrollLeft,y:element.scrollTop},
+      pendingViewport.current = getZoomedCanvasOrigin(readPatchViewportOrigin(element,scale),
         {x:visible.x + visible.width/2,y:visible.y + visible.height/2},scale,nextZoom/100);
     }
     setZoom(nextZoom);
@@ -221,11 +222,12 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
 
   function saveCurrentPatch(name: string) {
     return savePatchPreset(name,{patch,layout:positions,
-      viewport:{x:(viewport.current?.scrollLeft ?? 0)/scale,y:(viewport.current?.scrollTop ?? 0)/scale}});
+      viewport:viewport.current ? readPatchViewportOrigin(viewport.current,scale) : {x:0,y:0}});
   }
 
   function loadPatch(example: boolean) {
     if (!apply(example ? createExamplePatch() : {version:1,modules:[],cables:[]})) return;
+    pendingViewport.current = {x:0,y:0};
     setPositions(example ? createExampleLayout() : {});
     setPending(null);
     setSelection(example ? {kind:'cable',id:'filter-control'} : null);
@@ -301,7 +303,11 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
           playing={playing} readAudibleElapsed={readAudibleElapsed} readLfoPhase={readLfoPhase} readControlValue={readControlValue} getWaveformAnalyser={getWaveformAnalyser} outputLevel={outputLevel}
           onPort={handlePort} canConnect={canConnect} onCableChange={updateCable}
           onSelect={item => {setSelection(item); setPending(null); setError('');}}
-          onMove={(id,position) => setPositions(previous => ({...previous,[id]:position}))}/>
+          onMove={(id,position) => setPositions(previous => {
+            const current = previous[id];
+            return current && (current.x !== position.x || current.y !== position.y)
+              ? {...previous,[id]:position} : previous;
+          })}/>
         <p className="patch-status" role={error ? 'alert' : 'status'}>{error || message}</p>
         {!hidden && <PatchInspector patch={patch} sampleRate={engine.current?.sampleRate} selection={selection} onModule={updateModule} onCopyDrone={copyDrone} onMapping={updateMapping} onRemove={remove}/>}
       </div>

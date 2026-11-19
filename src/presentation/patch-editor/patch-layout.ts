@@ -1,4 +1,4 @@
-import { getPatchPorts, MAXIMUM_NODE_POSITION } from '../../domain/patch';
+import { getPatchPorts, MAXIMUM_NODE_POSITION, MINIMUM_NODE_POSITION, PATCH_CANVAS_MINIMUM } from '../../domain/patch';
 import type { NodePosition, PatchModule } from '../../domain/patch';
 
 interface Size {readonly width: number; readonly height: number}
@@ -8,13 +8,13 @@ export const PATCH_NODE_WIDTH = 174;
 export const PATCH_NODE_TITLE_HEIGHT = 40;
 export const PATCH_PORT_HEIGHT = 32;
 const NODE_GAP = 12;
-const MINIMUM_NODE_X = 16;
-const MINIMUM_NODE_Y = 12;
+export const PATCH_CANVAS_WIDTH = MAXIMUM_NODE_POSITION + PATCH_NODE_WIDTH + 160 - PATCH_CANVAS_MINIMUM;
+export const PATCH_CANVAS_HEIGHT = MAXIMUM_NODE_POSITION + 240 - PATCH_CANVAS_MINIMUM;
 
 export function boundNodePosition(point: NodePosition): NodePosition {
   return {
-    x:Math.min(MAXIMUM_NODE_POSITION, Math.max(MINIMUM_NODE_X,point.x)),
-    y:Math.min(MAXIMUM_NODE_POSITION, Math.max(MINIMUM_NODE_Y,point.y))
+    x:Math.min(MAXIMUM_NODE_POSITION, Math.max(MINIMUM_NODE_POSITION,point.x)),
+    y:Math.min(MAXIMUM_NODE_POSITION, Math.max(MINIMUM_NODE_POSITION,point.y))
   };
 }
 
@@ -33,8 +33,8 @@ export function findVisibleNodePosition(view: Rectangle, size: Size, obstacles: 
     x:Math.round(view.x + (view.width - size.width) / 2),
     y:Math.round(view.y + (view.height - size.height) / 2)
   });
-  const left = Math.max(MINIMUM_NODE_X,view.x);
-  const top = Math.max(MINIMUM_NODE_Y,view.y);
+  const left = Math.max(MINIMUM_NODE_POSITION,view.x);
+  const top = Math.max(MINIMUM_NODE_POSITION,view.y);
   const right = Math.min(MAXIMUM_NODE_POSITION,view.x + view.width - size.width);
   const bottom = Math.min(MAXIMUM_NODE_POSITION,view.y + view.height - size.height);
   const columns = new Set([center.x, left, right]);
@@ -78,20 +78,39 @@ export function getVisiblePatchViewport(viewport: HTMLDivElement): Rectangle {
   };
 }
 
-export function getZoomedCanvasOrigin(scroll: NodePosition, anchor: NodePosition, scale: number, nextScale: number): NodePosition {
+export function readPatchViewportOrigin(viewport: HTMLDivElement, scale: number): NodePosition {
+  return {x:PATCH_CANVAS_MINIMUM + viewport.scrollLeft/scale,y:PATCH_CANVAS_MINIMUM + viewport.scrollTop/scale};
+}
+
+export function getPatchScrollOffset(origin: NodePosition, scale: number): NodePosition {
+  return {x:(origin.x-PATCH_CANVAS_MINIMUM)*scale,y:(origin.y-PATCH_CANVAS_MINIMUM)*scale};
+}
+
+export function getZoomedCanvasOrigin(origin: NodePosition, anchor: NodePosition, scale: number, nextScale: number): NodePosition {
   return {
-    x:Math.max(0,(scroll.x+anchor.x)/scale-anchor.x/nextScale),
-    y:Math.max(0,(scroll.y+anchor.y)/scale-anchor.y/nextScale)
+    x:Math.max(PATCH_CANVAS_MINIMUM,origin.x + anchor.x/scale - anchor.x/nextScale),
+    y:Math.max(PATCH_CANVAS_MINIMUM,origin.y + anchor.y/scale - anchor.y/nextScale)
   };
+}
+
+export function getEdgeScrollSpeed(position: number, start: number, size: number): number {
+  if (size <= 0) return 0;
+  const edge = Math.min(48,size/2);
+  const fromStart = position - start;
+  const fromEnd = start + size - position;
+  if (fromStart < edge) return -900 * (1 - Math.max(0,fromStart)/edge);
+  if (fromEnd < edge) return 900 * (1 - Math.max(0,fromEnd)/edge);
+  return 0;
 }
 
 export function placeNewPatchNode(viewport: HTMLDivElement, module: PatchModule, scale = 1): NodePosition {
   const visible = getVisiblePatchViewport(viewport);
+  const origin = readPatchViewportOrigin(viewport,scale);
   const view = {
-    x:(viewport.scrollLeft + visible.x)/scale, y:(viewport.scrollTop + visible.y)/scale,
+    x:origin.x + visible.x/scale,y:origin.y + visible.y/scale,
     width:visible.width/scale,height:visible.height/scale
   };
   const obstacles = Array.from(viewport.querySelectorAll<HTMLElement>('.patch-node'), node =>
-    ({x:node.offsetLeft,y:node.offsetTop,width:node.offsetWidth,height:node.offsetHeight}));
+    ({x:PATCH_CANVAS_MINIMUM + node.offsetLeft,y:PATCH_CANVAS_MINIMUM + node.offsetTop,width:node.offsetWidth,height:node.offsetHeight}));
   return findVisibleNodePosition(view,getNewNodeSize(module),obstacles);
 }

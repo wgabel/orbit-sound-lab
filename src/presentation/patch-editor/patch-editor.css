@@ -29,7 +29,7 @@
 .patch-legend span::before {content:"";display:inline-block;width:17px;margin:0 5px 3px 0;border-top:2px solid var(--patch-audio)}
 .patch-legend span+span::before {border-color:var(--patch-control);border-top-style:dashed}
 .patch-viewport {
-  max-height:540px;overflow:auto;overscroll-behavior:contain;border:1px solid var(--patch-line);
+  height:440px;overflow:auto;overflow-anchor:none;overscroll-behavior:contain;border:1px solid var(--patch-line);
   border-radius:9px;background:#141a24 radial-gradient(#394757 1px,transparent 1px) 0 0/18px 18px;
 }
 .patch-stage {position:relative;overflow:clip}
@@ -132,7 +132,7 @@
   grid-template-columns:minmax(0,1fr) minmax(260px,320px);
   grid-template-rows:minmax(120px,1fr) auto;
 }
-.patch-editor[data-expanded=true] .patch-viewport {max-height:none}
+.patch-editor[data-expanded=true] .patch-viewport {height:auto}
 .patch-editor[data-expanded=true] .patch-inspector {grid-column:2;grid-row:1 / span 2;min-height:0;overflow:auto}
 .patch-editor[data-expanded=true] .patch-presets[open] {max-height:28dvh;overflow:auto;flex:none}
 @media(max-width:720px) {
