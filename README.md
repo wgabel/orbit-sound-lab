@@ -71,7 +71,7 @@ Select **Drone A** or **Drone B** to edit its oscillator rack. Each row has its 
 
 The **Performance** section has the XY pad and both layers’ **Hold to Play** keys. Hold it with the mouse, a finger, or Space/Enter while focused. Drag up or down while holding to bend all five oscillators by up to one semitone from their current tuning. Releasing the key fades the layer out at its own **Release** setting. Both keys can be held with separate fingers.
 
-Pressing a key activates **Key Mode** for that layer. Turn **Key Mode** off to return to continuous playback controls. Each layer’s attack, decay, sustain and release are saved with its sound preset.
+Pressing a key activates **Key Mode** for that layer. Turn **Key Mode** off to return to continuous playback controls. Each layer’s attack, decay, sustain, release and Key Level are saved with its sound preset. **Key Level** affects the key and its release tail. Continuous playback and patch nodes use the saved drone mix level. In a patch drone’s editor, **Patch Drone Level** adjusts that mix level separately.
 
 Use **Route** next to Frequency, Volume, or Cutoff to pick a source oscillator in the same drone. **Waveform** applies the source waveform before its own filter and volume. Turn down the source volume to hear only the effect on the target, or switch the source oscillator off to stop its modulation. **Level and Amplitude LFO** follows the slower level signal and is the mode used by routes in older presets. Depth is in Hz for Frequency and Cutoff and percentage points for Volume. The active button shows which oscillator feeds the route.
 

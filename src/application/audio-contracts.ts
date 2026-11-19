@@ -41,6 +41,7 @@ export interface SoundLabVoiceController {
   stop(): Promise<void>;
   setLayersEnabled(enabled: Readonly<Record<DroneLayerId, boolean>>): Promise<void>;
   setLayerHoldMode(id: DroneLayerId, enabled: boolean): Promise<void>;
+  setLayerLevels(id: DroneLayerId, settings: Pick<DroneSettings,'gain' | 'keyGain'>): void;
   setLayerEnvelope(id: DroneLayerId, envelope: DroneEnvelope): void;
   pressLayerKey(id: DroneLayerId): Promise<void>;
   releaseLayerKey(id: DroneLayerId): void;

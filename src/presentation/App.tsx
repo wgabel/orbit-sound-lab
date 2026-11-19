@@ -21,7 +21,7 @@ import type { DelaySettings } from '../domain/delay';
 import type { SoundLabController } from '../application/audio-contracts';
 import { applyPitchOffset } from '../domain/modulation';
 import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
-import { DEFAULT_OSCILLATOR_SHAPE, supportsOscillatorShape } from '../domain/drone';
+import { DEFAULT_OSCILLATOR_SHAPE, MAX_DRONE_KEY_GAIN, readDroneKeyGain, supportsOscillatorShape } from '../domain/drone';
 import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../domain/drone';
 import { DRONE_LAYER_IDS, createDefaultDroneLayer } from '../domain/drone-layers';
 import type { DroneLayer, DroneLayerId } from '../domain/drone-layers';
@@ -113,6 +113,7 @@ export function App() {
     if (!engine) return;
     engine.setOscillatorModulations(layer.drone.oscillatorModulations ?? []);
     applyInitialSynthesizerSettings(engine, tuneSceneLayer(layer), layer.modulation);
+    controller.current?.setLayerLevels(id, layer.drone);
     controller.current?.setLayerEnvelope(id, layer.drone.envelope);
   }
   function applyLayersEnabled(next: Record<DroneLayerId, DroneLayer>) {
@@ -500,9 +501,15 @@ export function App() {
       updateActiveLayer(layer => ({...layer, drone: {...layer.drone, mix}}));
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Cannot update drone mix.'); }
   }
-  function updateLayerGain(id: DroneLayerId, gain: number) {
-    controller.current?.layers[id].setGain(gain);
-    updateLayer(id,layer => ({...layer,drone:{...layer.drone,gain}}));
+  function updateLayerKeyGain(id: DroneLayerId, keyGain: number) {
+    const gain = layers[id].drone.gain;
+    controller.current?.setLayerLevels(id,{gain,keyGain});
+    updateLayer(id,layer => ({...layer,drone:{...layer.drone,keyGain}}));
+  }
+  function updatePatchDroneGain(id: DroneLayerId, gain: number) {
+    const keyGain = readDroneKeyGain(layers[id].drone);
+    controller.current?.setLayerLevels(id,{gain,keyGain});
+    updateLayer(id,layer => ({...layer,drone:{...layer.drone,gain,keyGain}}));
   }
   function openPatchDrone(module: PatchDrone, applyEdits: PatchDroneEdit['applyEdits']) {
     controller.current?.dispose();
@@ -666,9 +673,11 @@ export function App() {
       <div className="drone-layers">
         {(patchDroneEdit ? [activeLayer] : DRONE_LAYER_IDS).map(id => <div key={id} className="drone-layer" data-layer={id}>
             <h3>{patchDroneEdit ? 'Patch drone' : `Drone ${id}`}</h3>
-            <NumericSlider label={patchDroneEdit ? 'DRONE LEVEL' : `DRONE ${id} LEVEL`} unit="%" displayFactor={100}
-              min={0} max={patchDroneEdit ? 1 : 0.4} step={0.01}
-              value={layers[id].drone.gain} onChange={gain => updateLayerGain(id, gain)}/>
+            {patchDroneEdit && <NumericSlider label="PATCH DRONE LEVEL" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+              value={layers[id].drone.gain} onChange={gain => updatePatchDroneGain(id, gain)}/>}
+            <NumericSlider label={patchDroneEdit ? 'KEY LEVEL' : `DRONE ${id} KEY LEVEL`} unit="%" displayFactor={100}
+              min={0} max={MAX_DRONE_KEY_GAIN} step={0.01}
+              value={readDroneKeyGain(layers[id].drone)} onChange={gain => updateLayerKeyGain(id, gain)}/>
             <label className="switch drone-key-mode">
               <input type="checkbox" aria-label={`Key mode for Drone ${id}`} checked={holdModes[id]}
                 onChange={event => updateHoldMode(id, event.target.checked)}/> KEY MODE
