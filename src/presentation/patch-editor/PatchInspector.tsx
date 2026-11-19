@@ -1,7 +1,9 @@
 import { OSCILLATOR_WAVEFORMS, supportsOscillatorShape } from '../../domain/drone';
 import type { OscillatorWaveform } from '../../domain/drone';
-import { getPatchPort, MODULE_LABELS } from '../../domain/patch';
-import type { CableMapping, Patch, PatchCable, PatchModule } from '../../domain/patch';
+import { DRONE_LAYER_IDS } from '../../domain/drone-layers';
+import type { DroneLayerId } from '../../domain/drone-layers';
+import { getPatchPort, getPatchModuleLabel } from '../../domain/patch';
+import type { CableMapping, Patch, PatchCable, PatchDrone, PatchModule } from '../../domain/patch';
 import type { PatchAutomation } from '../../domain/patch-automation';
 import type { PatchSelection } from './PatchCanvas';
 import { NumericSlider } from '../NumericSlider';
@@ -9,6 +11,7 @@ import { NumericSlider } from '../NumericSlider';
 interface InspectorProps {
   readonly patch: Patch;
   readonly selection: PatchSelection | null;
+  onCopyDrone(module: PatchDrone, layerId: DroneLayerId): void;
   onModule(module: PatchModule): void;
   onMapping(id: string, mapping: CableMapping): void;
   onRemove(selection: PatchSelection): void;
@@ -95,17 +98,21 @@ function CableSettings({patch, cable, onChange}: {patch: Patch; cable: PatchCabl
   </div>;
 }
 
-export function PatchInspector({patch, selection, onModule, onMapping, onRemove}: InspectorProps) {
+export function PatchInspector({patch, selection, onModule, onCopyDrone, onMapping, onRemove}: InspectorProps) {
   const module = selection?.kind === 'module' ? patch.modules.find(item => item.id === selection.id) : undefined;
   const cable = selection?.kind === 'cable' ? patch.cables.find(item => item.id === selection.id) : undefined;
   const destination = cable && getPatchPort(patch,cable.destination);
   return <section className="patch-inspector" aria-label="Patch inspector">
     <div className="patch-inspector-header">
-      <h2>{module ? MODULE_LABELS[module.kind] : destination ? `Cable to ${destination.label}` : 'Patch inspector'}</h2>
+      <h2>{module ? getPatchModuleLabel(module) : destination ? `Cable to ${destination.label}` : 'Patch inspector'}</h2>
       {selection && (module || cable) && <button type="button" onClick={() => onRemove(selection)}>
         {cable ? 'Disconnect cable' : 'Remove module'}</button>}
     </div>
     {module && <ModuleSettings module={module} onChange={onModule}/>}
+    {module?.kind === 'drone' && <div className="patch-actions patch-drone-copy">
+      {DRONE_LAYER_IDS.map(layerId => <button key={layerId} type="button" onClick={() => onCopyDrone(module,layerId)}>
+        Copy Drone {layerId}</button>)}
+    </div>}
     {cable && <CableSettings patch={patch} cable={cable} onChange={mapping => onMapping(cable.id,mapping)}/>}
     {!module && !cable && <p>Select a module or cable to edit its settings.</p>}
   </section>;

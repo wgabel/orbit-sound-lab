@@ -461,7 +461,7 @@ export function App() {
     setLayers(previous => ({...previous, [id]: {...previous[id], drone: {...previous[id].drone, gain}}}));
   }
   return <>
-    <PatchEditor hidden={!showPatchEditor} onClose={() => setShowPatchEditor(false)} createPlayback={createPatchPlayback}/>
+    <PatchEditor hidden={!showPatchEditor} droneLayers={layers} onClose={() => setShowPatchEditor(false)} createPlayback={createPatchPlayback}/>
     <main className="instrument" hidden={showPatchEditor}>
     <section className="master" aria-label="Playback">
       <h1>Orbit <span>Sound Lab</span></h1>

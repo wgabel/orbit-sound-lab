@@ -1,11 +1,18 @@
 import { createDefaultDroneSettings, OSCILLATOR_WAVEFORMS, supportsOscillatorShape, validateDroneSettings } from './drone';
 import type { DroneSettings, OscillatorWaveform } from './drone';
+import type { DroneLayer, DroneLayerId } from './drone-layers';
+import type { LowFrequencyOscillatorSettings } from './modulation';
+import { tuneSceneLayer } from './sound-scene';
 import { validateAutomation } from './patch-automation';
 import type { PatchAutomation } from './patch-automation';
 
 export interface PatchModuleSettings {
   wave: {readonly waveform: OscillatorWaveform; readonly frequency: number; readonly shape: number};
-  drone: {readonly voice: DroneSettings};
+  drone: {
+    readonly voice: DroneSettings;
+    readonly modulation?: readonly LowFrequencyOscillatorSettings[];
+    readonly copiedFrom?: DroneLayerId;
+  };
   automation: PatchAutomation;
   filter: {readonly cutoff: number; readonly resonance: number};
   gain: {readonly level: number};
@@ -17,6 +24,14 @@ export type PatchModuleKind = keyof PatchModuleSettings;
 export type PatchModule = {
   [Kind in PatchModuleKind]: {readonly id: string; readonly kind: Kind; readonly settings: PatchModuleSettings[Kind]}
 }[PatchModuleKind];
+
+export type PatchDrone = Extract<PatchModule, {kind: 'drone'}>;
+
+export function copyDroneLayerToPatch(module: PatchDrone, layerId: DroneLayerId, layer: DroneLayer): PatchDrone {
+  return {...module, settings:structuredClone({
+    voice:tuneSceneLayer(layer), modulation:layer.modulation, copiedFrom:layerId
+  })};
+}
 
 export interface PatchEndpoint { readonly moduleId: string; readonly portId: string; }
 export interface CableMapping { readonly from: number; readonly to: number; }
@@ -49,6 +64,11 @@ export const MODULE_LABELS: Readonly<Record<PatchModuleKind, string>> = {
   wave: 'Wave', drone: 'Drone', automation: 'Automation', filter: 'Low-pass filter', gain: 'Gain',
   mixer: 'Mixer', output: 'Output'
 };
+
+export function getPatchModuleLabel(module: PatchModule): string {
+  return module.kind === 'drone' && module.settings.copiedFrom
+    ? `Drone ${module.settings.copiedFrom}` : MODULE_LABELS[module.kind];
+}
 
 const audioInput: PatchPort = {id:'in', label:'Audio in', direction:'input', signal:'audio'};
 const audioOutput: PatchPort = {id:'out', label:'Audio out', direction:'output', signal:'audio'};

@@ -2,7 +2,12 @@ import { createDefaultDroneSettings } from '../../domain/drone';
 import type { PatchModule } from '../../domain/patch';
 import { readAutomationValue } from '../../domain/patch-automation';
 import type { PatchAutomation } from '../../domain/patch-automation';
-import { WebAudioDrone } from './web-audio-drone';
+import { DroneController } from '../../application/drone-controller';
+import { createDefaultLowFrequencyOscillators } from '../../domain/modulation';
+import { WebAudioDroneFactory } from './web-audio-drone-factory';
+import { WebAudioGraph } from './web-audio-graph';
+import type { WebAudioLowFrequencyOscillatorFactory } from './web-audio-low-frequency-oscillator';
+import { WebAudioModulationMatrix } from './web-audio-modulation-matrix';
 import type { WebAudioPulseWorkletFactory } from './web-audio-pulse-worklet';
 import { WebAudioWaveformSource } from './web-audio-waveform-source';
 
@@ -47,7 +52,7 @@ const defaultWave = createDefaultDroneSettings().oscillators[0];
 
 export function createPatchRuntimeModule(
   context: AudioContext, definition: PatchModule, pulse: WebAudioPulseWorkletFactory,
-  master: AudioNode, origin: number
+  modulationFactory: WebAudioLowFrequencyOscillatorFactory, master: AudioNode, origin: number
 ): PatchRuntimeModule {
   switch (definition.kind) {
     case 'wave': {
@@ -64,9 +69,22 @@ export function createPatchRuntimeModule(
       }, dispose() {voice.dispose(); level.disconnect();}};
     }
     case 'drone': {
-      const voice = new WebAudioDrone(context, definition.settings.voice, pulse);
-      voice.start();
-      return {definition, output:voice.output, dispose:() => voice.dispose()};
+      const {voice, modulation} = definition.settings;
+      const output = context.createGain();
+      const graph = new WebAudioGraph();
+      graph.register({id:'output',inputs:[{id:'audio',node:output}],outputs:[]});
+      const controller = new DroneController(context, new WebAudioDroneFactory(context,pulse), graph,
+        new WebAudioModulationMatrix(), modulationFactory, voice,
+        modulation ?? createDefaultLowFrequencyOscillators(voice.oscillators.map(oscillator => oscillator.id)),
+        'drone', {moduleId:'output',portId:'audio'});
+      const dispose = () => {controller.dispose(); graph.dispose(); output.disconnect();};
+      try {
+        controller.startPreparedVoice();
+      } catch (error) {
+        dispose();
+        throw error;
+      }
+      return {definition, output, dispose};
     }
     case 'automation': {
       const source = createAutomationSignal(context, definition.settings, origin);

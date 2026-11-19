@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { PointerEvent, Ref } from 'react';
-import { getPatchPorts, MODULE_LABELS, sameEndpoint } from '../../domain/patch';
+import { getPatchModuleLabel, getPatchPorts, sameEndpoint } from '../../domain/patch';
 import type { Patch, PatchEndpoint, PatchModule, PatchPort } from '../../domain/patch';
 import { readAutomationPhase, readAutomationValue } from '../../domain/patch-automation';
 import type { PatchAutomation } from '../../domain/patch-automation';
@@ -119,7 +119,7 @@ export function PatchCanvas({patch, positions, selection, pending, playing, read
             <path d={path} data-signal={cable.mapping ? 'control' : 'audio'} className="patch-wire"
               data-selected={selection?.kind === 'cable' && selection.id === cable.id}/>
             <path d={path} className="patch-wire-hit" role="button" tabIndex={0}
-              aria-label={`${MODULE_LABELS[sourceModule.kind]} to ${MODULE_LABELS[destinationModule.kind]} ${input?.label}`}
+              aria-label={`${getPatchModuleLabel(sourceModule)} to ${getPatchModuleLabel(destinationModule)} ${input?.label}`}
               onClick={select} onKeyDown={event => {
                 if (event.key !== 'Enter' && event.key !== ' ') return;
                 event.preventDefault();
@@ -132,18 +132,18 @@ export function PatchCanvas({patch, positions, selection, pending, playing, read
         const position = positions[module.id];
         if (!position) return null;
         const highlighted = selection?.kind === 'module' && selection.id === module.id;
-        return <article key={module.id} aria-label={MODULE_LABELS[module.kind]} className="patch-node"
+        return <article key={module.id} aria-label={getPatchModuleLabel(module)} className="patch-node"
           data-selected={highlighted} style={{left:position.x,top:position.y,width:PATCH_NODE_WIDTH}}>
           <button className="patch-node-title" type="button"
             onClick={() => onSelect({kind:'module',id:module.id})}
             onPointerDown={event => beginDrag(event,module.id,position)}
             onPointerMove={moveDrag}
-            onLostPointerCapture={() => {drag.current = null;}}>{MODULE_LABELS[module.kind]}</button>
+            onLostPointerCapture={() => {drag.current = null;}}>{getPatchModuleLabel(module)}</button>
           <div className="patch-port-columns">
             {(['input','output'] as const).map(direction => <div key={direction} className={`patch-port-column ${direction}`}>
               {portsOnSide(module,direction).map(port => {
                 const endpoint = {moduleId:module.id,portId:port.id};
-                const label = `${MODULE_LABELS[module.kind]} ${port.label}${port.signal === 'control' ? ` ${port.direction}` : ''}`;
+                const label = `${getPatchModuleLabel(module)} ${port.label}${port.signal === 'control' ? ` ${port.direction}` : ''}`;
                 return <div className="patch-port-row" key={port.id} data-signal={port.signal}>
                   <button className="patch-port" type="button" aria-label={label} title={label}
                     data-pending={Boolean(pending && sameEndpoint(pending,endpoint))}

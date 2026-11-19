@@ -1,7 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { connectPatchPorts, createExamplePatch, createPatchModule, validatePatch } from './patch';
+import { connectPatchPorts, copyDroneLayerToPatch, createExamplePatch, createPatchModule, getPatchModuleLabel, validatePatch } from './patch';
 import type { Patch } from './patch';
 import { readAutomationPhase, readAutomationValue } from './patch-automation';
+import { createDefaultDroneLayer } from './drone-layers';
+
+describe('copied drone nodes', () => {
+  it('captures tuned settings and LFOs independently of the source layer and keeps its cable endpoint', () => {
+    const original = createDefaultDroneLayer('B');
+    const source = {...original, harmony:{...original.harmony, mode:'natural' as const, rootFrequencyHz:125},
+      modulation:original.modulation.map((settings,index) => index === 0 ? {...settings, enabled:true} : settings)};
+    const node = createPatchModule('drone','existing');
+    if (node.kind !== 'drone') throw new Error('Expected a Drone node.');
+    const snapshot = copyDroneLayerToPatch(node,'B',source);
+    expect(snapshot.id).toBe(node.id);
+    expect(getPatchModuleLabel(snapshot)).toBe('Drone B');
+    expect(snapshot.settings.voice.oscillators[0].frequencyHz).toBe(250);
+    expect(source.drone.oscillators[0].frequencyHz).toBe(220);
+    expect(snapshot.settings.voice.mix).toEqual(source.drone.mix);
+    expect(snapshot.settings.voice.mix).not.toBe(source.drone.mix);
+    expect(snapshot.settings.modulation).toEqual(source.modulation);
+    expect(snapshot.settings.modulation?.[0]).not.toBe(source.modulation[0]);
+    expect(snapshot.settings).not.toHaveProperty('enabled');
+    const output = createPatchModule('output','output');
+    const connected = connectPatchPorts({version:1, modules:[node,output], cables:[]},'cable',
+      {moduleId:node.id,portId:'out'},{moduleId:output.id,portId:'in'});
+    expect(() => validatePatch({...connected,modules:[snapshot,output]})).not.toThrow();
+  });
+});
 
 describe('patch routing', () => {
   it('uses one automation output for two independent destinations', () => {
