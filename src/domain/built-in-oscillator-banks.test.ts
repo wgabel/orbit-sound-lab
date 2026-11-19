@@ -7,7 +7,7 @@ describe('built-in oscillator banks', () => {
   const layer = createDefaultDroneLayer('B');
 
   it('loads five playable oscillators and valid modulation into the destination slots', () => {
-    expect(builtInOscillatorBanks).toHaveLength(26);
+    expect(builtInOscillatorBanks).toHaveLength(29);
     const frequencySets = new Set<string>();
     for (const {id} of builtInOscillatorBanks) {
       const loaded = loadBuiltInOscillatorBank(id, layer);
@@ -18,11 +18,20 @@ describe('built-in oscillator banks', () => {
       expect(loaded.modulation).toHaveLength(20);
       frequencySets.add(oscillators.map(oscillator => oscillator.frequencyHz).join(','));
     }
-    expect(frequencySets.size).toBe(26);
+    expect(frequencySets.size).toBe(29);
+  });
+
+  it('provides playable keyboard chord voicings with the expected notes', () => {
+    const keyboardChords = oscillatorBankGroups.find(group => group.label === 'Keyboard Chords')?.presets ?? [];
+    expect(keyboardChords.map(preset => preset.id)).toEqual([
+      'keyboard-c-major', 'keyboard-a-minor', 'keyboard-c-major-seven'
+    ]);
+    expect(loadBuiltInOscillatorBank('keyboard-c-major', layer).drone.oscillators
+      .map(oscillator => oscillator.frequencyHz)).toEqual([130.8128,164.8138,195.9977,261.6256,391.9954]);
   });
 
   it('groups the five advanced routing banks and loads their routes into either drone', () => {
-    expect(oscillatorBankGroups.map(group => group.label)).toEqual(['Drone Foundations', 'Cross-Modulation', 'Routing Example', 'Stepped Drones', 'Grungy', 'Wet']);
+    expect(oscillatorBankGroups.map(group => group.label)).toEqual(['Drone Foundations', 'Keyboard Chords', 'Cross-Modulation', 'Routing Example', 'Stepped Drones', 'Grungy', 'Wet']);
     const examples = oscillatorBankGroups.find(group => group.label === 'Routing Example')?.presets ?? [];
     expect(examples.map(preset => preset.id)).toEqual(['ion-choir', 'relay-bells', 'split-pulse', 'reed-reactor', 'prism-gate']);
     for (const layerId of ['A', 'B'] as const) {
