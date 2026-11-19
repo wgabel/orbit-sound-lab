@@ -3,6 +3,7 @@ import type { OscillatorWaveform } from '../../domain/drone';
 import { getPatchPort, MODULE_LABELS } from '../../domain/patch';
 import type { CableMapping, Patch, PatchCable, PatchModule } from '../../domain/patch';
 import type { PatchAutomation } from '../../domain/patch-automation';
+import { applyHarmonicsPreset, HARMONICS_GROUPS, readHarmonicsPresetId } from '../../domain/patch-harmonics';
 import type { PatchSelection } from './PatchCanvas';
 import { NumericSlider } from '../NumericSlider';
 
@@ -15,6 +16,7 @@ interface InspectorProps {
 }
 
 function AutomationSettings({settings, onChange}: {settings: PatchAutomation; onChange(settings: PatchAutomation): void}) {
+  const harmonics = readHarmonicsPresetId(settings);
   function updatePoint(index: number, value: number) {
     const points = settings.points.map((point, pointIndex) => pointIndex === index ? {...point,value} : point);
     if (settings.shape === 'steps' && index === points.length - 2) {
@@ -29,6 +31,13 @@ function AutomationSettings({settings, onChange}: {settings: PatchAutomation; on
         <option value="steps">Steps</option><option value="curve">Curve</option>
         <option value="sine">Sine LFO</option><option value="square">Square LFO</option>
       </select></label>
+      <label>Harmonics<select value={harmonics} onChange={event =>
+        onChange(applyHarmonicsPreset(settings,event.target.value))}>
+        <option value="" disabled>Choose a preset</option>
+        {HARMONICS_GROUPS.map(group => <optgroup key={group.label} label={group.label}>
+          {group.presets.map(preset => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
+        </optgroup>)}
+      </select></label>
       <label>Playback<select value={settings.mode} onChange={event =>
         onChange({...settings,mode:event.target.value as PatchAutomation['mode']})}>
         <option value="loop">Loop</option><option value="once">Play once, hold end</option>
@@ -38,6 +47,7 @@ function AutomationSettings({settings, onChange}: {settings: PatchAutomation; on
       {settings.shape === 'steps' && <NumericSlider label="Glide" unit="%" displayFactor={100} min={0} max={1} step={0.01}
         value={settings.glide} onChange={glide => onChange({...settings,glide})}/>}
     </div>
+    {harmonics && <p>For tuned pitches, map a cable to Wave Frequency across one octave, such as 110–220 Hz.</p>}
     {(settings.shape === 'steps' || settings.shape === 'curve') && <div className="patch-fields patch-points">
       {settings.points.slice(0, settings.shape === 'steps' ? -1 : undefined).map((point,index) =>
         <NumericSlider key={point.position} label={`${settings.shape === 'steps' ? 'Step' : 'Point'} ${index+1} · ${+(point.position * settings.duration).toFixed(2)} s`}
