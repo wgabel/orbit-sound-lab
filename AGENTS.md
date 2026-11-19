@@ -40,6 +40,8 @@ SOLAR 42F and 42N change oscillator, LFO/pulser, filter, distortion, and effects
 
 For the node editor, unified automation, and transition from the current engine, follow [AGENTS-NODE-EDITOR.md](AGENTS-NODE-EDITOR.md).
 
+For musical form, composition, and arrangement design, read [AGENTS-MUSIC-THEORY.md](AGENTS-MUSIC-THEORY.md).
+
 ## Technical direction
 - Browser application: TypeScript + React + Vite.
 - Sound engine: Web Audio API, isolated from React rendering. Prefer AudioWorklet for custom oscillators, nonlinear filters or DSP that built-in nodes cannot model well.
