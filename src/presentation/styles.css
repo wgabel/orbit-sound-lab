@@ -192,6 +192,9 @@ body{margin:0;background:#0c1016;color:#e8e9df;font-family:system-ui,sans-serif}
 .drone-mix{margin:24px 0;padding:16px;border:1px solid #35414c;border-radius:12px;background:#172029}
 .drone-mix h2{margin:0 0 12px;color:#a6efab;font-size:12px;letter-spacing:.12em}
 .drone-mix-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:16px}
+.drone-shelf-controls{margin-top:16px;padding-top:14px;border-top:1px solid #35414c}
+.drone-shelf-controls h3{margin:0 0 10px;color:#a6efab;font-size:12px}
+.drone-shelf-controls .numeric-slider+.numeric-slider{margin-top:10px}
 .drone-mix-controls .switch{margin-bottom:7px}
 .drone-mix-controls input[type=range]{margin:8px 0 0}
 

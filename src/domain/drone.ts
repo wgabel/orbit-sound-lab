@@ -30,10 +30,21 @@ export interface OscillatorSettings {
   readonly filter: LowPassFilterSettings;
 }
 export interface DroneReverbSettings {readonly enabled: boolean; readonly mix: number}
+export const MAX_SHELF_GAIN_DECIBELS = 12;
+export const MIN_SHELF_FREQUENCY_HZ = 20;
+export const MAX_SHELF_FREQUENCY_HZ = 20000;
+
+export interface DroneShelfSettings {
+  readonly frequencyHz: number;
+  readonly gainDecibels: number;
+}
+
 export interface DroneMixSettings {
   readonly noise: {readonly enabled: boolean; readonly volume: number};
   readonly filter: {readonly enabled: boolean; readonly cutoffHz: number};
   readonly reverb: DroneReverbSettings;
+  readonly lowShelf: DroneShelfSettings;
+  readonly highShelf: DroneShelfSettings;
 }
 export interface DroneSettings {
   readonly id: string;
@@ -48,7 +59,9 @@ export function createDefaultDroneMix(): DroneMixSettings {
   return {
     noise: {enabled: false, volume: 0.2},
     filter: {enabled: false, cutoffHz: 2400},
-    reverb: {enabled: false, mix: 0.25}
+    reverb: {enabled: false, mix: 0.25},
+    lowShelf: {frequencyHz: 150, gainDecibels: 0},
+    highShelf: {frequencyHz: 2400, gainDecibels: 0}
   };
 }
 export function createDefaultDroneSettings(): DroneSettings {
@@ -61,10 +74,21 @@ export function createDefaultDroneSettings(): DroneSettings {
 function validateCutoffFrequency(cutoffHz: number): void {
   if (!Number.isFinite(cutoffHz) || cutoffHz < 20 || cutoffHz > 20000) throw new Error('Filter cutoff must be between 20 and 20000 Hz.');
 }
+function validateDroneShelf(settings: DroneShelfSettings): void {
+  if (!settings || !Number.isFinite(settings.frequencyHz) ||
+      settings.frequencyHz < MIN_SHELF_FREQUENCY_HZ || settings.frequencyHz > MAX_SHELF_FREQUENCY_HZ) {
+    throw new Error('Shelf frequency must be between 20 and 20000 Hz.');
+  }
+  if (!Number.isFinite(settings.gainDecibels) || Math.abs(settings.gainDecibels) > MAX_SHELF_GAIN_DECIBELS) {
+    throw new Error('Shelf gain must be between -12 and +12 dB.');
+  }
+}
 export function validateDroneMix(settings: DroneMixSettings): void {
   if (typeof settings?.noise?.enabled !== 'boolean' || typeof settings?.filter?.enabled !== 'boolean') throw new Error('Invalid drone mix.');
   if (!Number.isFinite(settings.noise.volume) || settings.noise.volume < 0 || settings.noise.volume > 1) throw new Error('Noise level must be between 0 and 1.');
   validateCutoffFrequency(settings.filter.cutoffHz);
+  validateDroneShelf(settings.lowShelf);
+  validateDroneShelf(settings.highShelf);
   if (typeof settings.reverb?.enabled !== 'boolean' || !Number.isFinite(settings.reverb.mix) || settings.reverb.mix < 0 || settings.reverb.mix > 1) {
     throw new Error('Reverb mix must be between 0 and 1.');
   }

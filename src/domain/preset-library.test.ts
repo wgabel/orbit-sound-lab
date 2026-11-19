@@ -74,7 +74,7 @@ describe('preset schema', () => {
     expect(loadPresetSound(normalized, createDefaultDroneLayer('A'))).toEqual({...secondLayer, enabled: true});
     expect(() => validatePreset({...preset, sourceLayer: 'C'})).toThrow('Invalid preset source layer');
   });
-  it('defaults legacy mix fields and preserves noise, filter and reverb in both layers', () => {
+  it('defaults legacy mix fields and preserves noise, filters, and reverb in both layers', () => {
     const preset = createPreset('Layer texture', drone, modulation, delay);
     const {mix: _firstMix, ...legacyDrone} = drone;
     const {mix: _secondMix, ...legacySecondDrone} = preset.layerMix.secondLayer.drone;
@@ -85,13 +85,19 @@ describe('preset schema', () => {
 
     const legacyMix = {noise: {enabled: true, volume: 0.37}, filter: {enabled: true, cutoffHz: 840}};
     expect(validatePreset({...preset, drone: {...drone, mix: legacyMix}}).drone.mix)
-      .toEqual({...legacyMix, reverb: createDefaultDroneMix().reverb});
-    const mix = {...legacyMix, reverb: {enabled: true, mix: 0.41}};
+      .toEqual({...createDefaultDroneMix(), ...legacyMix});
+    const mix = {...legacyMix, reverb: {enabled: true, mix: 0.41},
+      lowShelf: {frequencyHz: 160, gainDecibels: 3}, highShelf: {frequencyHz: 1800, gainDecibels: -5}};
+    const secondMix = {...mix, highShelf: {frequencyHz: 3200, gainDecibels: -1}};
     const withNoise = {...preset, drone: {...drone, mix}, layerMix: {...preset.layerMix,
-      secondLayer: {...preset.layerMix.secondLayer, drone: {...legacySecondDrone, mix}}}};
+      secondLayer: {...preset.layerMix.secondLayer, drone: {...legacySecondDrone, mix: secondMix}}}};
     const roundTrip = validatePreset(JSON.parse(JSON.stringify(withNoise)));
     expect(roundTrip.drone.mix).toEqual(mix);
-    expect(roundTrip.layerMix.secondLayer.drone.mix).toEqual(mix);
+    expect(roundTrip.layerMix.secondLayer.drone.mix).toEqual(secondMix);
+    expect(() => validatePreset({...withNoise, drone: {...drone, mix: {...mix,
+      lowShelf: {...mix.lowShelf, gainDecibels: 12.5}}}})).toThrow('Shelf gain');
+    expect(() => validatePreset({...withNoise, drone: {...drone, mix: {...mix,
+      highShelf: {...mix.highShelf, frequencyHz: 0}}}})).toThrow('Shelf frequency');
   });
   it('defaults missing envelopes and round-trips each layer envelope independently', () => {
     const preset = createPreset('Keys', drone, modulation, delay);

@@ -78,6 +78,10 @@ Choose **Sine ↔ Triangle** under **Frequency & Waveform** to reveal **Shape**.
 
 Expand **Shape LFO** to automate the blend independently of the other LFOs. Depth is in percentage points, so a base Shape of 35% and a depth of 20 pp give a 15–55% sweep. The sweep is bounded by 0% and 100%. The live readout shows the actual blend during playback. Presets and oscillator copy/paste retain the Shape and its LFO settings.
 
+## Drone shelf EQ
+
+Each **Drone Mix** has a **Low shelf** and **High shelf**. Frequency sets the center of the shelf’s transition, and Gain sets how much to boost or cut in dB. Try +3 dB at 150 Hz on the low shelf for more body, or −4 dB at 2,400 Hz on the high shelf to soften the top end. Both are flat at 0 dB. The shelves shape the whole drone before its reverb, and saved presets retain the settings.
+
 ## Step Sequencer
 
 Under **Performance**, select the drone you want to shape. Choose a pad, set a value in the oscillator rack, and **Capture** that control into the pad. Repeat to add or update controls on the same pad. Steps can drive oscillator **Volume**, enabled filter **Cutoff**, and the **FM Depth** of an enabled Waveform-to-Frequency route. **Glide** sets the time to reach those values and **Hold** sets how long they stay before the next step. Empty pads are skipped.
