@@ -22,6 +22,7 @@ export function createSynthesizer(): SoundLabController {
     get isPlaying() { return voice.isPlaying; },
     get delaySettings() { return voice.delaySettings; },
     scenePlayback,
+    readAudioTime: () => context.currentTime,
     dispose() {
       scenePlayback.dispose();
       voice.dispose();
