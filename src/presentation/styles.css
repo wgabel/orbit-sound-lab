@@ -39,6 +39,13 @@ body{margin:0;background:#0c1016;color:#e8e9df;font-family:system-ui,sans-serif}
 .rack-switch:has(input:disabled){cursor:default}
 .oscillators{display:grid;gap:6px;margin:0 0 24px}
 .oscillator-rack-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.oscillator-bank-picker{display:flex;align-items:center;gap:6px;flex-wrap:wrap;letter-spacing:normal}
+.oscillator-bank-picker select{
+  min-height:36px;max-width:100%;padding:4px 7px;border:1px solid #526373;border-radius:5px;
+  background:#22313f;color:#e8e9df;color-scheme:dark;font:inherit
+}
+.oscillator-rack-heading .oscillator-action-status{flex-basis:100%}
+.oscillator-rack-heading .oscillator-action-status:empty{display:none}
 .oscillator-rack-heading h2,.performance-controls>h2{margin:0 0 4px;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
 .oscillator-rack-heading h2{color:var(--layer-accent)}
 .oscillator-action-status{color:#a8b7bf;font-size:12px}

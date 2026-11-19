@@ -41,6 +41,8 @@ Cutoff sliders use a logarithmic scale, and oscillator Volume and Amplitude LFO 
 
 Each oscillator uses the same section layout for Volume & Pan, Frequency & Waveform, and Low-pass Filter. LFO controls sit with the slider they affect. Amplitude LFO sits under Volume, Pitch LFO under Frequency, and Cutoff LFO in the low-pass filter controls.
 
+Use **5-oscillator preset** above the rack to load Open Fifths, Amber Glow, Midnight Tide, Glass Harbor, or Soft Orbit into the selected drone. Each bank sets all five oscillator voices and their modulation. It replaces the layer's oscillator routes and selects Free harmony mode so the voiced pitches play as designed. Layer enable, gain, envelope and mix stay as set.
+
 Use **PRESETS** beside **COPY** on any oscillator to load a built-in sound into that slot. The list is bundled in `src/domain/built-in-oscillator-presets.json`.
 
 Cutoff LFO accepts a cycle duration in seconds and offers finer control at low depths. When the low-pass filter is active, Cutoff shows the live Hz from the LFO and oscillator route together. The displayed sweep range respects the filter’s safe modulation limits.
