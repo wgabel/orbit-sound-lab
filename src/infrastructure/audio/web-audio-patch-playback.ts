@@ -2,6 +2,7 @@ import type { PatchPlayback } from '../../application/patch-playback';
 import { hasPatchCycle, validatePatch } from '../../domain/patch';
 import type { Patch, PatchCable } from '../../domain/patch';
 import { fadeGain, PLAYBACK_FADE_SECONDS } from './web-audio-fade';
+import { readOutputContextTime } from './web-audio-output-clock';
 import { WebAudioOutputProtection } from './web-audio-output-protection';
 import { createPatchRuntimeModule } from './web-audio-patch-modules';
 import type { PatchRuntimeModule } from './web-audio-patch-modules';
@@ -66,6 +67,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
   private readonly retiringCables = new Set<RuntimeCable>();
   private readonly retirement = new Set<() => void>();
   private origin = 0;
+  private audibleElapsed = 0;
   private state: 'ready' | 'starting' | 'playing' | 'stopping' | 'disposed' = 'ready';
 
   constructor(private readonly context: AudioContext) {
@@ -87,6 +89,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
       await Promise.all([this.context.resume(), this.pulse.prepare()]);
       if (!this.isStarting()) return;
       this.origin = this.context.currentTime;
+      this.audibleElapsed = 0;
       this.applyPatch(patch);
       this.state = 'playing';
       fadeGain(this.master.gain, 0.8, this.origin);
@@ -103,8 +106,13 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     if (this.state === 'playing') this.applyPatch(patch);
   }
 
-  readElapsed(): number {
-    return this.state === 'playing' ? this.context.currentTime - this.origin : 0;
+  readAudibleElapsed(): number {
+    if (this.state !== 'playing') return 0;
+    if (this.context.state === 'running') {
+      const outputTime = readOutputContextTime(this.context, performance.now());
+      this.audibleElapsed = Math.max(0, outputTime - this.origin - this.protection.lookaheadSeconds);
+    }
+    return this.audibleElapsed;
   }
 
   readOutputLevel(): number {

@@ -34,8 +34,12 @@ function createAutomationSignal(context: AudioContext, settings: PatchAutomation
   if (holdFrames) source.loopStart = activeFrames / sampleRate;
   const now = context.currentTime;
   const elapsed = Math.max(0, now - origin);
-  const duration = activeFrames / sampleRate;
-  source.start(now, holdFrames ? Math.min(duration, elapsed) : elapsed % duration);
+  // Keep the audio loop period equal to the editor duration after rounding to buffer frames.
+  const bufferDuration = activeFrames / sampleRate;
+  const rate = bufferDuration / settings.duration;
+  source.playbackRate.value = rate;
+  const position = holdFrames ? Math.min(settings.duration, elapsed) : elapsed % settings.duration;
+  source.start(now, position * rate);
   return source;
 }
 
