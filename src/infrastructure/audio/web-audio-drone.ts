@@ -112,7 +112,7 @@ export class WebAudioDrone implements DroneVoice {
       modulationLevel.gain.value = 0;
       const modulationWaveform = context.createGain();
       modulationWaveform.gain.value = 0;
-      source.output.connect(modulationWaveform);
+      source.modulationOutput.connect(modulationWaveform);
       // Follow the source volume and amplitude LFO upstream of incoming slider routes.
       amplitudeControl.connect(amplitudeGain.gain);
       amplitudeControl.connect(modulationVolume).connect(bipolarLevel).connect(modulationLevel);

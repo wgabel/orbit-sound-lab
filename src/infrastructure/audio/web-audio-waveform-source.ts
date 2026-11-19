@@ -1,10 +1,12 @@
 import { DEFAULT_CYCLE_ENVELOPE } from '../../domain/cycle-envelope';
 import type { CycleEnvelope } from '../../domain/cycle-envelope';
-import { createCycleEnvelopeWave } from './cycle-envelope-wave';
+import { readCycleEnvelopeHarmonics } from './cycle-envelope-wave';
 import { DEFAULT_OSCILLATOR_SHAPE, MAXIMUM_PULSE_WIDTH, MINIMUM_PULSE_WIDTH } from '../../domain/drone';
 import type { OscillatorSettings, OscillatorWaveform } from '../../domain/drone';
 import { applyPitchOffset } from '../../domain/modulation';
 import type { WebAudioPulseWorkletFactory } from './web-audio-pulse-worklet';
+import { analyseFoldedSineHarmonics, PEAKED_SINE_HARMONICS, readOscillatorLoudnessGain } from './oscillator-loudness';
+import type { CycleHarmonics } from './oscillator-loudness';
 import { CLEAN_FOLD_INPUT_GAIN, SINE_FOLD_CURVE } from './sine-wavefolding';
 import { PLAYBACK_FADE_SECONDS } from './web-audio-fade';
 
@@ -13,8 +15,6 @@ function getBaseShape(settings: OscillatorSettings): number {
   return settings.waveform === 'variablePulse' ? Math.max(MINIMUM_PULSE_WIDTH, Math.min(MAXIMUM_PULSE_WIDTH, shape)) : shape;
 }
 
-// Fourier coefficients of sin(phase)^9. PeriodicWave band-limits the harmonics for the active pitch.
-const PEAKED_SINE_HARMONICS = Float32Array.from([0,126,0,-84,0,36,0,-9,0,1], coefficient => coefficient / 256);
 const PEAKED_SINE_COSINE_HARMONICS = new Float32Array(PEAKED_SINE_HARMONICS.length);
 
 interface ShapeControl {
@@ -35,10 +35,14 @@ interface OscillatorBranch {
   readonly pulseShape?: AudioParam;
   readonly waveform: OscillatorWaveform;
   readonly cycleEnvelope?: CycleEnvelope;
+  cycleHarmonics?: CycleHarmonics;
   readonly blend?: ShapeBlend;
   readonly shapeControl?: ShapeControl;
   readonly fold?: {drive: GainNode; amount: GainNode; shaper: WaveShaperNode};
   readonly gain: GainNode;
+  readonly loudnessGain: GainNode;
+  loudnessPitch: number;
+  loudnessShape: number;
   readonly fadeInStartedAt: number | null;
   shapePreview?: {analyser: AnalyserNode; samples: Float32Array<ArrayBuffer>};
 }
@@ -46,6 +50,8 @@ interface OscillatorBranch {
 /** Keeps pitch modulation connected while replacing the waveform generator. */
 export class WebAudioWaveformSource {
   readonly output: GainNode;
+  /** Keeps the original waveform amplitude for oscillator-to-oscillator routes. */
+  readonly modulationOutput: GainNode;
   readonly detune: AudioParam;
   readonly frequency: AudioParam;
   readonly shape: AudioParam;
@@ -61,6 +67,7 @@ export class WebAudioWaveformSource {
   constructor(private readonly context: AudioContext, settings: OscillatorSettings,
     private readonly pulseWorklet: WebAudioPulseWorkletFactory) {
     this.output = context.createGain();
+    this.modulationOutput = context.createGain();
     this.sharedDetune = context.createConstantSource();
     this.detune = this.sharedDetune.offset;
     this.detune.value = settings.detuneCents;
@@ -140,6 +147,8 @@ export class WebAudioWaveformSource {
       } else {
         this.removeBranch(previous);
       }
+    } else {
+      this.updateLoudness(previous, settings, now);
     }
     this.frequency.setTargetAtTime(settings.frequencyHz, now, 0.015);
     this.shape.setTargetAtTime(getBaseShape(settings), now, 0.015);
@@ -171,20 +180,38 @@ export class WebAudioWaveformSource {
     this.sharedFrequency.disconnect();
     this.sharedShape.disconnect();
     this.output.disconnect();
+    this.modulationOutput.disconnect();
+  }
+
+  private updateLoudness(branch: OscillatorBranch, settings: OscillatorSettings, now?: number): void {
+    const pitch = applyPitchOffset(settings.frequencyHz, settings.detuneCents);
+    const shape = getBaseShape(settings);
+    const shapeChanged = branch.loudnessShape !== shape;
+    if (branch.loudnessPitch === pitch && !shapeChanged) return;
+    if (shapeChanged && branch.waveform === 'foldedSine') branch.cycleHarmonics = analyseFoldedSineHarmonics(shape);
+    branch.loudnessPitch = pitch;
+    branch.loudnessShape = shape;
+    const gain = readOscillatorLoudnessGain(branch.waveform, pitch, shape, this.context.sampleRate, branch.cycleHarmonics);
+    if (now === undefined) branch.loudnessGain.gain.value = gain;
+    else branch.loudnessGain.gain.setTargetAtTime(gain, now, 0.015);
   }
 
   private createBranch(settings: OscillatorSettings, fadeInStartedAt: number | null): OscillatorBranch {
     const {waveform} = settings;
     const gain = this.context.createGain();
     gain.gain.setValueAtTime(fadeInStartedAt === null ? 1 : 0, fadeInStartedAt ?? this.context.currentTime);
-    const branch = waveform === 'variablePulse' ?
+    const generator = waveform === 'variablePulse' ?
       this.createPulseBranch(this.pulseWorklet.create(), gain, fadeInStartedAt) : this.createNativeBranch(waveform, gain, fadeInStartedAt, settings.cycleEnvelope ?? DEFAULT_CYCLE_ENVELOPE);
-    gain.connect(this.output);
+    const loudnessGain = this.context.createGain();
+    const branch = {...generator, loudnessGain, loudnessPitch:0, loudnessShape:-1};
+    this.updateLoudness(branch, settings);
+    gain.connect(loudnessGain).connect(this.output);
+    gain.connect(this.modulationOutput);
     this.branches.add(branch);
     return branch;
   }
 
-  private createPulseBranch(pulse: AudioWorkletNode, gain: GainNode, fadeInStartedAt: number | null): OscillatorBranch {
+  private createPulseBranch(pulse: AudioWorkletNode, gain: GainNode, fadeInStartedAt: number | null) {
     const frequency = pulse.parameters.get('frequency');
     const detune = pulse.parameters.get('detune');
     const pulseShape = pulse.parameters.get('shape');
@@ -197,18 +224,19 @@ export class WebAudioWaveformSource {
     this.sharedDetune.connect(detune);
     this.sharedShape.connect(pulseShape);
     pulse.connect(gain);
-    return {clock, waveform: 'variablePulse', gain, frequency, detune, pulse, pulseShape, fadeInStartedAt};
+    return {clock, waveform: 'variablePulse' as const, gain, frequency, detune, pulse, pulseShape, fadeInStartedAt};
   }
 
   private createNativeBranch(waveform: Exclude<OscillatorWaveform, 'variablePulse'>,
-    gain: GainNode, fadeInStartedAt: number | null, cycleEnvelope: CycleEnvelope): OscillatorBranch {
+    gain: GainNode, fadeInStartedAt: number | null, cycleEnvelope: CycleEnvelope) {
     const oscillator = this.createOscillator(waveform === 'sineTriangle' || waveform === 'foldedSine' || waveform === 'peakedSine' || waveform === 'cycleEnvelope' ? 'sine' : waveform);
     const branch = {clock: oscillator, waveform, gain, frequency: oscillator.frequency, detune: oscillator.detune, fadeInStartedAt};
     if (waveform === 'cycleEnvelope') {
       const shapeControl = this.createShapeControl();
       const secondary = this.createOscillator('sine');
-      secondary.setPeriodicWave(createCycleEnvelopeWave(this.context,cycleEnvelope));
-      return {...branch, cycleEnvelope, shapeControl, blend: this.createShapeBlend(oscillator,secondary,gain,shapeControl.boundedShape)};
+      const cycleHarmonics = readCycleEnvelopeHarmonics(cycleEnvelope);
+      secondary.setPeriodicWave(this.context.createPeriodicWave(cycleHarmonics.cosine,cycleHarmonics.sine,{disableNormalization:true}));
+      return {...branch, cycleEnvelope, cycleHarmonics, shapeControl, blend: this.createShapeBlend(oscillator,secondary,gain,shapeControl.boundedShape)};
     }
     if (waveform === 'sineTriangle' || waveform === 'peakedSine') {
       const shapeControl = this.createShapeControl();
@@ -312,6 +340,7 @@ export class WebAudioWaveformSource {
       branch.fold.shaper.disconnect();
     }
     branch.gain.disconnect();
+    branch.loudnessGain.disconnect();
     this.branches.delete(branch);
   }
 }
