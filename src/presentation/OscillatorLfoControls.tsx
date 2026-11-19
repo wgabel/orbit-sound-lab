@@ -1,3 +1,4 @@
+import { LFO_WAVEFORM_LABELS } from './lfo-waveform-labels';
 import { AMPLITUDE_LFO_CENTER, DEFAULT_SHAPE_LFO_DEPTH, LOW_FREQUENCY_OSCILLATOR_WAVEFORMS, LFO_MAXIMUM_RATE_HZ, LFO_MINIMUM_RATE_HZ } from '../domain/modulation';
 import type { LowFrequencyOscillatorSettings, LowFrequencyOscillatorWaveform } from '../domain/modulation';
 import { LfoCycleInput } from './LfoCycleInput';
@@ -61,7 +62,7 @@ export function OscillatorLfoControls({modulation, onChange}: OscillatorLfoContr
         <select disabled={!enabled} value={waveform}
           onChange={event => onChange({...modulation, waveform: event.target.value as LowFrequencyOscillatorWaveform})}>
           {LOW_FREQUENCY_OSCILLATOR_WAVEFORMS.map(option => <option key={option} value={option}>
-            {option === 'smoothRandom' ? 'Smooth Random' : option[0].toUpperCase() + option.slice(1)}
+            {LFO_WAVEFORM_LABELS[option]}
           </option>)}
         </select>
       </label>

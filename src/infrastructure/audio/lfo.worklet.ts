@@ -1,10 +1,22 @@
-const FULL_TURN = 2 * Math.PI;
+import { readPeriodicLfoSample } from '../../domain/lfo-waveforms';
+import type { LfoWorkletConfiguration } from './web-audio-lfo-worklet';
 
-function smoothstep(phase) {
+interface LfoProcessorOptions {
+  readonly processorOptions: {readonly configuration: LfoWorkletConfiguration; readonly seed: number};
+}
+
+declare class AudioWorkletProcessor {
+  readonly port: MessagePort;
+}
+declare const sampleRate: number;
+declare const currentFrame: number;
+declare function registerProcessor(name: string, processor: new (options: LfoProcessorOptions) => AudioWorkletProcessor): void;
+
+function smoothstep(phase: number) {
   return phase * phase * (3 - 2 * phase);
 }
 
-function randomLevelAtCycle(cycle, seed) {
+function randomLevelAtCycle(cycle: number, seed: number) {
   let value = (cycle + seed) | 0;
   value = Math.imul(value ^ (value >>> 16), 0x21f0aaad);
   value = Math.imul(value ^ (value >>> 15), 0x735a2d97);
@@ -16,19 +28,25 @@ class LfoProcessor extends AudioWorkletProcessor {
     return [{name: 'rate', defaultValue: 0.2, minValue: 0.01, maxValue: 20, automationRate: 'k-rate'}];
   }
 
-  constructor({processorOptions}) {
+  private configuration: LfoWorkletConfiguration;
+  private readonly seed: number;
+  private phase = 0;
+  private previous = 0;
+  private target = this.randomTarget();
+  private randomCycle: number | null = null;
+  private synchronizedPrevious = 0;
+  private synchronizedTarget = 0;
+  private running = true;
+  private lastSample: number | null = null;
+  private readonly transitionLength = Math.max(1, Math.round(sampleRate * 0.02));
+  private transitionRemaining = 0;
+  private transitionFrom = 0;
+
+  constructor({processorOptions}: LfoProcessorOptions) {
     super();
     this.configuration = processorOptions.configuration;
     this.seed = processorOptions.seed;
-    this.phase = 0;
-    this.previous = 0;
-    this.target = this.randomTarget();
-    this.randomCycle = null;
-    this.running = true;
-    this.lastSample = null;
-    this.transitionLength = Math.max(1, Math.round(sampleRate * 0.02));
-    this.transitionRemaining = 0;
-    this.port.onmessage = ({data}) => {
+    this.port.onmessage = ({data}: MessageEvent<LfoWorkletConfiguration | 'stop'>) => {
       if (data === 'stop') {
         this.running = false;
         return;
@@ -48,27 +66,27 @@ class LfoProcessor extends AudioWorkletProcessor {
     return Math.random() * 2 - 1;
   }
 
-  synchronizedSample(frame, configuration) {
+  synchronizedSample(frame: number, configuration: LfoWorkletConfiguration) {
     // All nodes in this context calculate phase from the same audio render frame.
     const cycles = ((frame - (configuration.phaseOriginFrame ?? 0)) / sampleRate) * configuration.frequencyHz + configuration.phaseDegrees / 360;
     const cycle = Math.floor(cycles);
     const phase = cycles - cycle;
-    switch (configuration.waveform) {
-      case 'sine': return Math.sin(FULL_TURN * phase);
-      case 'triangle': return 1 - 4 * Math.abs(phase - 0.5);
-      case 'square': return phase < 0.5 ? 1 : -1;
-      case 'sawtooth': return 2 * phase - 1;
-      case 'smoothRandom':
-        if (this.randomCycle !== cycle) {
-          this.randomCycle = cycle;
-          this.synchronizedPrevious = randomLevelAtCycle(cycle, this.seed);
-          this.synchronizedTarget = randomLevelAtCycle(cycle + 1, this.seed);
-        }
-        return this.synchronizedPrevious + (this.synchronizedTarget - this.synchronizedPrevious) * smoothstep(phase);
+    if (configuration.waveform !== 'smoothRandom') return readPeriodicLfoSample(configuration.waveform,phase);
+    if (this.randomCycle !== cycle) {
+      this.randomCycle = cycle;
+      this.synchronizedPrevious = randomLevelAtCycle(cycle,this.seed);
+      this.synchronizedTarget = randomLevelAtCycle(cycle + 1,this.seed);
     }
+    return this.synchronizedPrevious + (this.synchronizedTarget - this.synchronizedPrevious) * smoothstep(phase);
   }
 
-  freeRandomSample(increment) {
+  freePeriodicSample(waveform: Exclude<LfoWorkletConfiguration['waveform'],'smoothRandom'>, increment: number): number {
+    const sample = readPeriodicLfoSample(waveform,this.phase);
+    this.phase = (this.phase + increment) % 1;
+    return sample;
+  }
+
+  freeRandomSample(increment: number) {
     const sample = this.previous + (this.target - this.previous) * smoothstep(this.phase);
     this.phase += increment;
     if (this.phase >= 1) {
@@ -79,7 +97,7 @@ class LfoProcessor extends AudioWorkletProcessor {
     return sample;
   }
 
-  process(_inputs, outputs, parameters) {
+  process(_inputs: unknown, outputs: Float32Array[][], parameters: {rate: Float32Array}) {
     if (!this.running) return false;
     const output = outputs[0]?.[0];
     if (!output) return true;
@@ -88,7 +106,8 @@ class LfoProcessor extends AudioWorkletProcessor {
     for (let index = 0; index < output.length; index++) {
       const sample = configuration.synchronized
         ? this.synchronizedSample(currentFrame + index, configuration)
-        : this.freeRandomSample(increment);
+        : configuration.waveform === 'smoothRandom'
+          ? this.freeRandomSample(increment) : this.freePeriodicSample(configuration.waveform,increment);
       if (this.transitionRemaining > 0) {
         const mix = 1 - this.transitionRemaining-- / this.transitionLength;
         output[index] = this.transitionFrom + (sample - this.transitionFrom) * mix;

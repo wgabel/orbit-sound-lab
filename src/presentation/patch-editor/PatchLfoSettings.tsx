@@ -1,3 +1,4 @@
+import { LFO_WAVEFORM_LABELS } from '../lfo-waveform-labels';
 import { LFO_MAXIMUM_RATE_HZ, LFO_MINIMUM_RATE_HZ, LOW_FREQUENCY_OSCILLATOR_WAVEFORMS } from '../../domain/modulation';
 import type { LowFrequencyOscillatorWaveform } from '../../domain/modulation';
 import type { PatchLfo } from '../../domain/patch-lfo';
@@ -13,7 +14,7 @@ export function PatchLfoSettings({settings,onChange}: {settings: PatchLfo; onCha
     <label>Waveform<select value={settings.waveform}
       onChange={event => onChange({...settings,waveform:event.target.value as LowFrequencyOscillatorWaveform})}>
       {LOW_FREQUENCY_OSCILLATOR_WAVEFORMS.map(waveform => <option key={waveform} value={waveform}>
-        {waveform === 'smoothRandom' ? 'Smooth Random' : waveform[0].toUpperCase() + waveform.slice(1)}
+        {LFO_WAVEFORM_LABELS[waveform]}
       </option>)}
     </select></label>
     <div>

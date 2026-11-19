@@ -1,5 +1,4 @@
-import workletSource from './lfo.worklet.js?raw';
-import { expect, it } from 'vitest';
+import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import type { LfoWorkletConfiguration } from './web-audio-lfo-worklet';
 import { readLfoPreviewValue, readPatchLfoPhase } from '../../domain/patch-lfo';
 
@@ -8,21 +7,43 @@ interface WorkletInstance {
   process(inputs: unknown[], outputs: Float32Array[][], parameters: {rate: Float32Array}): boolean;
 }
 
+type WorkletConstructor = new (options: {
+  processorOptions: {configuration: LfoWorkletConfiguration; seed: number};
+}) => WorkletInstance;
+let Processor: WorkletConstructor | undefined;
+
+beforeAll(async () => {
+  vi.stubGlobal('AudioWorkletProcessor',class {readonly port = {};});
+  vi.stubGlobal('registerProcessor',(name: string, constructor: WorkletConstructor) => {
+    if (name === 'orbit-lfo') Processor = constructor;
+  });
+  await import('./lfo.worklet');
+  vi.unstubAllGlobals();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
 function createProcessor(configuration: LfoWorkletConfiguration, firstFrame = 0, randomValues: number[] = []) {
-  type Constructor = new (options: {processorOptions: {configuration: LfoWorkletConfiguration; seed: number}}) => WorkletInstance;
-  const processors = new Map<string, Constructor>();
-  const registerWorklet = new Function('AudioWorkletProcessor', 'sampleRate', 'currentFrame', 'Math', 'registerProcessor', workletSource);
-  const math = Object.assign(Object.create(Math), {random: () => randomValues.shift() ?? 0.5});
-  registerWorklet(
-    class { readonly port = {}; },
-    100,
-    firstFrame,
-    math,
-    (name: string, Processor: Constructor) => processors.set(name, Processor)
-  );
-  const Processor = processors.get('orbit-lfo');
   if (!Processor) throw new Error('LFO worklet did not register.');
-  return new Processor({processorOptions: {configuration, seed: 43}});
+  vi.stubGlobal('sampleRate',100);
+  const random = vi.spyOn(Math,'random').mockImplementation(() => randomValues.shift() ?? 0.5);
+  const processor = new Processor({processorOptions:{configuration,seed:43}});
+  random.mockRestore();
+  return {
+    port:processor.port,
+    process(inputs: unknown[], outputs: Float32Array[][], parameters: {rate: Float32Array}) {
+      vi.stubGlobal('currentFrame',firstFrame);
+      const renderRandom = vi.spyOn(Math,'random').mockImplementation(() => randomValues.shift() ?? 0.5);
+      try {
+        return processor.process(inputs,outputs,parameters);
+      } finally {
+        renderRandom.mockRestore();
+      }
+    }
+  };
 }
 
 function render(processor: WorkletInstance, length: number) {
@@ -71,5 +92,22 @@ it('uses the patch transport origin and matches the displayed phase and waveform
   for (const [index,sample] of samples.entries()) {
     const phase = readPatchLfoPhase(settings,(25+index)/100);
     expect((sample+1)/2).toBeCloseTo(readLfoPreviewValue(settings.waveform,phase),6);
+  }
+});
+
+it.each([
+  {waveform:'sineTriangle', phaseFrame:6, expected:(Math.sin(0.24 * Math.PI) + 0.48) / 2},
+  {waveform:'variablePulse', phaseFrame:17, expected:-1},
+  {waveform:'foldedSine', phaseFrame:6, expected:2 - 2.5 * Math.sin(0.24 * Math.PI)},
+  {waveform:'peakedSine', phaseFrame:6, expected:(Math.sin(0.24 * Math.PI) + Math.sin(0.24 * Math.PI) ** 9) / 2}
+] as const)('renders $waveform in free and synced mode and matches the canvas preview', ({waveform,phaseFrame,expected}) => {
+  const free = render(createProcessor({waveform,synchronized:false,phaseDegrees:0,frequencyHz:2}),50);
+  const synced = render(createProcessor({waveform,synchronized:true,phaseDegrees:0,frequencyHz:2}),50);
+  expect(free[phaseFrame]).toBeCloseTo(expected,6);
+  expect(synced[phaseFrame]).toBeCloseTo(expected,6);
+  for (const [index,sample] of synced.entries()) {
+    expect(sample).toBeGreaterThanOrEqual(-1);
+    expect(sample).toBeLessThanOrEqual(1);
+    expect((sample + 1) / 2).toBeCloseTo(readLfoPreviewValue(waveform,index / 50),6);
   }
 });
