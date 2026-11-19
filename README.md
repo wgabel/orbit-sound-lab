@@ -50,6 +50,8 @@ In an **Automation** node, **Smooth waves** loads editable curves with rounded t
 
 Choose **Add module → LFO** for repeating modulation. Select a waveform, set the rate or cycle duration, and connect **Value** to a control input. The cable sets the modulation range. **Synchronize with patch** aligns the LFO to the patch transport and enables phase offsets. This node uses AudioWorklet.
 
+Choose **Add module → Simplex Noise** for smooth, non-looping modulation. Connect **Value** to a control input and use the cable to set its range. **Rate** changes how fast the signal drifts, and **Seed** changes its pattern. The same seed and rate replay the same pattern from the patch clock, including when starting an arrangement from its cursor. The node previews the first eight seconds and shows the live output beside a connected cable.
+
 Add a **Reverb** node and connect an audio source or Mixer to **Audio in**. Route **Audio out** to the next effect or Output. Connect an Automation or LFO **Value** to **Wet Mix** to move between the dry signal and the reverberant tail. In an arrangement, give the effect tail enough time to ring out after the last source clip.
 
 Use an **Oscilloscope** node to display the waveform at any patch audio connection. Connect it inline through **Audio in** and **Audio out**, or connect its input in parallel and leave its output free. The display uses a mono preview at 4× vertical scale. Inline audio keeps its original channels and level.

@@ -1,3 +1,5 @@
+import { DEFAULT_SIMPLEX_NOISE, validateSimplexNoise } from './simplex-noise';
+import type { SimplexNoiseSettings } from './simplex-noise';
 import { validateCycleEnvelope } from './cycle-envelope';
 import type { CycleEnvelope } from './cycle-envelope';
 import { DEFAULT_REVERB, validateReverb } from './reverb';
@@ -31,6 +33,7 @@ export interface PatchModuleSettings {
   };
   automation: PatchAutomation;
   lfo: PatchLfo;
+  simplexNoise: SimplexNoiseSettings;
   filter: {readonly cutoff: number; readonly resonance: number};
   gain: {readonly level: number};
   pitchShift: {readonly semitones: number; readonly cents: number};
@@ -107,7 +110,7 @@ export const MODULE_LABELS: Readonly<Record<PatchModuleKind, string>> = {
   pitchShift: 'Pitch Shift',
   oscilloscope: 'Oscilloscope',
   chord: 'Chord Generator', chordProgression: 'Chord Progression', wave: 'Wave', drone: 'Drone', automation: 'Automation', filter: 'Low-pass filter', gain: 'Gain',
-  lfo: 'LFO', mixer: 'Mixer', crossfader: 'Crossfader', output: 'Output'
+  lfo: 'LFO', simplexNoise: 'Simplex Noise', mixer: 'Mixer', crossfader: 'Crossfader', output: 'Output'
 };
 
 export function getPatchModuleLabel(module: PatchModule): string {
@@ -135,6 +138,7 @@ export function getPatchPorts(module: PatchModule): readonly PatchPort[] {
     case 'drone': return [audioOutput];
     case 'chord': return [{id:'chords',label:'Chords',direction:'input',signal:'chords'},audioOutput];
     case 'chordProgression': return [{id:'chords',label:'Chords',direction:'output',signal:'chords'}];
+    case 'simplexNoise':
     case 'lfo': return [{id:'control', label:'Value', direction:'output', signal:'control'}];
     case 'automation': return [
       {id:'control',label:'Value',direction:'output',signal:'control'},
@@ -222,6 +226,10 @@ export function validatePatch(patch: Patch): void {
     if (!module.id) throw new Error('A module needs an identifier.');
     if (module.kind === 'automation') {
       validateAutomation(module.settings);
+      continue;
+    }
+    if (module.kind === 'simplexNoise') {
+      validateSimplexNoise(module.settings);
       continue;
     }
     if (module.kind === 'lfo') {
@@ -328,6 +336,7 @@ export function createPatchModule(kind: PatchModuleKind, id: string): PatchModul
     case 'automation': return {id, kind, settings:{shape:'steps', mode:'loop', duration:8, glide:0,
       points:[0, 0.75, 0.25, 1, 0.1, 0.58, 0.23, 0.87, 0.87].map((value, index) => ({position:index / 8, value}))}};
     case 'lfo': return {id, kind, settings:DEFAULT_PATCH_LFO};
+    case 'simplexNoise': return {id, kind, settings:DEFAULT_SIMPLEX_NOISE};
     case 'filter': return {id, kind, settings:{cutoff:900, resonance:0.7}};
     case 'pitchShift': return {id, kind, settings:{semitones:0,cents:0}};
     case 'gain': return {id, kind, settings:{level:0.55}};

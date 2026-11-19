@@ -1,3 +1,5 @@
+import { readSimplexNoise } from '../../domain/simplex-noise';
+import type { SimplexNoiseSettings } from '../../domain/simplex-noise';
 import { findArrangementClipAt, readClipElapsed } from '../../domain/patch-arrangement';
 import type { PatchArrangement } from '../../domain/patch-arrangement';
 import { AudioWaveform } from '../AudioWaveform';
@@ -52,9 +54,9 @@ function portPosition(module: PatchModule, position: NodePosition, port: PatchPo
     y:position.y + PATCH_NODE_TITLE_HEIGHT + (index + 0.5) * PATCH_PORT_HEIGHT};
 }
 
-function controlPath(readValue: (phase: number) => number): string {
-  return Array.from({length:129}, (_, index) => {
-    const phase = index / 128;
+function controlPath(readValue: (phase: number) => number, segments = 128): string {
+  return Array.from({length:segments + 1}, (_, index) => {
+    const phase = index / segments;
     return `${index === 0 ? 'M' : 'L'}${phase * 140},${29 - 26 * readValue(phase)}`;
   }).join(' ');
 }
@@ -73,6 +75,13 @@ function LfoScope({moduleId, settings}: {moduleId: string; settings: PatchLfo}) 
   return <svg className="patch-scope" viewBox="0 0 140 32" role="img" aria-label="LFO shape and playhead">
     <path d={path} data-lfo-random-trace={waveform === 'smoothRandom' ? '' : undefined}/>
     <line data-automation-playhead={moduleId} x1="0" x2="0" y1="0" y2="32"/>
+  </svg>;
+}
+
+function SimplexNoisePreview({settings}: {settings: SimplexNoiseSettings}) {
+  const path = useMemo(() => controlPath(phase => readSimplexNoise(settings,phase * 8),384),[settings]);
+  return <svg className="patch-scope" viewBox="0 0 140 32" role="img" aria-label="First eight seconds of Simplex Noise">
+    <path d={path}/>
   </svg>;
 }
 
@@ -102,7 +111,7 @@ export function PatchCanvas({patch, arrangement, positions, selection, pending, 
   useEffect(() => {
     const modulesById = new Map(patch.modules.map(module => [module.id,module]));
     const lines = canvas.current?.querySelectorAll<SVGLineElement>('[data-automation-playhead]');
-    if (!lines?.length) return;
+    if (!lines) return;
     const playheads = Array.from(lines, line => {
       const module = modulesById.get(line.dataset.automationPlayhead ?? '');
       const trace = line.parentElement?.querySelector<SVGPathElement>('[data-lfo-random-trace]');
@@ -114,9 +123,14 @@ export function PatchCanvas({patch, arrangement, positions, selection, pending, 
     let frame = 0;
     let lastBadgeUpdate = -Infinity;
     function draw(timestamp: number) {
-      const elapsed = playing ? readAudibleElapsed() : 0;
-      const updateBadges = timestamp - lastBadgeUpdate >= 80;
-      if (updateBadges) lastBadgeUpdate = timestamp;
+      const elapsed = playing && playheads.length ? readAudibleElapsed() : 0;
+      if (timestamp - lastBadgeUpdate >= 80) {
+        lastBadgeUpdate = timestamp;
+        for (const [moduleId,badge] of controlBadges.current) {
+          const sample = playing ? readControlValue(moduleId) : undefined;
+          badge.textContent = sample?.toFixed(2) ?? '—';
+        }
+      }
       for (const playhead of playheads) {
         const {line,module,trace,curve,clips} = playhead;
         if (!module || (module.kind !== 'automation' && module.kind !== 'lfo')) continue;
@@ -135,13 +149,12 @@ export function PatchCanvas({patch, arrangement, positions, selection, pending, 
         } else {
           phase = (playing ? readLfoPhase(module.id,elapsed) : undefined) ?? readPatchLfoPhase(module.settings,elapsed);
         }
-        const badge = updateBadges ? controlBadges.current.get(module.id) : undefined;
-        const sample = playing && (badge || trace) ? readControlValue(module.id) : undefined;
-        if (badge) badge.textContent = sample?.toFixed(2) ?? '—';
         const x = String(140 * phase);
         line.setAttribute('x1',x);
         line.setAttribute('x2',x);
-        if (trace && sample !== undefined) {
+        if (trace && playing) {
+          const sample = readControlValue(module.id);
+          if (sample === undefined) continue;
           const column = Math.floor(140 * phase);
           if (column === playhead.lastColumn) continue;
           if (column < playhead.lastColumn) playhead.history = '';
@@ -301,6 +314,7 @@ export function PatchCanvas({patch, arrangement, positions, selection, pending, 
             </div>
             {module.kind === 'automation' && <AutomationScope moduleId={module.id} settings={module.settings}/>}
             {module.kind === 'lfo' && <LfoScope moduleId={module.id} settings={module.settings}/>}
+            {module.kind === 'simplexNoise' && <SimplexNoisePreview settings={module.settings}/>}
             {module.kind === 'oscilloscope' && <AudioWaveform sourceId={module.id} playing={playing}
               enabled={connectedInputs.has(module.id)} getAnalyser={getWaveformAnalyser}
               label="Live oscilloscope waveform" disabledLabel="No input" verticalZoom={4}/>}
