@@ -150,3 +150,7 @@
   }
   .patch-editor[data-expanded=true] .patch-inspector {grid-column:1;grid-row:3;max-height:20dvh}
 }
+
+/* Native select menus vary by browser; the symbols remain visible when option colors are ignored. */
+.patch-editor .patch-module-option-audio {color:var(--patch-audio)}
+.patch-editor .patch-module-option-control {color:var(--patch-control)}
