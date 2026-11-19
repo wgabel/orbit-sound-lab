@@ -1,4 +1,5 @@
 import { getShelfFrequencyHz } from '../../domain/drone-shelf-response';
+import { WebAudioPitchShift } from './web-audio-pitch-shift';
 import { WebAudioShelfEq } from './web-audio-shelf-eq';
 import { createDefaultDroneSettings } from '../../domain/drone';
 import type { PatchModule } from '../../domain/patch';
@@ -112,6 +113,10 @@ export function createPatchRuntimeModule(
       return {definition, output:bounds, readControlValue:monitor.read, dispose() {
         source.stop(); source.disconnect(); smoothing.disconnect(); bounds.disconnect();
       }};
+    }
+    case 'pitchShift': {
+      const effect = new WebAudioPitchShift(context,definition.settings.semitones,definition.settings.cents);
+      return {definition, inputs:{in:effect.input}, output:effect.output, dispose:() => effect.dispose()};
     }
     case 'filter': {
       const filter = context.createBiquadFilter();
