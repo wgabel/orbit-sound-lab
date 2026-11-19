@@ -1,3 +1,4 @@
+import { ReverbControls } from '../ReverbControls';
 import { ChordProgressionSettings } from './ChordProgressionSettings';
 import { AutomationSettings } from './AutomationSettings';
 import { CHORD_TYPES, getChordMidiNotes, getMaximumChordInversion, getNoteName, MAXIMUM_CHORD_ROOT, MINIMUM_CHORD_ROOT } from '../../domain/chord';
@@ -76,6 +77,8 @@ function ModuleSettings({module, sampleRate, onChange}: {module: PatchModule; sa
       <NumericSlider label="Base resonance" unit="Q" min={0.1} max={12} step={0.1} value={module.settings.resonance}
         onChange={resonance => onChange({...module,settings:{...module.settings,resonance}})}/>
     </div>;
+    case 'reverb': return <ReverbControls settings={module.settings}
+      onChange={settings => onChange({...module,settings})}/>;
     case 'shelfEq': return <ShelfEqControls settings={module.settings} sampleRate={sampleRate}
       onChange={settings => onChange({...module,settings})}/>;
     case 'crossfader': return <>

@@ -1,3 +1,5 @@
+import { DEFAULT_REVERB, validateDroneReverb } from './reverb';
+import type { DroneReverbSettings } from './reverb';
 import { DEFAULT_DRONE_ENVELOPE, validateDroneEnvelope } from './drone-envelope';
 import type { DroneEnvelope } from './drone-envelope';
 
@@ -34,7 +36,6 @@ export interface OscillatorSettings {
   readonly shape?: number;
   readonly filter: LowPassFilterSettings;
 }
-export interface DroneReverbSettings {readonly enabled: boolean; readonly mix: number}
 export const MAX_SHELF_GAIN_DECIBELS = 12;
 export const MIN_SHELF_FREQUENCY_HZ = 20;
 export const MAX_SHELF_FREQUENCY_HZ = 20000;
@@ -69,7 +70,7 @@ export function createDefaultDroneMix(): DroneMixSettings {
   return {
     noise: {enabled: false, volume: 0.2},
     filter: {enabled: false, cutoffHz: 2400},
-    reverb: {enabled: false, mix: 0.25},
+    reverb: {enabled: false, mix: DEFAULT_REVERB.mix},
     ...createDefaultShelfEq()
   };
 }
@@ -101,9 +102,7 @@ export function validateDroneMix(settings: DroneMixSettings): void {
   if (!Number.isFinite(settings.noise.volume) || settings.noise.volume < 0 || settings.noise.volume > 1) throw new Error('Noise level must be between 0 and 1.');
   validateCutoffFrequency(settings.filter.cutoffHz);
   validateShelfEq(settings);
-  if (typeof settings.reverb?.enabled !== 'boolean' || !Number.isFinite(settings.reverb.mix) || settings.reverb.mix < 0 || settings.reverb.mix > 1) {
-    throw new Error('Reverb mix must be between 0 and 1.');
-  }
+  validateDroneReverb(settings.reverb);
 }
 export function validateLowPassFilterSettings(settings: LowPassFilterSettings): void {
   validateCutoffFrequency(settings.cutoffHz);

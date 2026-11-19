@@ -208,6 +208,10 @@ body{margin:0;background:#0c1016;color:#e8e9df;font-family:system-ui,sans-serif}
 .drone-shelf-controls h3{margin:0 0 10px;color:#8cccf7;font-size:12px}
 .drone-shelf-controls h3[data-shelf=highShelf]{color:#ffd17d}
 .drone-shelf-controls .numeric-slider+.numeric-slider{margin-top:10px}
+.drone-reverb{margin-top:16px}
+.reverb-controls{display:grid;gap:10px;margin-top:8px}
+.reverb-controls>label{display:grid;gap:5px;justify-self:start}
+.reverb-controls-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,175px),1fr));gap:10px 18px}
 .drone-mix-controls .switch{margin-bottom:7px}
 .drone-mix-controls input[type=range]{margin:8px 0 0}
 

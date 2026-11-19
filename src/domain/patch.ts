@@ -1,3 +1,5 @@
+import { DEFAULT_REVERB, validateReverb } from './reverb';
+import type { ReverbSettings } from './reverb';
 import { DEFAULT_CHORD_PROGRESSION, validateChordProgression } from './chord-progression';
 import type { ChordProgression } from './chord-progression';
 import { DEFAULT_CHORD_SETTINGS, validateChordSettings } from './chord';
@@ -31,6 +33,7 @@ export interface PatchModuleSettings {
   gain: {readonly level: number};
   pitchShift: {readonly semitones: number; readonly cents: number};
   shelfEq: ShelfEqSettings;
+  reverb: ReverbSettings;
   mixer: {readonly levelA: number; readonly levelB: number};
   crossfader: {readonly blend: number};
   oscilloscope: Record<string, never>;
@@ -98,6 +101,7 @@ export interface PatchPort {
 
 export const MODULE_LABELS: Readonly<Record<PatchModuleKind, string>> = {
   shelfEq: 'Shelf EQ',
+  reverb: 'Reverb',
   pitchShift: 'Pitch Shift',
   oscilloscope: 'Oscilloscope',
   chord: 'Chord Generator', chordProgression: 'Chord Progression', wave: 'Wave', drone: 'Drone', automation: 'Automation', filter: 'Low-pass filter', gain: 'Gain',
@@ -144,6 +148,7 @@ export function getPatchPorts(module: PatchModule): readonly PatchPort[] {
       {id:'cutoff', label:'Cutoff', direction:'input', signal:'control', parameter:{unit:'Hz', minimum:40, maximum:6000}},
       {id:'resonance', label:'Resonance', direction:'input', signal:'control', parameter:{unit:'Q', minimum:0.1, maximum:12}}
     ];
+    case 'reverb': return [audioInput, audioOutput, {...level, id:'mix', label:'Wet Mix'}];
     case 'shelfEq': return [
       audioInput, audioOutput,
       {id:'lowFrequency',label:'Low frequency',direction:'input',signal:'control',parameter:shelfFrequency},
@@ -239,6 +244,10 @@ export function validatePatch(patch: Patch): void {
         throw new Error('Pitch Shift settings are outside the supported range.');
       continue;
     }
+    if (module.kind === 'reverb') {
+      validateReverb(module.settings);
+      continue;
+    }
     if (module.kind === 'shelfEq') {
       validateShelfEq(module.settings);
       continue;
@@ -317,6 +326,7 @@ export function createPatchModule(kind: PatchModuleKind, id: string): PatchModul
     case 'filter': return {id, kind, settings:{cutoff:900, resonance:0.7}};
     case 'pitchShift': return {id, kind, settings:{semitones:0,cents:0}};
     case 'gain': return {id, kind, settings:{level:0.55}};
+    case 'reverb': return {id, kind, settings:{...DEFAULT_REVERB}};
     case 'shelfEq': return {id, kind, settings:createDefaultShelfEq()};
     case 'mixer': return {id, kind, settings:{levelA:0.5, levelB:0.5}};
     case 'crossfader': return {id, kind, settings:{blend:0.5}};
