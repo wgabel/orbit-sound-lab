@@ -29,7 +29,8 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   const [playing, setPlaying] = useState(false);
   const [transition, setTransition] = useState(false);
   const [outputLevel, setOutputLevel] = useState(0);
-  const readLfo = useCallback((moduleId: string, elapsed: number) => engine.current?.readLfo(moduleId,elapsed), []);
+  const readLfoPhase = useCallback((moduleId: string, elapsed: number) => engine.current?.readLfoPhase(moduleId,elapsed), []);
+  const readControlValue = useCallback((moduleId: string) => engine.current?.readControlValue(moduleId), []);
   const getWaveformAnalyser = useCallback((moduleId: string) =>
     engine.current?.getWaveformAnalyser(moduleId) ?? null, []);
   const readAudibleElapsed = useCallback(() => engine.current?.readAudibleElapsed() ?? 0, []);
@@ -186,7 +187,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
         <span className="patch-legend"><span>Audio</span><span>Automation</span></span>
       </div>
       <PatchCanvas viewportRef={viewport} patch={patch} positions={positions} selection={selection} pending={pending}
-        playing={playing} readAudibleElapsed={readAudibleElapsed} readLfo={readLfo} getWaveformAnalyser={getWaveformAnalyser} outputLevel={outputLevel}
+        playing={playing} readAudibleElapsed={readAudibleElapsed} readLfoPhase={readLfoPhase} readControlValue={readControlValue} getWaveformAnalyser={getWaveformAnalyser} outputLevel={outputLevel}
         onPort={handlePort} canConnect={canConnect}
         onSelect={item => {setSelection(item); setPending(null); setError('');}}
         onMove={(id,position) => setPositions(previous => ({...previous,[id]:position}))}/>

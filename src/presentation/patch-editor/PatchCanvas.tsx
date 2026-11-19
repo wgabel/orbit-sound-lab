@@ -5,7 +5,7 @@ import { getPatchModuleLabel, getPatchPorts, sameEndpoint } from '../../domain/p
 import type { Patch, PatchEndpoint, PatchModule, PatchPort } from '../../domain/patch';
 import { readAutomationPhase, readAutomationValue } from '../../domain/patch-automation';
 import { readLfoPreviewValue, readPatchLfoPhase } from '../../domain/patch-lfo';
-import type { PatchLfo, PatchLfoReading } from '../../domain/patch-lfo';
+import type { PatchLfo } from '../../domain/patch-lfo';
 import type { PatchAutomation } from '../../domain/patch-automation';
 
 import { boundNodePosition, PATCH_NODE_WIDTH, PATCH_NODE_TITLE_HEIGHT, PATCH_PORT_HEIGHT } from './patch-layout';
@@ -26,7 +26,8 @@ interface PatchCanvasProps {
   readonly pending: PatchEndpoint | null;
   readonly playing: boolean;
   readAudibleElapsed(): number;
-  readLfo(moduleId: string, elapsed: number): PatchLfoReading | undefined;
+  readLfoPhase(moduleId: string, elapsed: number): number | undefined;
+  readControlValue(moduleId: string): number | undefined;
   readonly outputLevel: number;
   getWaveformAnalyser(moduleId: string): AnalyserNode | null;
   onSelect(selection: PatchSelection): void;
@@ -69,14 +70,18 @@ function LfoScope({moduleId, settings}: {moduleId: string; settings: PatchLfo}) 
   </svg>;
 }
 
-export function PatchCanvas({patch, positions, selection, pending, playing, readAudibleElapsed, readLfo, getWaveformAnalyser, outputLevel, viewportRef,
+export function PatchCanvas({patch, positions, selection, pending, playing, readAudibleElapsed, readLfoPhase, readControlValue, getWaveformAnalyser, outputLevel, viewportRef,
   onSelect, onPort, canConnect, onMove}: PatchCanvasProps) {
   const canvas = useRef<HTMLDivElement>(null);
+  const controlBadges = useRef(new Map<string,HTMLSpanElement>());
   const drag = useRef<{id: string; pointer: number; x: number; y: number} | null>(null);
   const modules = new Map(patch.modules.map(module => [module.id, module]));
   const connectedInputs = new Set(patch.cables.filter(cable => cable.destination.portId === 'in')
     .map(cable => cable.destination.moduleId));
-  const width = Math.max(900, ...Object.values(positions).map(point => point.x + PATCH_NODE_WIDTH + 30));
+  const connectedControlSources = new Set(patch.cables.filter(cable => cable.mapping)
+    .map(cable => cable.source.moduleId));
+  const width = Math.max(900, ...Object.entries(positions).map(([id,point]) =>
+    point.x + PATCH_NODE_WIDTH + (connectedControlSources.has(id) ? 66 : 30)));
   const height = Math.max(408, ...Object.values(positions).map(point => point.y + 206));
 
   useEffect(() => {
@@ -90,22 +95,27 @@ export function PatchCanvas({patch, positions, selection, pending, playing, read
       return {line,module,trace, lastColumn:-1, history:''};
     });
     let frame = 0;
-    function draw() {
+    let lastBadgeUpdate = -Infinity;
+    function draw(timestamp: number) {
       const elapsed = playing ? readAudibleElapsed() : 0;
+      const updateBadges = timestamp - lastBadgeUpdate >= 80;
+      if (updateBadges) lastBadgeUpdate = timestamp;
       for (const playhead of playheads) {
         const {line,module,trace} = playhead;
         if (!module || (module.kind !== 'automation' && module.kind !== 'lfo')) continue;
-        const reading = module.kind === 'lfo' && playing ? readLfo(module.id,elapsed) : undefined;
         const phase = module.kind === 'automation' ? readAutomationPhase(module.settings,elapsed) :
-          reading?.phase ?? readPatchLfoPhase(module.settings,elapsed);
+          (playing ? readLfoPhase(module.id,elapsed) : undefined) ?? readPatchLfoPhase(module.settings,elapsed);
+        const badge = updateBadges ? controlBadges.current.get(module.id) : undefined;
+        const sample = playing && (badge || trace) ? readControlValue(module.id) : undefined;
+        if (badge) badge.textContent = sample?.toFixed(2) ?? '—';
         const x = String(140 * phase);
         line.setAttribute('x1',x);
         line.setAttribute('x2',x);
-        if (trace && reading?.sample !== undefined) {
+        if (trace && sample !== undefined) {
           const column = Math.floor(140 * phase);
           if (column === playhead.lastColumn) continue;
           if (column < playhead.lastColumn) playhead.history = '';
-          const y = Math.round(29 - 26 * reading.sample);
+          const y = Math.round(29 - 26 * sample);
           playhead.history += `${playhead.history ? 'L' : 'M'}${column},${y} `;
           playhead.lastColumn = column;
           trace.setAttribute('d',playhead.history);
@@ -113,9 +123,9 @@ export function PatchCanvas({patch, positions, selection, pending, playing, read
       }
       if (playing) frame = requestAnimationFrame(draw);
     }
-    draw();
+    draw(performance.now());
     return () => cancelAnimationFrame(frame);
-  }, [patch.modules, playing, readAudibleElapsed, readLfo]);
+  }, [patch.modules, playing, readAudibleElapsed, readLfoPhase, readControlValue]);
 
   function endpointPosition(endpoint: PatchEndpoint) {
     const module = modules.get(endpoint.moduleId);
@@ -185,6 +195,12 @@ export function PatchCanvas({patch, positions, selection, pending, playing, read
                     data-compatible={Boolean(pending && canConnect(endpoint))}
                     onClick={() => onPort(endpoint,port)}/>
                   <span>{port.label}</span>
+                  {port.direction === 'output' && port.signal === 'control' && connectedControlSources.has(module.id) &&
+                    <span className="patch-control-value" title="Normalized signal before cable mapping"
+                      ref={badge => {
+                        if (badge) controlBadges.current.set(module.id,badge);
+                        else controlBadges.current.delete(module.id);
+                      }}>—</span>}
                 </div>;
               })}
             </div>)}

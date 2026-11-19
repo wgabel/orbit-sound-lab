@@ -8,11 +8,6 @@ export interface PatchLfo {
   readonly phaseDegrees: number;
 }
 
-export interface PatchLfoReading {
-  readonly phase: number;
-  readonly sample?: number;
-}
-
 export const DEFAULT_PATCH_LFO: PatchLfo = {waveform:'sine',rateHz:0.2,sync:true,phaseDegrees:0};
 
 export function validatePatchLfo(settings: PatchLfo): void {

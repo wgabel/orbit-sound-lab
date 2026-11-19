@@ -3,7 +3,7 @@ import { WebAudioShelfEq } from './web-audio-shelf-eq';
 import { createDefaultDroneSettings } from '../../domain/drone';
 import type { PatchModule } from '../../domain/patch';
 import { readAutomationValue } from '../../domain/patch-automation';
-import type { PatchLfoReading } from '../../domain/patch-lfo';
+import { createControlMonitor } from './web-audio-control-monitor';
 import type { WebAudioLfoWorkletFactory } from './web-audio-lfo-worklet';
 import { createPatchLfoSignal } from './web-audio-patch-lfo';
 import type { PatchAutomation } from '../../domain/patch-automation';
@@ -28,7 +28,8 @@ export interface PatchRuntimeModule {
   readonly output?: AudioNode;
   readonly parameters?: Readonly<Record<string, ParameterBinding>>;
   readonly waveformAnalyser?: AnalyserNode;
-  readLfo?(elapsed: number): PatchLfoReading;
+  readLfoPhase?(elapsed: number): number;
+  readControlValue?(): number;
   dispose(): void;
 }
 
@@ -96,7 +97,7 @@ export function createPatchRuntimeModule(
     }
     case 'lfo': {
       const signal = createPatchLfoSignal(context,lfo,definition.settings,origin);
-      return {definition, output:signal.output, readLfo:signal.read, dispose:signal.dispose};
+      return {definition, output:signal.output, readLfoPhase:signal.readPhase, readControlValue:signal.readValue, dispose:signal.dispose};
     }
     case 'automation': {
       const source = createAutomationSignal(context, definition.settings, origin);
@@ -107,7 +108,8 @@ export function createPatchRuntimeModule(
       const bounds = context.createWaveShaper();
       bounds.curve = new Float32Array([0, 0, 1]);
       source.connect(smoothing).connect(bounds);
-      return {definition, output:bounds, dispose() {
+      const monitor = createControlMonitor(context,bounds);
+      return {definition, output:bounds, readControlValue:monitor.read, dispose() {
         source.stop(); source.disconnect(); smoothing.disconnect(); bounds.disconnect();
       }};
     }

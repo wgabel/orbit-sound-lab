@@ -1,4 +1,3 @@
-import type { PatchLfoReading } from '../domain/patch-lfo';
 import type { Patch } from '../domain/patch';
 
 export interface PatchPlayback {
@@ -8,7 +7,8 @@ export interface PatchPlayback {
   readAudibleElapsed(): number;
   readOutputLevel(): number;
   getWaveformAnalyser(moduleId: string): AnalyserNode | null;
-  readLfo(moduleId: string, elapsed: number): PatchLfoReading | undefined;
+  readLfoPhase(moduleId: string, elapsed: number): number | undefined;
+  readControlValue(moduleId: string): number | undefined;
   stop(): Promise<void>;
   dispose(): void;
 }

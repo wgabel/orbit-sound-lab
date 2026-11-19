@@ -125,8 +125,12 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     return this.audibleElapsed;
   }
 
-  readLfo(moduleId: string, elapsed: number) {
-    if (this.state === 'playing') return this.modules.get(moduleId)?.readLfo?.(elapsed);
+  readLfoPhase(moduleId: string, elapsed: number) {
+    if (this.state === 'playing') return this.modules.get(moduleId)?.readLfoPhase?.(elapsed);
+  }
+
+  readControlValue(moduleId: string) {
+    if (this.state === 'playing') return this.modules.get(moduleId)?.readControlValue?.();
   }
 
   getWaveformAnalyser(moduleId: string): AnalyserNode | null {
