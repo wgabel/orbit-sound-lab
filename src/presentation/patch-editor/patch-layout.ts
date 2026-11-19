@@ -63,7 +63,7 @@ export function findVisibleNodePosition(view: Rectangle, size: Size, obstacles: 
   return nearest;
 }
 
-export function placeNewPatchNode(viewport: HTMLDivElement, module: PatchModule): NodePosition {
+export function getVisiblePatchViewport(viewport: HTMLDivElement): Rectangle {
   const rect = viewport.getBoundingClientRect();
   const left = rect.left + viewport.clientLeft;
   const top = rect.top + viewport.clientTop;
@@ -72,11 +72,24 @@ export function placeNewPatchNode(viewport: HTMLDivElement, module: PatchModule)
   const visibleTop = Math.max(0,top);
   const visibleRight = Math.min(window.innerWidth,left + viewport.clientWidth);
   const visibleBottom = Math.min(window.innerHeight,top + viewport.clientHeight);
+  return {
+    x:visibleLeft-left,y:visibleTop-top,
+    width:Math.max(0,visibleRight-visibleLeft),height:Math.max(0,visibleBottom-visibleTop)
+  };
+}
+
+export function getZoomedCanvasOrigin(scroll: NodePosition, anchor: NodePosition, scale: number, nextScale: number): NodePosition {
+  return {
+    x:Math.max(0,(scroll.x+anchor.x)/scale-anchor.x/nextScale),
+    y:Math.max(0,(scroll.y+anchor.y)/scale-anchor.y/nextScale)
+  };
+}
+
+export function placeNewPatchNode(viewport: HTMLDivElement, module: PatchModule, scale = 1): NodePosition {
+  const visible = getVisiblePatchViewport(viewport);
   const view = {
-    x:viewport.scrollLeft + visibleLeft - left,
-    y:viewport.scrollTop + visibleTop - top,
-    width:Math.max(0,visibleRight - visibleLeft),
-    height:Math.max(0,visibleBottom - visibleTop)
+    x:(viewport.scrollLeft + visible.x)/scale, y:(viewport.scrollTop + visible.y)/scale,
+    width:visible.width/scale,height:visible.height/scale
   };
   const obstacles = Array.from(viewport.querySelectorAll<HTMLElement>('.patch-node'), node =>
     ({x:node.offsetLeft,y:node.offsetTop,width:node.offsetWidth,height:node.offsetHeight}));

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findVisibleNodePosition } from './patch-layout';
+import { findVisibleNodePosition, getZoomedCanvasOrigin } from './patch-layout';
 
 const size = {width:174,height:104};
 
@@ -20,5 +20,17 @@ describe('new patch node placement', () => {
   it('keeps the new node in view when there is no room to avoid overlap', () => {
     const view = {x:18,y:30,width:230,height:160};
     expect(findVisibleNodePosition(view,size,[view])).toEqual({x:46,y:58});
+  });
+});
+
+describe('patch viewport zoom', () => {
+  it('keeps the world point beneath the anchor fixed when zooming from a scrolled view', () => {
+    const scroll = {x:220,y:160};
+    const anchor = {x:300,y:180};
+    expect(getZoomedCanvasOrigin(scroll,anchor,1,2)).toEqual({x:370,y:250});
+  });
+
+  it('clamps the pending viewport to the origin if zooming out past the canvas edge', () => {
+    expect(getZoomedCanvasOrigin({x:40,y:30},{x:300,y:180},1,0.5)).toEqual({x:0,y:0});
   });
 });
