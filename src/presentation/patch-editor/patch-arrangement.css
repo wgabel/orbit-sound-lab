@@ -1,0 +1,35 @@
+.patch-workspace .patch-workspace-content[hidden] {display:none}
+.patch-arrangement {
+  display:grid;align-content:start;gap:12px;padding:12px;border:1px solid var(--patch-line);
+  border-radius:8px;background:#18212c;min-width:0;
+}
+.patch-arrangement h2 {font-size:16px;margin:0}
+.patch-arrangement output {color:var(--patch-audio);font-variant-numeric:tabular-nums}
+.patch-arrangement label {display:flex;align-items:center;gap:6px;font-size:12px}
+.patch-arrangement input[type=number],.patch-arrangement input[type=text],.patch-arrangement input:not([type]) {
+  min-width:0;border:1px solid var(--patch-line);background:#131b25;color:inherit;
+  border-radius:4px;padding:6px;font:inherit;
+}
+.patch-arrangement input[type=number] {width:6em;font-variant-numeric:tabular-nums}
+.arrangement-transport {padding-bottom:8px;border-bottom:1px solid var(--patch-line)}
+.arrangement-actions {display:flex;flex-wrap:wrap;align-items:center;gap:8px;border:0;padding:0;margin:0;min-width:0}
+.arrangement-scroll {overflow:auto;background:#111923;border:1px solid var(--patch-line);border-radius:5px}
+.arrangement-grid {
+  position:relative;display:grid;grid-template-columns:7.5rem minmax(0,1fr);align-items:center;
+  row-gap:4px;column-gap:8px;padding:8px 16px 8px 8px;font-size:12px;min-width:560px;
+}
+.arrangement-ruler {display:flex;justify-content:space-between;color:#b8c7d6;font-variant-numeric:tabular-nums}
+.arrangement-track {display:contents}
+.arrangement-lane {position:relative;background:#1c2937;height:36px;border-radius:3px}
+.patch-arrangement .arrangement-lane button {
+  position:absolute;top:3px;height:30px;min-height:0;min-width:6px;padding:0 4px;
+  overflow:hidden;white-space:nowrap;text-overflow:ellipsis;border-color:#62798d;font-size:12px;
+}
+.arrangement-track[data-signal=audio] button {color:var(--patch-audio);border-color:#548d87}
+.arrangement-track[data-signal=control] button {color:var(--patch-control);border-color:#b18462}
+.patch-arrangement .arrangement-lane button[aria-pressed=true] {background:#35495b;border-color:#eef5fa}
+.arrangement-cursor-track {position:absolute;inset:24px 16px 6px calc(7.5rem + 16px);pointer-events:none}
+.arrangement-cursor-track span {position:absolute;height:100%;width:1px;background:#e7f3ff}
+.arrangement-details {min-width:0;border:1px solid var(--patch-line);border-radius:5px;margin:0}
+.arrangement-details legend {font-size:13px;font-weight:670}
+.arrangement-variation {margin-top:12px}

@@ -1,3 +1,6 @@
+import { isArrangementTrack, readArrangementEnd, readPatchArrangement } from '../../domain/patch-arrangement';
+import type { ArrangementClip, PatchArrangement } from '../../domain/patch-arrangement';
+import { scheduleClipGates } from './web-audio-patch-arrangement';
 import type { PatchPlayback } from '../../application/patch-playback';
 import { hasPatchCycle, validatePatch } from '../../domain/patch';
 import type { Patch, PatchCable } from '../../domain/patch';
@@ -76,6 +79,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
   private readonly retirement = new Set<() => void>();
   private origin = 0;
   private audibleElapsed = 0;
+  private arrangement?: {readonly tracks: ReadonlyMap<string, ArrangementClip[]>; readonly from: number};
   private state: 'ready' | 'starting' | 'playing' | 'stopping' | 'disposed' = 'ready';
 
   constructor(private readonly context: AudioContext) {
@@ -93,20 +97,44 @@ export class WebAudioPatchPlayback implements PatchPlayback {
 
   get sampleRate(): number { return this.context.sampleRate; }
 
-  async start(patch: Patch): Promise<void> {
+  async start(patch: Patch, arrangement?: {readonly plan: PatchArrangement; readonly from: number}): Promise<void> {
     if (this.state !== 'ready') throw new Error('Patch playback is busy.');
     validatePatch(patch);
+    const plan = arrangement && readPatchArrangement(arrangement.plan,patch);
+    const end = plan ? readArrangementEnd(plan) + plan.tail : 0;
+    const from = arrangement?.from ?? 0;
+    if (plan && (!plan.clips.length || !Number.isFinite(from) || from < 0 || from >= end)) {
+      throw new Error('Choose a playback point before the arrangement ends and add at least one clip.');
+    }
     this.state = 'starting';
     try {
       await Promise.all([this.context.resume(), this.pulse.prepare(), this.lfo.prepare()]);
       if (!this.isStarting()) return;
-      this.origin = this.context.currentTime;
-      this.audibleElapsed = 0;
+      this.origin = this.context.currentTime - from;
+      this.audibleElapsed = from;
+      if (plan) {
+        const tracks = new Map(patch.modules.filter(isArrangementTrack).map(module => [module.id,[] as ArrangementClip[]]));
+        for (const clip of plan.clips) tracks.get(clip.moduleId)?.push(clip);
+        this.arrangement = {tracks,from};
+      }
       this.applyPatch(patch);
+      const now = this.context.currentTime;
+      if (plan) {
+        const endTime = this.origin + end;
+        const fade = Math.min(PLAYBACK_FADE_SECONDS,Math.max(0,endTime-now)/2);
+        if (fade > 0) {
+          this.master.gain.setValueAtTime(0,now);
+          this.master.gain.linearRampToValueAtTime(0.8,now+fade);
+          this.master.gain.setValueAtTime(0.8,endTime-fade);
+          this.master.gain.linearRampToValueAtTime(0,endTime);
+        }
+      } else fadeGain(this.master.gain,0.8,this.origin);
       this.state = 'playing';
-      fadeGain(this.master.gain, 0.8, this.origin);
     } catch (error) {
-      if (this.isStarting()) this.state = 'ready';
+      if (this.isStarting()) {
+        this.clearPatch();
+        this.state = 'ready';
+      }
       throw error;
     }
   }
@@ -115,6 +143,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
 
   update(patch: Patch): void {
     validatePatch(patch);
+    if (this.state === 'playing' && this.arrangement) throw new Error('Stop the arrangement before editing the patch.');
     if (this.state === 'playing') this.applyPatch(patch);
   }
 
@@ -122,7 +151,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     if (this.state !== 'playing') return 0;
     if (this.context.state === 'running') {
       const outputTime = readOutputContextTime(this.context, performance.now());
-      this.audibleElapsed = Math.max(0, outputTime - this.origin - this.protection.lookaheadSeconds);
+      this.audibleElapsed = Math.max(this.arrangement?.from ?? 0, outputTime - this.origin - this.protection.lookaheadSeconds);
     }
     return this.audibleElapsed;
   }
@@ -156,7 +185,8 @@ export class WebAudioPatchPlayback implements PatchPlayback {
       for (const definition of patch.modules) {
         const previous = this.modules.get(definition.id);
         const module = previous?.definition === definition ? previous :
-          createPatchRuntimeModule(this.context, definition, this.pulse, this.modulationFactory, this.lfo, this.master, this.origin);
+          createPatchRuntimeModule(this.context, definition, this.pulse, this.modulationFactory, this.lfo, this.master, this.origin,
+            this.arrangement?.tracks.get(definition.id));
         if (module !== previous) createdModules.push(module);
         nextModules.set(definition.id, module);
       }
@@ -200,7 +230,9 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     }
     for (const cable of createdCables) {
       cable.connect();
-      fadeGain(cable.level.gain, 1, now);
+      const clips = this.arrangement?.tracks.get(cable.definition.source.moduleId);
+      if (clips) scheduleClipGates(cable.level.gain,clips,this.origin,now);
+      else fadeGain(cable.level.gain, 1, now);
     }
     this.modules = nextModules;
     this.cables = nextCables;
@@ -245,6 +277,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     for (const module of this.modules.values()) module.dispose();
     this.cables.clear();
     this.modules.clear();
+    this.arrangement = undefined;
   }
 
   dispose(): void {
