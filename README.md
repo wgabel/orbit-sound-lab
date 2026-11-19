@@ -36,6 +36,8 @@ Select a **Drone** node and choose **Copy Drone A** or **Copy Drone B** to take 
 
 To combine two sources, connect them to **Audio A** and **Audio B** on a **Mixer**, then connect its **Audio out** to a filter, gain stage, or other audio input. Set each channel’s level in the inspector or automate it via **Level A** and **Level B**.
 
+Connect an Automation or LFO **Value** to **Pitch Shift → Pitch** to sweep the pitch of an audio line. Set the cable’s endpoints in semitones. For example, map 0 to +12 for a rise of one octave. Fine tune sits on top of the automated shift.
+
 Use a **Crossfader** to transition between two audio signals. Connect them to **Audio A** and **Audio B**, then route **Audio out** onward. **Blend** moves from A at 0% to B at 100%. Connect an Automation or LFO **Value** output to **Blend** to shape the transition. For a one-way transition, set an Automation curve to rise from 0% to 100% and choose **Play once, hold end**.
 
 Add **Chord Progression** and connect its **Chords** output to a **Chord Generator → Chords** input. The default pattern is Cm, A♭, E♭, B♭. Edit the root and quality of each step, choose the time per chord, and choose whether to loop or hold the last chord. The generator keeps its octave and voicing settings. In an arrangement, schedule clips for both the generator and the progression where you want the chord changes.

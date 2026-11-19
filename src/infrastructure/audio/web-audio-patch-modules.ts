@@ -1,3 +1,4 @@
+import type { WebAudioPitchShiftWorkletFactory } from './web-audio-pitch-shift-worklet';
 import { readClipElapsed } from '../../domain/patch-arrangement';
 import type { ArrangementClip } from '../../domain/patch-arrangement';
 import { createPatchChordVoice } from './web-audio-patch-chords';
@@ -74,7 +75,8 @@ const defaultWave = createDefaultDroneSettings().oscillators[0];
 export function createPatchRuntimeModule(
   context: AudioContext, definition: PatchModule, pulse: WebAudioPulseWorkletFactory,
   modulationFactory: WebAudioLowFrequencyOscillatorFactory, lfo: WebAudioLfoWorkletFactory, master: AudioNode, origin: number,
-  clips?: readonly ArrangementClip[], chordRoute?: ChordRoute
+  {clips,chordRoute,pitchWorklet}: {clips?: readonly ArrangementClip[]; chordRoute?: ChordRoute;
+    pitchWorklet?: WebAudioPitchShiftWorkletFactory} = {}
 ): PatchRuntimeModule {
   switch (definition.kind) {
     case 'chord': {
@@ -155,8 +157,14 @@ export function createPatchRuntimeModule(
       }};
     }
     case 'pitchShift': {
-      const effect = new WebAudioPitchShift(context,definition.settings.semitones,definition.settings.cents);
-      return {definition, inputs:{in:effect.input}, output:effect.output, dispose:() => effect.dispose()};
+      const {semitones,cents} = definition.settings;
+      if (pitchWorklet) {
+        const effect = pitchWorklet.create(semitones,cents);
+        return {definition,inputs:{in:effect.input},output:effect.output,
+          parameters:{semitones:{parameter:effect.pitch,base:semitones}},dispose:effect.dispose};
+      }
+      const effect = new WebAudioPitchShift(context,semitones,cents);
+      return {definition,inputs:{in:effect.input},output:effect.output,dispose:() => effect.dispose()};
     }
     case 'filter': {
       const filter = context.createBiquadFilter();

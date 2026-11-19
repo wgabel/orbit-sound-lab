@@ -1,3 +1,4 @@
+import { WebAudioPitchShiftWorkletFactory } from './web-audio-pitch-shift-worklet';
 import { isArrangementTrack, readArrangementEnd, readPatchArrangement } from '../../domain/patch-arrangement';
 import type { ArrangementClip, PatchArrangement } from '../../domain/patch-arrangement';
 import { scheduleClipGates } from './web-audio-patch-arrangement';
@@ -69,6 +70,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
   private readonly lfo: WebAudioLfoWorkletFactory;
   private readonly modulationFactory: WebAudioLowFrequencyOscillatorFactory;
   private readonly pulse: WebAudioPulseWorkletFactory;
+  private readonly pitchShift: WebAudioPitchShiftWorkletFactory;
   private readonly protection: WebAudioOutputProtection;
   private readonly master: GainNode;
   private readonly analyser: AnalyserNode;
@@ -84,6 +86,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
 
   constructor(private readonly context: AudioContext) {
     this.pulse = new WebAudioPulseWorkletFactory(context);
+    this.pitchShift = new WebAudioPitchShiftWorkletFactory(context);
     this.lfo = new WebAudioLfoWorkletFactory(context);
     this.modulationFactory = new WebAudioLowFrequencyOscillatorFactory(context,this.lfo);
     this.protection = new WebAudioOutputProtection(context);
@@ -108,7 +111,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     }
     this.state = 'starting';
     try {
-      await Promise.all([this.context.resume(), this.pulse.prepare(), this.lfo.prepare()]);
+      await Promise.all([this.context.resume(), this.pulse.prepare(), this.lfo.prepare(), this.pitchShift.prepare()]);
       if (!this.isStarting()) return;
       this.origin = this.context.currentTime - from;
       this.audibleElapsed = from;
@@ -185,6 +188,8 @@ export class WebAudioPatchPlayback implements PatchPlayback {
       .map(module => [module.id,module.settings]));
     const progressions = new Map(patch.cables.filter(cable => cable.destination.portId === 'chords' && cable.enabled !== false)
       .map(cable => [cable.destination.moduleId,cable.source.moduleId]));
+    const automatedPitch = new Set(patch.cables.filter(cable => cable.destination.portId === 'semitones' && cable.enabled !== false)
+      .map(cable => cable.destination.moduleId));
     try {
       for (const definition of patch.modules) {
         const previous = this.modules.get(definition.id);
@@ -192,9 +197,13 @@ export class WebAudioPatchPlayback implements PatchPlayback {
         const settings = progressionId === undefined ? undefined : progressionSources.get(progressionId);
         const chordRoute = settings && progressionId !== undefined
           ? {settings,clips:this.arrangement?.tracks.get(progressionId)} : undefined;
-        const module = previous?.definition === definition && previous.chordProgression === settings ? previous :
-          createPatchRuntimeModule(this.context, definition, this.pulse, this.modulationFactory, this.lfo, this.master, this.origin,
-            this.arrangement?.tracks.get(definition.id),chordRoute);
+        const pitchWorklet = automatedPitch.has(definition.id) ? this.pitchShift : undefined;
+        const canReuse = previous?.definition === definition && previous.chordProgression === settings &&
+          Boolean(previous.parameters?.semitones) === Boolean(pitchWorklet);
+        const module = canReuse ? previous :
+          createPatchRuntimeModule(this.context,definition,this.pulse,this.modulationFactory,this.lfo,this.master,this.origin,{
+            clips:this.arrangement?.tracks.get(definition.id),chordRoute,pitchWorklet
+          });
         if (module !== previous) createdModules.push(module);
         nextModules.set(definition.id, module);
       }
