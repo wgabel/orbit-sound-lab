@@ -34,6 +34,8 @@ import { createSynthesizer } from '../composition/create-synthesizer';
 import type { DroneEnvelope } from '../domain/drone-envelope';
 import { DroneKeyControls } from './DroneKeyControls';
 import { DroneMixControls } from './DroneMixControls';
+import { DroneEffects } from './DroneEffects';
+import { DelayControls } from './DelayControls';
 import { NumericSlider } from './NumericSlider';
 import { OscillatorPanControl } from './OscillatorPanControl';
 import { useRenderingActivityDiagnostic } from './use-rendering-activity-diagnostic';
@@ -63,6 +65,7 @@ interface PatchDroneEdit {
 export function App() {
   const controller = useRef<SoundLabController | null>(null);
   const [showPatchEditor, setShowPatchEditor] = useState(false);
+  const [droneEditorPage, setDroneEditorPage] = useState<'sound' | 'studio'>('sound');
   const [selectedLayer, setActiveLayer] = useState<DroneLayerId>('A');
   const [mainLayers, setMainLayers] = useState<Record<DroneLayerId, DroneLayer>>(() =>
     ({A: createDefaultDroneLayer('A'), B: createDefaultDroneLayer('B')}));
@@ -516,6 +519,7 @@ export function App() {
     controller.current = null;
     setError('');
     setPatchDroneEdit({layer:structuredClone(readPatchDroneLayer(module)),holdMode:false,applyEdits});
+    setDroneEditorPage('sound');
     setShowPatchEditor(false);
     window.scrollTo(0,0);
   }
@@ -549,14 +553,19 @@ export function App() {
       <h1>Orbit <span>Sound Lab</span></h1>
       <button type="button" className={playingOutput ? 'playing' : ''} disabled={playbackTransition}
         onClick={() => void togglePlayback()}>{previewMode ? '■ Stop playback' : playing ? '■ Stop drones' : '▶ Start drones'}</button>
-      {!patchDroneEdit && <NumericSlider label="MASTER LEVEL" unit="%" displayFactor={100} min={0} max={1} step={0.01}
-        disabled={previewMode !== null} value={masterGain} onChange={gain => {controller.current?.setMasterGain(gain); setMasterGain(gain);}}/>}
+
     </section>
     {patchDroneEdit ? <button type="button" className="patch-entry" disabled={playbackTransition}
       onClick={() => void returnToPatch()}>Apply edits and return to patch</button> :
       <button type="button" className="patch-entry" disabled={playingOutput || playbackTransition}
         onClick={() => setShowPatchEditor(true)}>Open patch editor</button>}
     {error && <p role="alert" className="error">{error}</p>}
+    <nav className="drone-editor-nav" aria-label="Drone editor">
+      <button type="button" aria-pressed={droneEditorPage === 'sound'} aria-controls="drone-editor-sound"
+        onClick={() => setDroneEditorPage('sound')}>Sound</button>
+      <button type="button" aria-pressed={droneEditorPage === 'studio'} aria-controls="drone-editor-studio"
+        onClick={() => setDroneEditorPage('studio')}>Studio</button>
+    </nav>
     {!patchDroneEdit && <section className="drone-picker" aria-label="Drone layers">
       {DRONE_LAYER_IDS.map(id => <div key={id} className="drone-layer-choice" data-layer={id}>
         <button type="button" aria-pressed={activeLayer === id} onClick={() => setActiveLayer(id)}>Drone {id}</button>
@@ -567,6 +576,7 @@ export function App() {
         </label>
       </div>)}
     </section>}
+    <div id="drone-editor-sound" className="drone-editor-page" hidden={droneEditorPage !== 'sound'}>
     <section className="oscillators" data-layer={activeLayer} aria-labelledby="oscillator-rack-title">
       <div className="oscillator-rack-heading">
         <h2 id="oscillator-rack-title">{patchDroneEdit ? 'Patch drone oscillators' : `Drone ${activeLayer} oscillators`}</h2>
@@ -664,6 +674,23 @@ export function App() {
         </article>;
       })}
     </section>
+    <DroneEffects key={activeLayer} layerId={activeLayer} settings={settings.mix}
+      sampleRate={controller.current?.layers[activeLayer].sampleRate} onChange={updateDroneMix}/>
+    <section className="drone-modulators" aria-labelledby="drone-modulators-title" hidden={Boolean(patchDroneEdit)}>
+      <h2 id="drone-modulators-title">Modulators</h2>
+      {DRONE_LAYER_IDS.map(id => <OscillatorStepSequencer key={id} layerId={id} active={!patchDroneEdit && id === activeLayer}
+        canPlay={!patchDroneEdit && playing && layers[id].enabled && !holdModes[id] && !previewMode && !playbackTransition} drone={layers[id].drone}
+        readAudioTime={() => controller.current?.readAudioTime() ?? 0}
+        applyValues={(drone, values) => applyOscillatorStep(id, drone, values)}/>)}
+    </section>
+    <section className="preset-library"><h2>PRESET LIBRARY</h2><div className="preset-actions"><input aria-label="Preset name" placeholder="Preset name" maxLength={DRONE_PRESET_NAME_LIMIT} value={presetName} onChange={event => setPresetName(event.target.value)}/><button type="button" onClick={() => void saveCurrentPreset(false)}>SAVE PRESET</button><button type="button" onClick={() => void saveCurrentPreset(true)}>SAVE SNAPSHOT</button><button type="button" onClick={() => importInput.current?.click()}>IMPORT JSON</button><input ref={importInput} type="file" accept=".json,application/json" hidden onChange={event => { const file = event.target.files?.[0]; if (file) void handlePresetImport(file); event.target.value = ''; }}/></div>
+    <div className="preset-list">{presets.length === 0 ? <p>No saved presets yet. Presets stay in this browser; export JSON for backup.</p> : presets.map(preset => <div className="preset-item" key={preset.id}><div><strong>{preset.name}</strong><small>{new Date(preset.createdAt).toLocaleString()}</small></div><div className="preset-item-actions"><button type="button" aria-label={`Load ${preset.name} into Drone ${activeLayer}`} onClick={() => loadPreset(preset)}>LOAD TO {activeLayer}</button><button type="button" onClick={() => exportPreset(preset)}>EXPORT</button><button type="button" onClick={() => void removePreset(preset)}>DELETE</button></div></div>)}</div></section>
+    </div>
+    <div id="drone-editor-studio" className="drone-editor-page" hidden={droneEditorPage !== 'studio'}>
+    {!patchDroneEdit && <section className="studio-output" aria-label="Output">
+      <NumericSlider label="Master level" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+        disabled={previewMode !== null} value={masterGain} onChange={gain => {controller.current?.setMasterGain(gain); setMasterGain(gain);}}/>
+    </section>}
     <section className="performance-controls" aria-labelledby="performance-controls-title">
       <h2 id="performance-controls-title">Performance</h2>
       <div hidden={Boolean(patchDroneEdit)}><PerformancePad onChange={position => {
@@ -690,23 +717,23 @@ export function App() {
 
       </div>)}
       </div>
-      <div hidden={Boolean(patchDroneEdit)}>{DRONE_LAYER_IDS.map(id => <OscillatorStepSequencer key={id} layerId={id} active={!patchDroneEdit && id === activeLayer}
-        canPlay={!patchDroneEdit && playing && layers[id].enabled && !holdModes[id] && !previewMode && !playbackTransition} drone={layers[id].drone}
-        readAudioTime={() => controller.current?.readAudioTime() ?? 0}
-        applyValues={(drone, values) => applyOscillatorStep(id, drone, values)}/>)}</div>
     </section>
-    <DroneMixControls key={activeLayer} layerId={activeLayer} settings={settings.mix}
-      sampleRate={controller.current?.layers[activeLayer].sampleRate} onChange={updateDroneMix}/>
+    <DroneMixControls key={activeLayer} layerId={activeLayer} settings={settings.mix} onChange={updateDroneMix}/>
     <section className="harmony-engine" key={`harmony-${activeLayer}`}><h2>HARMONY ENGINE</h2><div className="harmony-modes">{(['free','natural','piano'] as const).map(mode => <button type="button" key={mode} className={harmony.mode === mode ? 'selected' : ''} aria-pressed={harmony.mode === mode} onClick={() => updateHarmony({...harmony,mode})}>{mode.toUpperCase()}</button>)}</div><div className="harmony-controls"><NumericSlider label="ROOT FREQUENCY" unit="Hz" min={55} max={220} step={1}
       value={harmony.rootFrequencyHz} onChange={value => updateHarmony({...harmony,rootFrequencyHz:value})}/><label>HARMONY<select value={harmony.chord} onChange={event => updateHarmony({...harmony,chord:event.target.value as HarmonySettings['chord']})}><option value="minor">Minor / melancholic</option><option value="major">Major / warm</option><option value="fifth">Open fifths / spacious</option><option value="ambient">Ambient / suspended</option></select></label><NumericSlider label="DETUNE / SPREAD" unit="cents" min={0} max={20} step={1}
       value={harmony.spreadCents} onChange={value => updateHarmony({...harmony,spreadCents:value})}/></div><div className="harmony-preview">{settings.oscillators.map((oscillator,index) => <span key={oscillator.id}>OSC {index+1} · {oscillator.frequencyHz.toFixed(1)} → {getEffectiveOscillatorFrequency(harmony,oscillator.frequencyHz,index).toFixed(1)} Hz</span>)}</div><p>{harmony.mode === 'free' ? 'FREE: frequency sliders and RANDOM use unrestricted frequencies.' : 'NATURAL / PIANO: RANDOM chooses a note from the selected harmony. Harmony processes the audible pitch without changing source frequencies.'}</p></section>
-    {!patchDroneEdit && <section className="master-delay"><div className="oscillator-title"><strong>MASTER ECHO / DELAY</strong><label className="switch"><input type="checkbox" checked={delaySettings.enabled} onChange={event => updateDelay({...delaySettings,enabled:event.target.checked})}/> ACTIVE</label></div><div className="delay-controls"><NumericSlider label="TIME" unit="s" min={0.05} max={2} step={0.01}
-      disabled={!delaySettings.enabled} value={delaySettings.timeSeconds} onChange={value => updateDelay({...delaySettings,timeSeconds:value})}/><NumericSlider label="FEEDBACK" unit="%" displayFactor={100} min={0} max={0.85} step={0.01}
-      disabled={!delaySettings.enabled} value={delaySettings.feedback} onChange={value => updateDelay({...delaySettings,feedback:value})}/><NumericSlider label="WET MIX" unit="%" displayFactor={100} min={0} max={1} step={0.01}
-      disabled={!delaySettings.enabled} value={delaySettings.mix} onChange={value => updateDelay({...delaySettings,mix:value})}/></div><p>Echo repeats the combined drone. Start with low feedback and mix.</p></section>}
-    <section className="preset-library"><h2>PRESET LIBRARY</h2><div className="preset-actions"><input aria-label="Preset name" placeholder="Preset name" maxLength={DRONE_PRESET_NAME_LIMIT} value={presetName} onChange={event => setPresetName(event.target.value)}/><button type="button" onClick={() => void saveCurrentPreset(false)}>SAVE PRESET</button><button type="button" onClick={() => void saveCurrentPreset(true)}>SAVE SNAPSHOT</button><button type="button" onClick={() => importInput.current?.click()}>IMPORT JSON</button><input ref={importInput} type="file" accept=".json,application/json" hidden onChange={event => { const file = event.target.files?.[0]; if (file) void handlePresetImport(file); event.target.value = ''; }}/></div><div className="preset-morph" hidden={Boolean(patchDroneEdit)}>
+    {!patchDroneEdit && <section className="master-delay" aria-labelledby="master-delay-title">
+      <div className="oscillator-title">
+        <h2 id="master-delay-title">Master delay</h2>
+        <label className="switch"><input type="checkbox" checked={delaySettings.enabled}
+          onChange={event => updateDelay({...delaySettings,enabled:event.target.checked})}/> Active</label>
+      </div>
+      <DelayControls settings={delaySettings} disabled={!delaySettings.enabled} onChange={updateDelay}/>
+      <p>Repeats the combined output of both drones.</p>
+    </section>}
+    <section className="preset-morph" aria-labelledby="preset-morph-title" hidden={Boolean(patchDroneEdit)}>
       <div className="preset-morph-heading">
-        <h3>Preset Morph</h3>
+        <h2 id="preset-morph-title">Preset Morph</h2>
         <label className="preset-morph-toggle"><input type="checkbox" checked={morphEnabled}
           disabled={previewMode === 'arrangement'}
           onChange={event => { setMorphEnabled(event.target.checked); if (!event.target.checked) resetMorph(); }}/> Enable Morph</label>
@@ -749,10 +776,11 @@ export function App() {
         </div>
         <p>Travel time is for one direction. Move the slider to take over the blend, or turn Morph off to return to the editor sound.</p>
       </fieldset>
-    </div>
+    </section>
     <div hidden={Boolean(patchDroneEdit)}><SceneTimeline captureSound={captureSound} onPlay={scenes => void playArrangement(scenes)}
       onStop={stopScenePlayback} playing={previewMode === 'arrangement'}
       blocked={previewMode === 'morph' || playbackTransition} sceneIndex={sceneIndex}/></div>
-    <div className="preset-list">{presets.length === 0 ? <p>No saved presets yet. Presets stay in this browser; export JSON for backup.</p> : presets.map(preset => <div className="preset-item" key={preset.id}><div><strong>{preset.name}</strong><small>{new Date(preset.createdAt).toLocaleString()}</small></div><div className="preset-item-actions"><button type="button" aria-label={`Load ${preset.name} into Drone ${activeLayer}`} onClick={() => loadPreset(preset)}>LOAD TO {activeLayer}</button><button type="button" onClick={() => exportPreset(preset)}>EXPORT</button><button type="button" onClick={() => void removePreset(preset)}>DELETE</button></div></div>)}</div></section>
-    <section className="diagnostic"><h2>ANDROID AUDIO DIAGNOSTIC</h2><label><input type="checkbox" checked={renderingDiagnosticEnabled} onChange={event => setRenderingDiagnosticEnabled(event.target.checked)}/> Keep rendering active while playing (experiment)</label><div className="diagnostic-track"><div className="diagnostic-indicator" ref={renderingIndicator}/></div><p>Compare 30 seconds with this OFF and ON without touching the screen. This intentionally increases rendering work and battery use; it is not a permanent audio fix.</p><a href="./audio-diagnostic.html">Open standalone audio output test</a></section><footer>WEB AUDIO ENGINE · SOLAR 42 INSPIRED · USE LOW VOLUME</footer></main></>;
+    <section className="diagnostic"><h2>ANDROID AUDIO DIAGNOSTIC</h2><label><input type="checkbox" checked={renderingDiagnosticEnabled} onChange={event => setRenderingDiagnosticEnabled(event.target.checked)}/> Keep rendering active while playing (experiment)</label><div className="diagnostic-track"><div className="diagnostic-indicator" ref={renderingIndicator}/></div><p>Compare 30 seconds with this OFF and ON without touching the screen. This intentionally increases rendering work and battery use; it is not a permanent audio fix.</p><a href="./audio-diagnostic.html">Open standalone audio output test</a></section>
+    </div>
+    <footer>WEB AUDIO ENGINE · SOLAR 42 INSPIRED · USE LOW VOLUME</footer></main></>;
 }

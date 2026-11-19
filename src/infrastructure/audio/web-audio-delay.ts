@@ -1,7 +1,7 @@
 import type { DelaySettings } from '../../domain/delay';
 import { validateDelaySettings } from '../../domain/delay';
 
-/** Master echo with a bounded feedback loop. Feedback is internal to the effect. */
+/** Echo with a bounded feedback loop shared by drone and master delay. */
 export class WebAudioDelay {
   readonly input: GainNode;
   readonly output: GainNode;
@@ -26,7 +26,10 @@ export class WebAudioDelay {
     this.wet.connect(this.output);
     this.delay.connect(this.feedback);
     this.feedback.connect(this.delay);
-    this.update(settings);
+    this.delay.delayTime.value = settings.timeSeconds;
+    this.feedback.gain.value = settings.feedback;
+    this.dry.gain.value = settings.enabled ? 1 - settings.mix : 1;
+    this.wet.gain.value = settings.enabled ? settings.mix : 0;
   }
 
   update(settings: DelaySettings): void {

@@ -69,9 +69,9 @@ Try **Factory patch presets → Arrangements → Drone in Five Sections** for a 
 ## Current scope
 Two drone layers with five oscillators each, modulation, effects and a stereo performance mix. Use **Start Drones** and each layer’s **On** switch for continuous playback. The playback bar stays visible while scrolling.
 
-Select **Drone A** or **Drone B** to edit its oscillator rack. Each row has its own on/off switch, tuned pitch, live waveform and Volume control. Open **Settings** to edit the oscillator’s pan, waveform, filter and LFOs, or to use its preset and clipboard actions.
+Open **Sound** for the oscillator rack, per-drone effects, modulators and presets. Select **Drone A** or **Drone B** to choose which sound to edit. Each oscillator row has its own on/off switch, tuned pitch, live waveform and Volume control. Open **Settings** to edit its pan, waveform, filter and LFOs, or to use its preset and clipboard actions.
 
-The **Performance** section has the XY pad and both layers’ **Hold to Play** keys. Hold it with the mouse, a finger, or Space/Enter while focused. Drag up or down while holding to bend all five oscillators by up to one semitone from their current tuning. Releasing the key fades the layer out at its own **Release** setting. Both keys can be held with separate fingers.
+Open **Studio** for master level and delay, harmony, the drone mix, Preset Morph, Scene Timeline, the audio diagnostic and the **Performance** controls. Performance has the XY pad and both layers’ **Hold to Play** keys. Hold a key with the mouse, a finger, or Space/Enter while focused. Drag up or down while holding to bend all five oscillators by up to one semitone. Releasing the key fades the layer out at its own **Release** setting.
 
 Pressing a key activates **Key Mode** for that layer. Turn **Key Mode** off to return to continuous playback controls. Each layer’s attack, decay, sustain, release and Key Level are saved with its sound preset. **Key Level** affects the key and its release tail. Continuous playback and patch nodes use the saved drone mix level. In a patch drone’s editor, **Patch Drone Level** adjusts that mix level separately.
 
@@ -157,15 +157,21 @@ Choose **Cycle Envelope** in the oscillator or Wave node waveform menu to shape 
 
 Choose **Folded Sine** and raise **Fold Amount** to bend the sine peaks back inward, adding harmonics at the same oscillator pitch. At 0% the signal is a clean sine. Use **Shape LFO** to sweep from a mellow tone into brighter or metallic textures, or use a square LFO to alternate settings.
 
-## Drone shelf EQ
+## Drone effects
 
-In **Drone Mix**, switch on **Reverb** or load a space from **Reverb preset**. **Decay** sets the response length (0.2–12 seconds), **Pre-delay** sets when reflections begin (0–250 ms), and higher **Damping** makes the high frequencies fade faster. **Wet Mix** blends the original and reverberant sound. **Concrete Room**, **Dark Hall**, and **Flooded Cavern** are editable starting points shared with the Reverb node. Existing presets use the original 1.8-second response and 18 ms pre-delay unless you edit them.
+In **Sound → Effects**, click an effect’s name to edit its settings and use its switch to enable or bypass it. The cards follow the signal order from EQ to Reverb. Each drone stores its own settings in presets and carries them into the Patch Editor when used in a Drone node. **Studio → Master delay** processes the combined output of both drones.
 
-Each **Drone Mix** has a **Low shelf** and **High shelf**. Frequency sets the center of the shelf’s transition, and Gain sets how much to boost or cut in dB. Try +3 dB at 150 Hz on the low shelf for more body, or −4 dB at 2,400 Hz on the high shelf to soften the top end. Both are flat at 0 dB. The response graph shows the combined gain from both shelves across frequency, with a blue marker for the low shelf and amber for the high shelf. The shelves shape the whole drone before its reverb, and saved presets retain the settings.
+- **EQ** uses a low shelf and a high shelf with a combined response graph.
+- **Overdrive** soft-clips the signal. Drive sets the amount, Tone rolls off highs, and Wet Mix blends the result back in.
+- **Compressor** controls peaks with Threshold, Ratio, Attack and Release.
+- **Chorus** varies two short stereo delays to widen the sound. **Flanger** uses a shorter modulated delay with feedback for a sweeping tone.
+- **Delay** repeats the drone at the selected Time and Feedback. **Reverb** adds a tail with adjustable Decay, Pre-delay and Damping. Its editable spaces are shared with the Reverb node.
+
+Older presets retain their shelf, reverb and shared delay settings. The added per-drone stages start bypassed.
 
 ## Step Sequencer
 
-Under **Performance**, select the drone you want to shape. Choose a pad, set a value in the oscillator rack, and **Capture** that control into the pad. Repeat to add or update controls on the same pad. Steps can drive oscillator **Volume**, enabled filter **Cutoff**, and the **FM Depth** of an enabled Waveform-to-Frequency route. **Glide** sets the time to reach those values and **Hold** sets how long they stay before the next step. Empty pads are skipped.
+Under **Sound → Modulators**, select the drone you want to shape. Choose a pad, set a value in the oscillator rack, and **Capture** that control into the pad. Repeat to add or update controls on the same pad. Steps can drive oscillator **Volume**, enabled filter **Cutoff**, and the **FM Depth** of an enabled Waveform-to-Frequency route. **Glide** sets the time to reach those values and **Hold** sets how long they stay before the next step. Empty pads are skipped.
 
 Start the selected drone in continuous mode. Use **Apply step** to set up your opening sound, then choose **Play once** or **Loop**. **Manual** waits after each glide until you press **Next step**. You can also use **Next step** to advance early during automatic playback. **Stop steps** leaves the current sound playing. To compose an ending that fades to silence, capture zero volume for the remaining audible oscillators on the last pad.
 
@@ -173,6 +179,6 @@ Each layer has its own sequence with up to eight pads. Steps stay until the page
 
 ## Preset Morph and Scene Timeline
 
-Enable **Preset Morph**, select two presets, and move the slider to hear their full stereo sounds crossfade. Each preset keeps its own tuning, modulation, waveforms, layer switches and echo. Set **Travel time** and choose **Play A → B** to start at A and settle at B. Enable **Loop back and forth** to repeat the transition, using the selected travel time in each direction. Choose **Hold blend** to keep the current mix playing or drag the slider to take over manually. Turn Morph off to return to the sound in the editor.
+In **Studio**, enable **Preset Morph**, select two presets, and move the slider to hear their full stereo sounds crossfade. Each preset keeps its own tuning, modulation, waveforms, layer switches and effects. Set **Travel time** and choose **Play A → B** to start at A and settle at B. Enable **Loop back and forth** to repeat the transition, using the selected travel time in each direction. Choose **Hold blend** to keep the current mix playing or drag the slider to take over manually. Turn Morph off to return to the sound in the editor.
 
 Use **Capture current sound** in **Scene Timeline** to take snapshots of both drones, the effects and the XY position. Reorder the scenes and set each scene's **Hold** and **Blend to next** in seconds. **Play arrangement** fades in the opening, plays the list once, and fades the last scene's sources before letting the effects ring out. Orbit adds a 5-second opening and a 10-second ending that includes 2 seconds for the effects tail. Timeline scenes are kept for the browser session until the page reloads.

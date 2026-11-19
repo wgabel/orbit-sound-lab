@@ -7,6 +7,8 @@ import { DEFAULT_REVERB, validateDroneReverb } from './reverb';
 import type { DroneReverbSettings } from './reverb';
 import { DEFAULT_DRONE_ENVELOPE, validateDroneEnvelope } from './drone-envelope';
 import type { DroneEnvelope } from './drone-envelope';
+import { validateDroneEffects } from './drone-effects';
+import type { DroneEffectsSettings } from './drone-effects';
 
 import { validateOscillatorModulationRoutes } from './oscillator-modulation';
 import type { OscillatorModulationRoute } from './oscillator-modulation';
@@ -58,6 +60,7 @@ export interface DroneMixSettings extends ShelfEqSettings {
   readonly noise: {readonly enabled: boolean; readonly volume: number};
   readonly filter: {readonly enabled: boolean; readonly cutoffHz: number};
   readonly reverb: DroneReverbSettings;
+  readonly effects?: DroneEffectsSettings;
 }
 export const MAX_DRONE_KEY_GAIN = 0.4;
 
@@ -115,6 +118,7 @@ export function validateDroneMix(settings: DroneMixSettings): void {
   validateCutoffFrequency(settings.filter.cutoffHz);
   validateShelfEq(settings);
   validateDroneReverb(settings.reverb);
+  if (settings.effects !== undefined) validateDroneEffects(settings.effects);
 }
 export function validateLowPassFilterSettings(settings: LowPassFilterSettings): void {
   validateCutoffFrequency(settings.cutoffHz);
