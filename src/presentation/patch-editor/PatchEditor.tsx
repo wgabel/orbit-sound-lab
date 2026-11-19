@@ -3,7 +3,7 @@ import type { DroneLayer, DroneLayerId } from '../../domain/drone-layers';
 import type { PatchPlayback } from '../../application/patch-playback';
 import { connectPatchPorts, copyDroneLayerToPatch, createExamplePatch, createPatchModule, getPatchPort, hasPatchCycle,
   MODULE_LABELS, sameEndpoint, validatePatch } from '../../domain/patch';
-import type { CableMapping, NodePosition, PatchLayout, Patch, PatchDrone, PatchEndpoint, PatchModule, PatchModuleKind, PatchPort } from '../../domain/patch';
+import type { CableMapping, PatchCable, NodePosition, PatchLayout, Patch, PatchDrone, PatchEndpoint, PatchModule, PatchModuleKind, PatchPort } from '../../domain/patch';
 import { createExampleLayout, PatchCanvas } from './PatchCanvas';
 import type { PatchSelection } from './PatchCanvas';
 import { getVisiblePatchViewport, getZoomedCanvasOrigin, placeNewPatchNode } from './patch-layout';
@@ -169,7 +169,12 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   }
 
   function updateMapping(id: string, mapping: CableMapping) {
-    apply({...patch,cables:patch.cables.map(cable => cable.id === id ? {...cable,mapping} : cable)});
+    const cable = patch.cables.find(item => item.id === id);
+    if (cable) updateCable({...cable,mapping});
+  }
+
+  function updateCable(cable: PatchCable) {
+    apply({...patch,cables:patch.cables.map(item => item.id === cable.id ? cable : item)});
   }
 
   function remove(item: PatchSelection) {
@@ -255,7 +260,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
       <div className="patch-workspace-content">
         <PatchCanvas viewportRef={viewport} scale={scale} patch={patch} positions={positions} selection={selection} pending={pending}
           playing={playing} readAudibleElapsed={readAudibleElapsed} readLfoPhase={readLfoPhase} readControlValue={readControlValue} getWaveformAnalyser={getWaveformAnalyser} outputLevel={outputLevel}
-          onPort={handlePort} canConnect={canConnect}
+          onPort={handlePort} canConnect={canConnect} onCableChange={updateCable}
           onSelect={item => {setSelection(item); setPending(null); setError('');}}
           onMove={(id,position) => setPositions(previous => ({...previous,[id]:position}))}/>
         <p className="patch-status" role={error ? 'alert' : 'status'}>{error || message}</p>

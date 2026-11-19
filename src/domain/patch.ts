@@ -50,6 +50,8 @@ export interface PatchCable {
   readonly source: PatchEndpoint;
   readonly destination: PatchEndpoint;
   readonly mapping?: CableMapping;
+  readonly inverted?: boolean;
+  readonly enabled?: boolean;
 }
 export interface Patch {
   readonly version: 1;
@@ -194,7 +196,7 @@ export function validatePatch(patch: Patch): void {
     }
   }
   const destinations = new Set<string>();
-  for (const {source, destination, mapping} of patch.cables) {
+  for (const {source, destination, mapping, inverted, enabled} of patch.cables) {
     const output = getPatchPort(patch, source);
     const input = getPatchPort(patch, destination);
     if (!output || !input || output.direction !== 'output' || input.direction !== 'input' ||
@@ -202,6 +204,11 @@ export function validatePatch(patch: Patch): void {
     const destinationKey = JSON.stringify([destination.moduleId, destination.portId]);
     if (destinations.has(destinationKey)) throw new Error('This input already has a cable.');
     destinations.add(destinationKey);
+    if ((inverted !== undefined && typeof inverted !== 'boolean') ||
+        (enabled !== undefined && typeof enabled !== 'boolean') ||
+        (!input.parameter && (inverted !== undefined || enabled !== undefined))) {
+      throw new Error('Invalid automation cable controls.');
+    }
     if (input.parameter) {
       const {minimum, maximum} = input.parameter;
       if (!mapping || !within(mapping.from, minimum, maximum) || !within(mapping.to, minimum, maximum)) {
