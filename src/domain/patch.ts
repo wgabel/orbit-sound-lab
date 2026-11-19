@@ -23,6 +23,7 @@ export interface PatchModuleSettings {
   lfo: PatchLfo;
   filter: {readonly cutoff: number; readonly resonance: number};
   gain: {readonly level: number};
+  pitchShift: {readonly semitones: number; readonly cents: number};
   shelfEq: ShelfEqSettings;
   mixer: {readonly levelA: number; readonly levelB: number};
   oscilloscope: Record<string, never>;
@@ -87,6 +88,7 @@ export interface PatchPort {
 
 export const MODULE_LABELS: Readonly<Record<PatchModuleKind, string>> = {
   shelfEq: 'Shelf EQ',
+  pitchShift: 'Pitch Shift',
   oscilloscope: 'Oscilloscope',
   wave: 'Wave', drone: 'Drone', automation: 'Automation', filter: 'Low-pass filter', gain: 'Gain',
   lfo: 'LFO', mixer: 'Mixer', output: 'Output'
@@ -129,6 +131,7 @@ export function getPatchPorts(module: PatchModule): readonly PatchPort[] {
       {id:'highFrequency',label:'High frequency',direction:'input',signal:'control',parameter:shelfFrequency},
       {id:'highGain',label:'High gain',direction:'input',signal:'control',parameter:shelfGain}
     ];
+    case 'pitchShift': return [audioInput, audioOutput];
     case 'gain': return [audioInput, audioOutput, level];
     case 'mixer': return [
       {...audioInput, id:'inputA', label:'Audio A'},
@@ -195,6 +198,11 @@ export function validatePatch(patch: Patch): void {
       if (module.settings.harmony !== undefined) validateHarmonySettings(module.settings.harmony);
       continue;
     }
+    if (module.kind === 'pitchShift') {
+      if (!within(module.settings.semitones,-24,24) || !within(module.settings.cents,-100,100))
+        throw new Error('Pitch Shift settings are outside the supported range.');
+      continue;
+    }
     if (module.kind === 'shelfEq') {
       validateShelfEq(module.settings);
       continue;
@@ -249,6 +257,7 @@ export function createPatchModule(kind: PatchModuleKind, id: string): PatchModul
       points:[0, 0.75, 0.25, 1, 0.1, 0.58, 0.23, 0.87, 0.87].map((value, index) => ({position:index / 8, value}))}};
     case 'lfo': return {id, kind, settings:DEFAULT_PATCH_LFO};
     case 'filter': return {id, kind, settings:{cutoff:900, resonance:0.7}};
+    case 'pitchShift': return {id, kind, settings:{semitones:0,cents:0}};
     case 'gain': return {id, kind, settings:{level:0.55}};
     case 'shelfEq': return {id, kind, settings:createDefaultShelfEq()};
     case 'mixer': return {id, kind, settings:{levelA:0.5, levelB:0.5}};
