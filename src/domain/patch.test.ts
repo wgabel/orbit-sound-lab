@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { connectPatchPorts, createExamplePatch, createPatchModule, getPatchModuleLabel, readPatchDroneLayer, setPatchDroneLayer, validatePatch } from './patch';
 import type { Patch } from './patch';
-import { readAutomationPhase, readAutomationValue } from './patch-automation';
+import { limitAutomationSteps, readAutomationPhase, readAutomationValue } from './patch-automation';
 import { createDefaultDroneLayer } from './drone-layers';
 import { tuneSceneLayer } from './sound-scene';
 import { createDefaultDelaySettings } from './delay';
@@ -196,5 +196,32 @@ describe('Pitch Shift patch module', () => {
       {semitones:NaN,cents:0}]) {
       expect(() => validatePatch({version:1,modules:[{...pitch,settings}],cables:[]})).toThrow('Pitch Shift');
     }
+  });
+});
+
+
+describe('Automation input ports', () => {
+  it('exposes Duration for every shape and Step count for Steps only', () => {
+    const source = createPatchModule('lfo','source');
+    const automation = createPatchModule('automation','automation');
+    if (automation.kind !== 'automation') throw new Error('Expected Automation.');
+    const output = {moduleId:source.id,portId:'control'};
+    const duration = {moduleId:automation.id,portId:'duration'};
+    const steps = {moduleId:automation.id,portId:'steps'};
+    const patch: Patch = {version:1,modules:[source,automation],cables:[]};
+    expect(connectPatchPorts(patch,'duration',output,duration).cables[0].mapping).toEqual({from:0.05,to:60});
+    expect(connectPatchPorts(patch,'steps',output,steps).cables[0].mapping).toEqual({from:1,to:8});
+    const sine: Patch = {...patch,modules:[source,{...automation,settings:{...automation.settings,shape:'sine'}}]};
+    expect(() => connectPatchPorts(sine,'steps',output,steps)).toThrow('compatible input');
+    expect(() => connectPatchPorts(patch,'self',{moduleId:automation.id,portId:'control'},duration)).toThrow('feedback loop');
+  });
+
+  it('stretches a step prefix to fill the cycle without editing the saved steps', () => {
+    const module = createPatchModule('automation','steps');
+    if (module.kind !== 'automation') throw new Error('Expected Automation.');
+    const limited = limitAutomationSteps(module.settings,2);
+    expect(limited.points).toEqual([{position:0,value:0},{position:0.5,value:0.75},{position:1,value:0.75}]);
+    expect(module.settings.points).toHaveLength(9);
+    expect(limitAutomationSteps(module.settings,99)).toBe(module.settings);
   });
 });

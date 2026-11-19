@@ -42,6 +42,8 @@ Use a **Crossfader** to transition between two audio signals. Connect them to **
 
 Add **Chord Progression** and connect its **Chords** output to a **Chord Generator → Chords** input. The default pattern is Cm, A♭, E♭, B♭. Edit the root and quality of each step, choose the time per chord, and choose whether to loop or hold the last chord. The generator keeps its octave and voicing settings. In an arrangement, schedule clips for both the generator and the progression where you want the chord changes.
 
+Connect an Automation or LFO **Value** to another Automation node’s **Duration** input to speed up or slow down its cycle. Set the cable’s endpoints in seconds. In **Steps** mode, **Step count** plays the first N configured steps within the cycle. The count is rounded to a whole step and capped at the available steps. The stored step values stay editable.
+
 In an **Automation** node, **Smooth waves** loads editable curves with rounded transitions between points. The presets loop cleanly and keep your current duration and playback mode.
 
 Choose **Add module → LFO** for repeating modulation. Select a waveform, set the rate or cycle duration, and connect **Value** to a control input. The cable sets the modulation range. **Synchronize with patch** aligns the LFO to the patch transport and enables phase offsets. This node uses AudioWorklet.

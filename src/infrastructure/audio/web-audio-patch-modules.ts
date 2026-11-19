@@ -1,3 +1,5 @@
+import { createAutomationTimingSignal } from './web-audio-automation-timing';
+import type { AutomationTimingRoute } from './web-audio-automation-timing';
 import type { WebAudioPitchShiftWorkletFactory } from './web-audio-pitch-shift-worklet';
 import { readClipElapsed } from '../../domain/patch-arrangement';
 import type { ArrangementClip } from '../../domain/patch-arrangement';
@@ -12,7 +14,7 @@ import { readAutomationValue } from '../../domain/patch-automation';
 import { createControlMonitor } from './web-audio-control-monitor';
 import type { WebAudioLfoWorkletFactory } from './web-audio-lfo-worklet';
 import { createPatchLfoSignal } from './web-audio-patch-lfo';
-import type { PatchAutomation } from '../../domain/patch-automation';
+import type { AutomationPlaybackTiming, PatchAutomation } from '../../domain/patch-automation';
 import { DroneController } from '../../application/drone-controller';
 import { readPatchDroneLayer } from '../../domain/patch';
 import { tuneSceneLayer } from '../../domain/sound-scene';
@@ -38,6 +40,7 @@ export interface PatchRuntimeModule {
   readonly chordProgression?: ChordRoute['settings'];
   readLfoPhase?(elapsed: number): number;
   readControlValue?(): number;
+  readAutomationTiming?(elapsed: number): AutomationPlaybackTiming | undefined;
   dispose(): void;
 }
 
@@ -75,7 +78,8 @@ const defaultWave = createDefaultDroneSettings().oscillators[0];
 export function createPatchRuntimeModule(
   context: AudioContext, definition: PatchModule, pulse: WebAudioPulseWorkletFactory,
   modulationFactory: WebAudioLowFrequencyOscillatorFactory, lfo: WebAudioLfoWorkletFactory, master: AudioNode, origin: number,
-  {clips,chordRoute,pitchWorklet}: {clips?: readonly ArrangementClip[]; chordRoute?: ChordRoute;
+  {clips,chordRoute,pitchWorklet,automationTiming}: {clips?: readonly ArrangementClip[]; chordRoute?: ChordRoute;
+    automationTiming?: AutomationTimingRoute;
     pitchWorklet?: WebAudioPitchShiftWorkletFactory} = {}
 ): PatchRuntimeModule {
   switch (definition.kind) {
@@ -119,6 +123,7 @@ export function createPatchRuntimeModule(
       return {definition, output:signal.output, readLfoPhase:signal.readPhase, readControlValue:signal.readValue, dispose:signal.dispose};
     }
     case 'automation': {
+      const timing = automationTiming && createAutomationTimingSignal(context,definition.settings,origin,automationTiming,clips);
       const smoothing = context.createBiquadFilter();
       smoothing.type = 'lowpass';
       smoothing.frequency.value = 80;
@@ -126,6 +131,14 @@ export function createPatchRuntimeModule(
       const bounds = context.createWaveShaper();
       bounds.curve = new Float32Array([0, 0, 1]);
       smoothing.connect(bounds);
+      const monitor = createControlMonitor(context,bounds);
+      if (timing) {
+        timing.output.connect(smoothing);
+        return {definition,output:bounds,parameters:timing.parameters,readControlValue:monitor.read,
+          readAutomationTiming:timing.readTiming,dispose() {
+            timing.dispose(); smoothing.disconnect(); bounds.disconnect();
+          }};
+      }
       const sources: AudioBufferSourceNode[] = [];
       const buffers = new Map<string,AudioBuffer>();
       function startSignal(settings: PatchAutomation, start: number, elapsed: number, end?: number) {
@@ -149,7 +162,6 @@ export function createPatchRuntimeModule(
         const start = context.currentTime;
         startSignal(definition.settings,start,Math.max(0,start-origin));
       }
-      const monitor = createControlMonitor(context,bounds);
       return {definition, output:bounds, readControlValue:monitor.read, dispose() {
         for (const source of sources) {source.stop(); source.disconnect();}
         smoothing.disconnect();
