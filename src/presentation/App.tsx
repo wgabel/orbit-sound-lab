@@ -16,6 +16,7 @@ import type { DelaySettings } from '../domain/delay';
 import type { SoundLabController } from '../application/audio-contracts';
 import { applyPitchOffset } from '../domain/modulation';
 import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
+import { supportsOscillatorShape } from '../domain/drone';
 import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../domain/drone';
 import { DRONE_LAYER_IDS, createDefaultDroneLayer } from '../domain/drone-layers';
 import type { DroneLayer, DroneLayerId } from '../domain/drone-layers';
@@ -551,9 +552,10 @@ export function App() {
                   <option value="sawtooth">Sawtooth</option>
                   <option value="square">Square</option>
                   <option value="sineTriangle">Sine ↔ Triangle</option>
+                  <option value="variablePulse">Variable Pulse</option>
                 </select>
               </label>
-              {oscillator.waveform === 'sineTriangle' && <OscillatorShapeControls oscillator={oscillator}
+              {supportsOscillatorShape(oscillator.waveform) && <OscillatorShapeControls oscillator={oscillator}
                 modulation={lowFrequencyOscillatorSettings.find(item =>
                   item.targetOscillatorId === oscillator.id && item.destination === 'shape')}
                 readShape={readOscillatorShape} playing={playing && (layerEnabled || holdModes[activeLayer])}
