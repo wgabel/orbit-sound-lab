@@ -1,0 +1,50 @@
+import { validateAutomation } from './patch-automation';
+import type { AutomationPoint, PatchAutomation } from './patch-automation';
+
+export const AUTOMATION_PRESET_NAME_LIMIT = 120;
+
+export interface AutomationPreset {
+  readonly kind: 'orbit-automation';
+  readonly schemaVersion: 1;
+  readonly id: string;
+  readonly name: string;
+  readonly createdAt: string;
+  readonly automation: PatchAutomation;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function readSettings(value: unknown): PatchAutomation {
+  if (!isRecord(value)) throw new Error('Invalid automation settings.');
+  const {duration, mode, shape, points, glide} = value;
+  if (typeof duration !== 'number' || (mode !== 'loop' && mode !== 'once') ||
+      (shape !== 'sine' && shape !== 'square' && shape !== 'curve' && shape !== 'steps') ||
+      !Array.isArray(points) || points.length > 32 || typeof glide !== 'number') {
+    throw new Error('Invalid automation settings.');
+  }
+  const automationPoints = points.map((point: unknown): AutomationPoint => {
+    if (!isRecord(point) || typeof point.position !== 'number' || typeof point.value !== 'number') {
+      throw new Error('Invalid automation point.');
+    }
+    return {position:point.position,value:point.value};
+  });
+  const settings = {duration,mode,shape,points:automationPoints,glide} satisfies PatchAutomation;
+  validateAutomation(settings);
+  return settings;
+}
+
+export function readAutomationPreset(value: unknown): AutomationPreset {
+  if (!isRecord(value) || value.kind !== 'orbit-automation' || value.schemaVersion !== 1) {
+    throw new Error('Choose a supported Automation preset JSON file.');
+  }
+  const {id,name,createdAt,automation} = value;
+  if (typeof name !== 'string' || !name.trim() || name.trim().length > AUTOMATION_PRESET_NAME_LIMIT) {
+    throw new Error('Enter a preset name up to 120 characters.');
+  }
+  if (typeof id !== 'string' || !id || typeof createdAt !== 'string' || !Number.isFinite(Date.parse(createdAt))) {
+    throw new Error('Invalid automation preset metadata.');
+  }
+  return {kind:'orbit-automation',schemaVersion:1,id,name:name.trim(),createdAt,automation:readSettings(automation)};
+}

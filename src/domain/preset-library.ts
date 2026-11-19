@@ -9,6 +9,7 @@ import type { LowFrequencyOscillatorSettings } from './modulation';
 import { createDefaultLowFrequencyOscillators, LFO_DESTINATIONS, validateLowFrequencyOscillatorSettings } from './modulation';
 import type { DelaySettings } from './delay';
 import { validateDelaySettings } from './delay';
+import { downloadPresetJson, runPresetRequest } from '../infrastructure/storage/preset-storage';
 
 export interface SoundPreset {
   readonly schemaVersion: 1;
@@ -23,30 +24,6 @@ export interface SoundPreset {
   readonly sourceLayer: DroneLayerId;
 }
 const DATABASE_NAME = 'orbit-sound-lab-presets';
-const STORE_NAME = 'presets';
-function openDatabase(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DATABASE_NAME, 1);
-    request.onupgradeneeded = () => {
-      if (!request.result.objectStoreNames.contains(STORE_NAME)) request.result.createObjectStore(STORE_NAME, {keyPath: 'id'});
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error('Cannot open preset database.'));
-  });
-}
-async function transact<T>(mode: IDBTransactionMode, execute: (store: IDBObjectStore, resolve: (value: T) => void, reject: (reason: unknown) => void) => void): Promise<T> {
-  const database = await openDatabase();
-  return new Promise<T>((resolve, reject) => {
-    const transaction = database.transaction(STORE_NAME, mode);
-    const store = transaction.objectStore(STORE_NAME);
-    let result!: T;
-    let hasResult = false;
-    transaction.oncomplete = () => { database.close(); if (hasResult) resolve(result); else reject(new Error('Preset operation did not complete.')); };
-    transaction.onerror = () => { database.close(); reject(transaction.error ?? new Error('Preset operation failed.')); };
-    transaction.onabort = () => { database.close(); reject(transaction.error ?? new Error('Preset operation aborted.')); };
-    execute(store, value => { result = value; hasResult = true; }, reject);
-  });
-}
 export function normalizePresetModulations(modulations: readonly LowFrequencyOscillatorSettings[], oscillatorIds: readonly string[]): readonly LowFrequencyOscillatorSettings[] {
   return createDefaultLowFrequencyOscillators(oscillatorIds).map(defaults =>
     modulations.find(item => item.targetOscillatorId === defaults.targetOscillatorId &&
@@ -113,38 +90,18 @@ export function loadPresetSound(preset: SoundPreset, destination: DroneLayer): D
 }
 
 export async function listPresets(): Promise<SoundPreset[]> {
-  const values = await transact<unknown[]>('readonly', (store, resolve, reject) => {
-    const request = store.getAll();
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+  const values = await runPresetRequest<unknown[]>(DATABASE_NAME,'readonly',store => store.getAll());
   return values.map(validatePreset).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 export async function savePreset(preset: SoundPreset): Promise<void> {
   const validated = validatePreset(preset);
-  await transact<void>('readwrite', (store, resolve, reject) => {
-    const request = store.put(validated);
-    request.onsuccess = () => resolve(undefined);
-    request.onerror = () => reject(request.error);
-  });
+  await runPresetRequest(DATABASE_NAME,'readwrite',store => store.put(validated));
 }
 export async function deletePreset(id: string): Promise<void> {
-  await transact<void>('readwrite', (store, resolve, reject) => {
-    const request = store.delete(id);
-    request.onsuccess = () => resolve(undefined);
-    request.onerror = () => reject(request.error);
-  });
+  await runPresetRequest(DATABASE_NAME,'readwrite',store => store.delete(id));
 }
 export function exportPreset(preset: SoundPreset): void {
-  const blob = new Blob([JSON.stringify(validatePreset(preset), null, 2)], {type: 'application/json'});
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = 'orbit-preset-' + preset.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.json';
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  downloadPresetJson('orbit-preset-',preset.name,validatePreset(preset));
 }
 export async function importPreset(file: File): Promise<SoundPreset> {
   if (file.size > 1024 * 1024) throw new Error('Preset file exceeds 1 MB.');
