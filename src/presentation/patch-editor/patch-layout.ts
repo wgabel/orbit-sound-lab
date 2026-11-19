@@ -1,8 +1,5 @@
-import { getPatchPorts } from '../../domain/patch';
-import type { PatchModule } from '../../domain/patch';
-
-export interface NodePosition {readonly x: number; readonly y: number}
-export type PatchLayout = Readonly<Record<string, NodePosition>>;
+import { getPatchPorts, MAXIMUM_NODE_POSITION } from '../../domain/patch';
+import type { NodePosition, PatchModule } from '../../domain/patch';
 
 interface Size {readonly width: number; readonly height: number}
 interface Rectangle extends NodePosition, Size {}
@@ -13,7 +10,6 @@ export const PATCH_PORT_HEIGHT = 32;
 const NODE_GAP = 12;
 const MINIMUM_NODE_X = 16;
 const MINIMUM_NODE_Y = 12;
-const MAXIMUM_NODE_POSITION = 2400;
 
 export function boundNodePosition(point: NodePosition): NodePosition {
   return {

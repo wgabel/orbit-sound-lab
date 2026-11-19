@@ -40,3 +40,13 @@ export function downloadPresetJson(filenamePrefix: string, name: string, preset:
   anchor.remove();
   setTimeout(() => URL.revokeObjectURL(url),1000);
 }
+
+export async function readPresetJson(file: File): Promise<unknown> {
+  if (file.size > 1024 * 1024) throw new Error('Preset file exceeds 1 MB.');
+  const content = await file.text();
+  try {
+    return JSON.parse(content);
+  } catch {
+    throw new Error('Invalid JSON file.');
+  }
+}

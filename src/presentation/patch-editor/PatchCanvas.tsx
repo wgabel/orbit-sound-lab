@@ -2,14 +2,13 @@ import { AudioWaveform } from '../AudioWaveform';
 import { useEffect, useMemo, useRef } from 'react';
 import type { PointerEvent, Ref } from 'react';
 import { getPatchModuleLabel, getPatchPorts, sameEndpoint } from '../../domain/patch';
-import type { Patch, PatchEndpoint, PatchModule, PatchPort } from '../../domain/patch';
+import type { NodePosition, PatchLayout, Patch, PatchEndpoint, PatchModule, PatchPort } from '../../domain/patch';
 import { readAutomationPhase, readAutomationValue } from '../../domain/patch-automation';
 import { readLfoPreviewValue, readPatchLfoPhase } from '../../domain/patch-lfo';
 import type { PatchLfo } from '../../domain/patch-lfo';
 import type { PatchAutomation } from '../../domain/patch-automation';
 
 import { boundNodePosition, PATCH_NODE_WIDTH, PATCH_NODE_TITLE_HEIGHT, PATCH_PORT_HEIGHT } from './patch-layout';
-import type { NodePosition, PatchLayout } from './patch-layout';
 
 export type PatchSelection = {readonly kind: 'module' | 'cable'; readonly id: string};
 

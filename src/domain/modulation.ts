@@ -46,6 +46,23 @@ export function validateLowFrequencyOscillatorSettings(settings: LowFrequencyOsc
   if (!settings.targetOscillatorId) throw new Error('LFO target is required.');
 }
 
+export function validateLowFrequencyOscillatorBank(settings: readonly LowFrequencyOscillatorSettings[],
+  oscillatorIds: readonly string[]): void {
+  const ids = new Set(oscillatorIds);
+  const targets = new Set<string>();
+  if (settings.length !== ids.size * LFO_DESTINATIONS.length) {
+    throw new Error('Each oscillator requires one LFO configuration per destination.');
+  }
+  for (const item of settings) {
+    validateLowFrequencyOscillatorSettings(item);
+    const key = `${item.targetOscillatorId}:${item.destination}`;
+    if (!ids.has(item.targetOscillatorId) || targets.has(key)) {
+      throw new Error('LFO targets must be unique and match oscillator identifiers.');
+    }
+    targets.add(key);
+  }
+}
+
 export function getFilterModulationLimits(cutoffHz: number, sampleRate: number) {
   return {minimum: Math.max(20, cutoffHz * 0.12), maximum: Math.min(20000, sampleRate / 2)};
 }

@@ -3,7 +3,7 @@ import type { OscillatorModulationParameter, OscillatorModulationRoute } from '.
 import type { DroneVoice, DroneVoiceFactory, SynthesizerController } from './audio-contracts';
 import type { ModulationMatrix, ModulationSource, ModulationSourceFactory, ModulationDestination } from './modulation-contracts';
 import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
-import { getEffectiveCutoffLfoDepth, LFO_DESTINATIONS, validateLowFrequencyOscillatorSettings } from '../domain/modulation';
+import { getEffectiveCutoffLfoDepth, validateLowFrequencyOscillatorBank, validateLowFrequencyOscillatorSettings } from '../domain/modulation';
 import type { AudioGraph } from './audio-graph-contracts';
 import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../domain/drone';
 import { validateDroneMix, validateDroneSettings } from '../domain/drone';
@@ -32,7 +32,7 @@ export class DroneController implements SynthesizerController {
     private readonly outputRoute = {moduleId: 'effects', portId: 'audio'}
   ) {
     validateDroneSettings(settings);
-    this.validateModulationBank(lowFrequencyOscillatorSettings);
+    validateLowFrequencyOscillatorBank(lowFrequencyOscillatorSettings,settings.oscillators.map(oscillator => oscillator.id));
   }
 
   get sampleRate(): number { return this.context.sampleRate; }
@@ -94,19 +94,6 @@ export class DroneController implements SynthesizerController {
       this.graph.unregister(this.moduleId);
       voice.dispose();
       throw error;
-    }
-  }
-
-  private validateModulationBank(settings: readonly LowFrequencyOscillatorSettings[]): void {
-    const oscillatorIds = new Set(this.settings.oscillators.map(oscillator => oscillator.id));
-    const targets = new Set<string>();
-    if (settings.length !== oscillatorIds.size * LFO_DESTINATIONS.length) {
-      throw new Error('Each oscillator requires one LFO configuration per destination.');
-    }
-    for (const item of settings) {
-      validateLowFrequencyOscillatorSettings(item);
-      if (!oscillatorIds.has(item.targetOscillatorId) || targets.has(this.modulationKey(item))) throw new Error('LFO targets must be unique and match oscillator identifiers.');
-      targets.add(this.modulationKey(item));
     }
   }
 
