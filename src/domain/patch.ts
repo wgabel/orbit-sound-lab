@@ -12,7 +12,7 @@ import { DEFAULT_HARMONY_SETTINGS, validateHarmonySettings } from './harmony';
 import type { HarmonySettings } from './harmony';
 import { DEFAULT_PATCH_LFO, validatePatchLfo } from './patch-lfo';
 import type { PatchLfo } from './patch-lfo';
-import { validateAutomation } from './patch-automation';
+import { MAXIMUM_AUTOMATION_DURATION, MAXIMUM_AUTOMATION_STEPS, MINIMUM_AUTOMATION_DURATION, validateAutomation } from './patch-automation';
 import type { PatchAutomation } from './patch-automation';
 
 export interface PatchModuleSettings {
@@ -86,6 +86,7 @@ export interface PatchParameter {
   readonly minimum: number;
   readonly maximum: number;
   readonly displayScale?: number;
+  readonly defaultMaximum?: number;
 }
 export interface PatchPort {
   readonly id: string;
@@ -128,8 +129,16 @@ export function getPatchPorts(module: PatchModule): readonly PatchPort[] {
     case 'drone': return [audioOutput];
     case 'chord': return [{id:'chords',label:'Chords',direction:'input',signal:'chords'},audioOutput];
     case 'chordProgression': return [{id:'chords',label:'Chords',direction:'output',signal:'chords'}];
-    case 'lfo':
-    case 'automation': return [{id:'control', label:'Value', direction:'output', signal:'control'}];
+    case 'lfo': return [{id:'control', label:'Value', direction:'output', signal:'control'}];
+    case 'automation': return [
+      {id:'control',label:'Value',direction:'output',signal:'control'},
+      {id:'duration',label:'Duration',direction:'input',signal:'control',
+        parameter:{unit:'s',minimum:MINIMUM_AUTOMATION_DURATION,maximum:MAXIMUM_AUTOMATION_DURATION}},
+      ...(module.settings.shape === 'steps' ? [{
+        id:'steps',label:'Step count',direction:'input',signal:'control',
+        parameter:{unit:'steps',minimum:1,maximum:MAXIMUM_AUTOMATION_STEPS,defaultMaximum:module.settings.points.length-1}
+      } as const] : [])
+    ];
     case 'filter': return [
       audioInput, audioOutput,
       {id:'cutoff', label:'Cutoff', direction:'input', signal:'control', parameter:{unit:'Hz', minimum:40, maximum:6000}},
@@ -270,7 +279,7 @@ export function validatePatch(patch: Patch): void {
 
 export function connectPatchPorts(patch: Patch, id: string, source: PatchEndpoint, destination: PatchEndpoint): Patch {
   const parameter = getPatchPort(patch, destination)?.parameter;
-  const mapping = parameter ? {from:parameter.minimum, to:parameter.maximum} : undefined;
+  const mapping = parameter ? {from:parameter.minimum, to:parameter.defaultMaximum ?? parameter.maximum} : undefined;
   const next = {...patch, cables:[...patch.cables, {id, source, destination, mapping}]};
   validatePatch(next);
   return next;

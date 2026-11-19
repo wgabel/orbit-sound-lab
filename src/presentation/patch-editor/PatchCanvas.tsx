@@ -5,10 +5,10 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { PointerEvent, RefObject } from 'react';
 import { getPatchModuleLabel, getPatchPorts, PATCH_CANVAS_MINIMUM, sameEndpoint } from '../../domain/patch';
 import type { NodePosition, PatchLayout, Patch, PatchCable, PatchEndpoint, PatchModule, PatchPort } from '../../domain/patch';
-import { readAutomationPhase, readAutomationValue } from '../../domain/patch-automation';
+import { limitAutomationSteps, readAutomationPhase, readAutomationValue } from '../../domain/patch-automation';
 import { readLfoPreviewValue, readPatchLfoPhase } from '../../domain/patch-lfo';
 import type { PatchLfo } from '../../domain/patch-lfo';
-import type { PatchAutomation } from '../../domain/patch-automation';
+import type { AutomationPlaybackTiming, PatchAutomation } from '../../domain/patch-automation';
 
 import { boundNodePosition, getEdgeScrollSpeed, getVisiblePatchViewport, PATCH_CANVAS_HEIGHT, PATCH_CANVAS_WIDTH,
   PATCH_NODE_WIDTH, PATCH_NODE_TITLE_HEIGHT, PATCH_PORT_HEIGHT } from './patch-layout';
@@ -31,6 +31,7 @@ interface PatchCanvasProps {
   readonly playing: boolean;
   readAudibleElapsed(): number;
   readLfoPhase(moduleId: string, elapsed: number): number | undefined;
+  readAutomationTiming(moduleId: string, elapsed: number): AutomationPlaybackTiming | undefined;
   readControlValue(moduleId: string): number | undefined;
   readonly outputLevel: number;
   getWaveformAnalyser(moduleId: string): AnalyserNode | null;
@@ -83,7 +84,7 @@ interface NodeDrag {
   lastFrame?: number;
 }
 
-export function PatchCanvas({patch, arrangement, positions, selection, pending, scale, playing, readAudibleElapsed, readLfoPhase, readControlValue, getWaveformAnalyser, outputLevel, viewportRef,
+export function PatchCanvas({patch, arrangement, positions, selection, pending, scale, playing, readAudibleElapsed, readLfoPhase, readAutomationTiming, readControlValue, getWaveformAnalyser, outputLevel, viewportRef,
   onSelect, onCableChange, onPort, canConnect, onMove}: PatchCanvasProps) {
   const canvas = useRef<HTMLDivElement>(null);
   const controlBadges = useRef(new Map<string,HTMLSpanElement>());
@@ -108,7 +109,7 @@ export function PatchCanvas({patch, arrangement, positions, selection, pending, 
       const curve = line.parentElement?.querySelector<SVGPathElement>('[data-automation-curve]');
       const clips = arrangement?.clips.filter(clip => clip.moduleId === module?.id);
       trace?.setAttribute('d','');
-      return {line,module,trace,curve,clips,settings:undefined as PatchAutomation | undefined,lastColumn:-1,history:''};
+      return {line,module,trace,curve,clips,settings:undefined as PatchAutomation | undefined,stepCount:undefined as number | undefined,lastColumn:-1,history:''};
     });
     let frame = 0;
     let lastBadgeUpdate = -Infinity;
@@ -123,11 +124,14 @@ export function PatchCanvas({patch, arrangement, positions, selection, pending, 
         let phase: number;
         if (module.kind === 'automation') {
           const settings = clip?.automation ?? module.settings;
-          if (curve && playhead.settings !== settings) {
-            curve.setAttribute('d',controlPath(value => readAutomationValue(settings,value)));
+          const timing = playing ? readAutomationTiming(module.id,elapsed) : undefined;
+          if (curve && (playhead.settings !== settings || playhead.stepCount !== timing?.stepCount)) {
+            const visible = timing?.stepCount === undefined ? settings : limitAutomationSteps(settings,timing.stepCount);
+            curve.setAttribute('d',controlPath(value => readAutomationValue(visible,value)));
             playhead.settings = settings;
+            playhead.stepCount = timing?.stepCount;
           }
-          phase = readAutomationPhase(settings,clip ? readClipElapsed(clip,elapsed) : clips ? 0 : elapsed);
+          phase = timing?.phase ?? readAutomationPhase(settings,clip ? readClipElapsed(clip,elapsed) : clips ? 0 : elapsed);
         } else {
           phase = (playing ? readLfoPhase(module.id,elapsed) : undefined) ?? readPatchLfoPhase(module.settings,elapsed);
         }
@@ -151,7 +155,7 @@ export function PatchCanvas({patch, arrangement, positions, selection, pending, 
     }
     draw(performance.now());
     return () => cancelAnimationFrame(frame);
-  }, [patch.modules, arrangement, playing, readAudibleElapsed, readLfoPhase, readControlValue]);
+  }, [patch.modules, arrangement, playing, readAudibleElapsed, readLfoPhase, readAutomationTiming, readControlValue]);
 
   function endpointPosition(endpoint: PatchEndpoint) {
     const module = modules.get(endpoint.moduleId);

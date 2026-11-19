@@ -1,3 +1,4 @@
+import type { AutomationPlaybackTiming } from '../domain/patch-automation';
 import type { PatchArrangement } from '../domain/patch-arrangement';
 import type { Patch } from '../domain/patch';
 
@@ -9,6 +10,7 @@ export interface PatchPlayback {
   readOutputLevel(): number;
   getWaveformAnalyser(moduleId: string): AnalyserNode | null;
   readLfoPhase(moduleId: string, elapsed: number): number | undefined;
+  readAutomationTiming(moduleId: string, elapsed: number): AutomationPlaybackTiming | undefined;
   readControlValue(moduleId: string): number | undefined;
   stop(): Promise<void>;
   dispose(): void;

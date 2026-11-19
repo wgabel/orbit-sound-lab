@@ -114,7 +114,7 @@ function CableSettings({patch, cable, onChange}: {patch: Patch; cable: PatchCabl
   if (port?.signal === 'chords') return <p>Each step changes the generator’s root and chord quality.</p>;
   if (!port?.parameter || !mapping) return <p>This cable carries audio.</p>;
   const {minimum,maximum,unit,displayScale} = port.parameter;
-  const step = unit === 'Hz' ? 1 : unit === 'dB' ? 0.5 : 0.01;
+  const step = (unit === 'Hz' || unit === 'steps') ? 1 : unit === 'dB' ? 0.5 : 0.01;
   return <div className="patch-fields">
     <NumericSlider label={`${port.label} at 0`} unit={unit} displayFactor={displayScale} min={minimum} max={maximum} step={step}
       value={mapping.from} onChange={from => onChange({...mapping,from})}/>

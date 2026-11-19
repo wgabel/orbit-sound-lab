@@ -1,3 +1,4 @@
+import { MAXIMUM_AUTOMATION_DURATION, MINIMUM_AUTOMATION_DURATION } from '../../domain/patch-automation';
 import type { PatchAutomation } from '../../domain/patch-automation';
 import { applyHarmonicsPreset, HARMONICS_GROUPS, readHarmonicsPresetId } from '../../domain/patch-harmonics';
 import { applySmoothWavePreset, readSmoothWavePresetId, SMOOTH_WAVE_PRESETS } from '../../domain/patch-smooth-waves';
@@ -37,7 +38,7 @@ export function AutomationSettings({settings, onChange}: {settings: PatchAutomat
         onChange({...settings,mode:event.target.value as PatchAutomation['mode']})}>
         <option value="loop">Loop</option><option value="once">Play once, hold end</option>
       </select></label>
-      <NumericSlider label="Duration" unit="s" min={0.05} max={60} step={0.05}
+      <NumericSlider label="Duration" unit="s" min={MINIMUM_AUTOMATION_DURATION} max={MAXIMUM_AUTOMATION_DURATION} step={0.05}
         value={settings.duration} onChange={duration => onChange({...settings,duration})}/>
       {settings.shape === 'steps' && <NumericSlider label="Glide" unit="%" displayFactor={100} min={0} max={1} step={0.01}
         value={settings.glide} onChange={glide => onChange({...settings,glide})}/>}
