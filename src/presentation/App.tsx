@@ -44,8 +44,11 @@ import { getEffectiveOscillatorFrequency } from '../domain/harmony';
 import type { HarmonySettings } from '../domain/harmony';
 import { OscillatorWaveform } from './OscillatorWaveform';
 import './styles.css';
+import { createPatchPlayback } from '../composition/create-patch-playback';
+import { PatchEditor } from './patch-editor/PatchEditor';
 export function App() {
   const controller = useRef<SoundLabController | null>(null);
+  const [showPatchEditor, setShowPatchEditor] = useState(false);
   const [activeLayer, setActiveLayer] = useState<DroneLayerId>('A');
   const [layers, setLayers] = useState<Record<DroneLayerId, DroneLayer>>(() =>
     ({A: createDefaultDroneLayer('A'), B: createDefaultDroneLayer('B')}));
@@ -457,7 +460,9 @@ export function App() {
     controller.current?.layers[id].setGain(gain);
     setLayers(previous => ({...previous, [id]: {...previous[id], drone: {...previous[id].drone, gain}}}));
   }
-  return <main className="instrument">
+  return <>
+    <PatchEditor hidden={!showPatchEditor} onClose={() => setShowPatchEditor(false)} createPlayback={createPatchPlayback}/>
+    <main className="instrument" hidden={showPatchEditor}>
     <section className="master" aria-label="Playback">
       <h1>Orbit <span>Sound Lab</span></h1>
       <button type="button" className={playingOutput ? 'playing' : ''} disabled={playbackTransition}
@@ -465,6 +470,8 @@ export function App() {
       <NumericSlider label="MASTER LEVEL" unit="%" displayFactor={100} min={0} max={1} step={0.01}
         disabled={previewMode !== null} value={masterGain} onChange={gain => {controller.current?.setMasterGain(gain); setMasterGain(gain);}}/>
     </section>
+    <button type="button" className="patch-entry" disabled={playingOutput || playbackTransition}
+      onClick={() => setShowPatchEditor(true)}>Open patch editor</button>
     {error && <p role="alert" className="error">{error}</p>}
     <section className="drone-picker" aria-label="Drone layers">
       {DRONE_LAYER_IDS.map(id => <div key={id} className="drone-layer-choice" data-layer={id}>
@@ -664,5 +671,5 @@ export function App() {
       onStop={stopScenePlayback} playing={previewMode === 'arrangement'}
       blocked={previewMode === 'morph' || playbackTransition} sceneIndex={sceneIndex}/>
     <div className="preset-list">{presets.length === 0 ? <p>No saved presets yet. Presets stay in this browser; export JSON for backup.</p> : presets.map(preset => <div className="preset-item" key={preset.id}><div><strong>{preset.name}</strong><small>{new Date(preset.createdAt).toLocaleString()}</small></div><div className="preset-item-actions"><button type="button" aria-label={`Load ${preset.name} into Drone ${activeLayer}`} onClick={() => loadPreset(preset)}>LOAD TO {activeLayer}</button><button type="button" onClick={() => exportPreset(preset)}>EXPORT</button><button type="button" onClick={() => void removePreset(preset)}>DELETE</button></div></div>)}</div></section>
-    <section className="diagnostic"><h2>ANDROID AUDIO DIAGNOSTIC</h2><label><input type="checkbox" checked={renderingDiagnosticEnabled} onChange={event => setRenderingDiagnosticEnabled(event.target.checked)}/> Keep rendering active while playing (experiment)</label><div className="diagnostic-track"><div className="diagnostic-indicator" ref={renderingIndicator}/></div><p>Compare 30 seconds with this OFF and ON without touching the screen. This intentionally increases rendering work and battery use; it is not a permanent audio fix.</p><a href="./audio-diagnostic.html">Open standalone audio output test</a></section><footer>WEB AUDIO ENGINE · SOLAR 42 INSPIRED · USE LOW VOLUME</footer></main>;
+    <section className="diagnostic"><h2>ANDROID AUDIO DIAGNOSTIC</h2><label><input type="checkbox" checked={renderingDiagnosticEnabled} onChange={event => setRenderingDiagnosticEnabled(event.target.checked)}/> Keep rendering active while playing (experiment)</label><div className="diagnostic-track"><div className="diagnostic-indicator" ref={renderingIndicator}/></div><p>Compare 30 seconds with this OFF and ON without touching the screen. This intentionally increases rendering work and battery use; it is not a permanent audio fix.</p><a href="./audio-diagnostic.html">Open standalone audio output test</a></section><footer>WEB AUDIO ENGINE · SOLAR 42 INSPIRED · USE LOW VOLUME</footer></main></>;
 }

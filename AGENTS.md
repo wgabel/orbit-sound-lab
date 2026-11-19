@@ -38,6 +38,8 @@ SOLAR 42F and 42N change oscillator, LFO/pulser, filter, distortion, and effects
 6. **Safe output:** conservative gain staging, master limiter, smooth parameter changes, and no unexpected loud start.
 7. **Not a clone:** original visual language, naming and UX; do not reproduce ELTA artwork, branding, manuals or proprietary effect code.
 
+For the node editor, unified automation, and transition from the current engine, follow [AGENTS-NODE-EDITOR.md](AGENTS-NODE-EDITOR.md).
+
 ## Technical direction
 - Browser application: TypeScript + React + Vite.
 - Sound engine: Web Audio API, isolated from React rendering. Prefer AudioWorklet for custom oscillators, nonlinear filters or DSP that built-in nodes cannot model well.

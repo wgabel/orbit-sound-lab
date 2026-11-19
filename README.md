@@ -20,6 +20,12 @@ and enter the branch you want to test in **branch**. The workflow checks out and
 tests that branch, then publishes it to the live GitHub Pages URL on success.
 To restore the main build, run the workflow again with **branch** set to **main**.
 
+## Patch editor
+
+Stop drone playback and choose **Open patch editor**. The example routes a three-voice drone through a low-pass filter and gain stage. One eight-second automation lane controls the filter cutoff and the level of the entire drone. Press **Play patch** to hear it.
+
+Select a node or cable to edit it. Connect ports by selecting an output and then a highlighted input. Drag a module by its title, or start from **Empty patch**. Patch edits currently stay in the open session. The drone editor continues to own its presets and arrangements.
+
 ## Current scope
 Two drone layers with five oscillators each, modulation, effects and a stereo performance mix. Use **Start Drones** and each layer’s **On** switch for continuous playback. The playback bar stays visible while scrolling.
 
