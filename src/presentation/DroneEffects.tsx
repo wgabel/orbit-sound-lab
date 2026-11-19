@@ -1,6 +1,6 @@
-import { useId, useState } from 'react';
-import { DEFAULT_DRONE_EFFECTS, DRONE_EFFECT_RANGES } from '../domain/drone-effects';
-import type { ChorusSettings, DroneEffectsSettings, FlangerSettings } from '../domain/drone-effects';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { DEFAULT_DRONE_EFFECT_ORDER, DEFAULT_DRONE_EFFECTS, DRONE_EFFECT_RANGES, moveDroneEffect } from '../domain/drone-effects';
+import type { ChorusSettings, DroneEffectId, DroneEffectsSettings, FlangerSettings } from '../domain/drone-effects';
 import type { DroneMixSettings } from '../domain/drone';
 import type { DroneLayerId } from '../domain/drone-layers';
 import { resolveReverb } from '../domain/reverb';
@@ -9,16 +9,10 @@ import { NumericSlider } from './NumericSlider';
 import { ReverbControls } from './ReverbControls';
 import { ShelfEqControls } from './ShelfEqControls';
 
-const effectsInSignalOrder = [
-  {id:'eq', name:'EQ'},
-  {id:'overdrive', name:'Overdrive'},
-  {id:'compressor', name:'Compressor'},
-  {id:'chorus', name:'Chorus'},
-  {id:'flanger', name:'Flanger'},
-  {id:'delay', name:'Delay'},
-  {id:'reverb', name:'Reverb'}
-] as const;
-type EffectId = typeof effectsInSignalOrder[number]['id'];
+const effectNames: Record<DroneEffectId,string> = {
+  eq:'EQ', overdrive:'Overdrive', compressor:'Compressor', chorus:'Chorus',
+  flanger:'Flanger', delay:'Delay', reverb:'Reverb'
+};
 
 interface DroneEffectsProps {
   readonly layerId: DroneLayerId;
@@ -28,9 +22,11 @@ interface DroneEffectsProps {
 }
 
 export function DroneEffects({layerId,settings,sampleRate,onChange}: DroneEffectsProps) {
-  const [expanded,setExpanded] = useState<EffectId | null>(null);
+  const [expanded,setExpanded] = useState<DroneEffectId | null>(null);
+  const focusedMoveButton = useRef<HTMLButtonElement | null>(null);
   const settingsId = useId();
   const effects = settings.effects ?? DEFAULT_DRONE_EFFECTS;
+  const order = effects.order ?? DEFAULT_DRONE_EFFECT_ORDER;
   const {overdrive,compressor,chorus,flanger,delay} = effects;
   const {reverb} = settings;
   const ranges = DRONE_EFFECT_RANGES;
@@ -40,13 +36,25 @@ export function DroneEffects({layerId,settings,sampleRate,onChange}: DroneEffect
   }
 
   const enabled = {...effects, eq:{enabled:effects.eqEnabled}, reverb};
-  function toggle(id: EffectId, enabled: boolean) {
+  useLayoutEffect(() => {
+    focusedMoveButton.current?.focus({preventScroll:true});
+    focusedMoveButton.current = null;
+  },[order]);
+
+  function move(index: number, direction: -1 | 1, button: HTMLButtonElement) {
+    const nextOrder = moveDroneEffect(order,index,direction);
+    if (nextOrder === order) return;
+    if (document.activeElement === button) focusedMoveButton.current = button;
+    updateEffects({order:nextOrder});
+  }
+
+  function toggle(id: DroneEffectId, enabled: boolean) {
     if (id === 'eq') updateEffects({eqEnabled:enabled});
     else if (id === 'reverb') onChange({...settings,reverb:{...reverb,enabled}});
     else updateEffects({[id]:{...effects[id],enabled}});
   }
 
-  function renderControls(id: EffectId) {
+  function renderControls(id: DroneEffectId) {
     switch (id) {
       case 'eq': return <ShelfEqControls settings={settings} sampleRate={sampleRate}
         onChange={shelves => onChange({...settings,...shelves})}/>;
@@ -81,23 +89,34 @@ export function DroneEffects({layerId,settings,sampleRate,onChange}: DroneEffect
 
   return <section className="drone-effects" data-layer={layerId} aria-labelledby="drone-effects-title">
     <h2 id="drone-effects-title">Effects</h2>
-    <div className="drone-effect-chain">
-      {effectsInSignalOrder.map(({id,name}) => <div key={id} className="drone-effect" data-enabled={enabled[id].enabled}>
-        <button type="button" className="drone-effect-settings" aria-expanded={id === expanded}
-          aria-controls={id === expanded ? settingsId : undefined} onClick={() => setExpanded(current => current === id ? null : id)}>
-          {name}<span aria-hidden="true">{id === expanded ? '−' : '+'}</span>
-        </button>
-        <label className="drone-effect-switch">
-          <input type="checkbox" aria-label={`Enable ${name}`} checked={enabled[id].enabled}
-            onChange={event => toggle(id,event.target.checked)}/>
-          <span aria-hidden="true">{enabled[id].enabled ? 'On' : 'Off'}</span>
-        </label>
-      </div>)}
-    </div>
-    {expanded && <div className="drone-effect-detail" id={settingsId} role="region"
-      aria-label={`${effectsInSignalOrder.find(effect => effect.id === expanded)?.name} settings`}>
-      {renderControls(expanded)}
-    </div>}
+    <ol className="drone-effect-chain" aria-label="Effect signal order" role="list">
+      {order.map((id,index) => {
+        const name = effectNames[id];
+        const isExpanded = id === expanded;
+        return <li key={id} className="drone-effect" data-enabled={enabled[id].enabled}>
+          <div className="drone-effect-row">
+            <button type="button" className="drone-effect-settings" aria-expanded={isExpanded}
+              aria-controls={isExpanded ? settingsId : undefined} onClick={() => setExpanded(current => current === id ? null : id)}>
+              {name}<span aria-hidden="true">{isExpanded ? '−' : '+'}</span>
+            </button>
+            <label className="drone-effect-switch">
+              <input type="checkbox" aria-label={`Enable ${name}`} checked={enabled[id].enabled}
+                onChange={event => toggle(id,event.target.checked)}/>
+              <span aria-hidden="true">{enabled[id].enabled ? 'On' : 'Off'}</span>
+            </label>
+            <div className="drone-effect-order">
+              <button type="button" aria-label={`Move ${name} up`} aria-disabled={index === 0}
+                onClick={event => move(index,-1,event.currentTarget)}>↑</button>
+              <button type="button" aria-label={`Move ${name} down`} aria-disabled={index === order.length - 1}
+                onClick={event => move(index,1,event.currentTarget)}>↓</button>
+            </div>
+          </div>
+          {isExpanded && <div className="drone-effect-detail" id={settingsId} role="region" aria-label={`${name} settings`}>
+            {renderControls(id)}
+          </div>}
+        </li>;
+      })}
+    </ol>
   </section>;
 }
 
