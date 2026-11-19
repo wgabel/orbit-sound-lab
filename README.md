@@ -36,6 +36,8 @@ Select a **Drone** node and choose **Copy Drone A** or **Copy Drone B** to take 
 
 To combine two sources, connect them to **Audio A** and **Audio B** on a **Mixer**, then connect its **Audio out** to a filter, gain stage, or other audio input. Set each channel’s level in the inspector or automate it via **Level A** and **Level B**.
 
+Use a **Crossfader** to transition between two audio signals. Connect them to **Audio A** and **Audio B**, then route **Audio out** onward. **Blend** moves from A at 0% to B at 100%. Connect an Automation or LFO **Value** output to **Blend** to shape the transition. For a one-way transition, set an Automation curve to rise from 0% to 100% and choose **Play once, hold end**.
+
 In an **Automation** node, **Smooth waves** loads editable curves with rounded transitions between points. The presets loop cleanly and keep your current duration and playback mode.
 
 Choose **Add module → LFO** for repeating modulation. Select a waveform, set the rate or cycle duration, and connect **Value** to a control input. The cable sets the modulation range. **Synchronize with patch** aligns the LFO to the patch transport and enables phase offsets. This node uses AudioWorklet.

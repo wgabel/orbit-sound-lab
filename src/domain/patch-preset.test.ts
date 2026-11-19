@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createDefaultDroneLayer } from './drone-layers';
-import { createExamplePatch, createPatchModule, setPatchDroneLayer } from './patch';
+import { connectPatchPorts, createExamplePatch, createPatchModule, setPatchDroneLayer } from './patch';
 import { DEFAULT_CHORD_SETTINGS } from './chord';
 import { readPatchPreset } from './patch-preset';
 
@@ -53,6 +53,28 @@ describe('whole patch preset files', () => {
       layout:{triad:{x:0,y:0},seventh:{x:180,y:0}}});
     expect(preset.patch.modules).toEqual([{...triad,settings:{...triad.settings,inversion:0}},seventh]);
     expect(triad.settings.inversion).toBe(3);
+  });
+
+  it('round-trips both Crossfader audio inputs and its full-range Blend control', () => {
+    const first = createPatchModule('wave','first');
+    const second = createPatchModule('wave','second');
+    const crossfader = createPatchModule('crossfader','crossfader');
+    const automation = createPatchModule('automation','automation');
+    const modules = [first,second,crossfader,automation];
+    const withAudioA = connectPatchPorts({version:1,modules,cables:[]},'first',
+      {moduleId:first.id,portId:'out'},{moduleId:crossfader.id,portId:'inputA'});
+    const withBothInputs = connectPatchPorts(withAudioA,'second',
+      {moduleId:second.id,portId:'out'},{moduleId:crossfader.id,portId:'inputB'});
+    const patch = connectPatchPorts(withBothInputs,'blend',
+      {moduleId:automation.id,portId:'control'},{moduleId:crossfader.id,portId:'blend'});
+    const layout = Object.fromEntries(modules.map(module => [module.id,{x:30,y:30}]));
+    const preset = readPatchPreset({...createPresetFixture(),patch,layout});
+    expect(preset.patch.modules[2].settings).toEqual({blend:0.5});
+    expect(preset.patch.cables[2].mapping).toEqual({from:0,to:1});
+    expect(readPatchPreset(JSON.parse(JSON.stringify(preset)))).toEqual(preset);
+    expect(() => readPatchPreset({...preset,patch:{...patch,modules:[
+      first,second,{...crossfader,settings:{blend:1.1}},automation
+    ]}})).toThrow('Blend');
   });
 
   it('validates supported module kinds, cable compatibility and every node position', () => {
