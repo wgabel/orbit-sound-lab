@@ -1,3 +1,5 @@
+import { DEFAULT_CHORD_PROGRESSION, validateChordProgression } from './chord-progression';
+import type { ChordProgression } from './chord-progression';
 import { DEFAULT_CHORD_SETTINGS, validateChordSettings } from './chord';
 import type { ChordSettings } from './chord';
 import { createDefaultDroneSettings, createDefaultShelfEq, MAX_SHELF_FREQUENCY_HZ, MAX_SHELF_GAIN_DECIBELS,
@@ -15,6 +17,7 @@ import type { PatchAutomation } from './patch-automation';
 
 export interface PatchModuleSettings {
   chord: ChordSettings;
+  chordProgression: ChordProgression;
   wave: {readonly waveform: OscillatorWaveform; readonly frequency: number; readonly shape: number};
   drone: {
     readonly voice: DroneSettings;
@@ -88,7 +91,7 @@ export interface PatchPort {
   readonly id: string;
   readonly label: string;
   readonly direction: 'input' | 'output';
-  readonly signal: 'audio' | 'control';
+  readonly signal: 'audio' | 'control' | 'chords';
   readonly parameter?: PatchParameter;
 }
 
@@ -96,7 +99,7 @@ export const MODULE_LABELS: Readonly<Record<PatchModuleKind, string>> = {
   shelfEq: 'Shelf EQ',
   pitchShift: 'Pitch Shift',
   oscilloscope: 'Oscilloscope',
-  chord: 'Chord Generator', wave: 'Wave', drone: 'Drone', automation: 'Automation', filter: 'Low-pass filter', gain: 'Gain',
+  chord: 'Chord Generator', chordProgression: 'Chord Progression', wave: 'Wave', drone: 'Drone', automation: 'Automation', filter: 'Low-pass filter', gain: 'Gain',
   lfo: 'LFO', mixer: 'Mixer', crossfader: 'Crossfader', output: 'Output'
 };
 
@@ -122,8 +125,9 @@ export function getPatchPorts(module: PatchModule): readonly PatchPort[] {
       {id:'frequency', label:'Frequency', direction:'input', signal:'control', parameter:{unit:'Hz', minimum:40, maximum:880}},
       ...(supportsOscillatorShape(module.settings.waveform) ? [shape] : [])
     ];
-    case 'drone':
-    case 'chord': return [audioOutput];
+    case 'drone': return [audioOutput];
+    case 'chord': return [{id:'chords',label:'Chords',direction:'input',signal:'chords'},audioOutput];
+    case 'chordProgression': return [{id:'chords',label:'Chords',direction:'output',signal:'chords'}];
     case 'lfo':
     case 'automation': return [{id:'control', label:'Value', direction:'output', signal:'control'}];
     case 'filter': return [
@@ -206,6 +210,10 @@ export function validatePatch(patch: Patch): void {
       validatePatchLfo(module.settings);
       continue;
     }
+    if (module.kind === 'chordProgression') {
+      validateChordProgression(module.settings);
+      continue;
+    }
     if (module.kind === 'chord') {
       validateChordSettings(module.settings);
       continue;
@@ -253,7 +261,7 @@ export function validatePatch(patch: Patch): void {
       if (!mapping || !within(mapping.from, minimum, maximum) || !within(mapping.to, minimum, maximum)) {
         throw new Error(`${input.label} mapping must be between ${minimum} and ${maximum} ${input.parameter.unit}.`);
       }
-    } else if (mapping) throw new Error('Audio cables do not have a parameter mapping.');
+    } else if (mapping) throw new Error('Only numeric control cables have a parameter mapping.');
   }
   if (hasPatchCycle(patch.cables)) throw new Error('This cable would create a feedback loop.');
 }
@@ -269,6 +277,7 @@ export function connectPatchPorts(patch: Patch, id: string, source: PatchEndpoin
 export function createPatchModule(kind: PatchModuleKind, id: string): PatchModule {
   switch (kind) {
     case 'chord': return {id,kind,settings:{...DEFAULT_CHORD_SETTINGS}};
+    case 'chordProgression': return {id,kind,settings:structuredClone(DEFAULT_CHORD_PROGRESSION)};
     case 'wave': return {id, kind, settings:{waveform:'sine', frequency:110, shape:0.5}};
     case 'drone': return {id, kind, settings:{voice:createDefaultDroneSettings()}};
     case 'automation': return {id, kind, settings:{shape:'steps', mode:'loop', duration:8, glide:0,

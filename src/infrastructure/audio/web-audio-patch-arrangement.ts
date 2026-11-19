@@ -10,19 +10,21 @@ export function getClipEnvelope(clip: ArrangementClip): readonly [time: number, 
   return [[clip.start,0],[peak,clip.level],[Math.max(peak,end-outgoing*scale),clip.level],[end,0]];
 }
 
-export function scheduleClipGates(gain: Pick<AudioParam, 'setValueAtTime' | 'linearRampToValueAtTime'>, clips: readonly ArrangementClip[], origin: number, now: number): void {
+export function scheduleClipGates(gain: Pick<AudioParam, 'setValueAtTime' | 'linearRampToValueAtTime'>,
+  clips: readonly ArrangementClip[], origin: number, now: number, complement = false): void {
   const time = now - origin;
-  gain.setValueAtTime(0,now);
+  const weight = (value: number) => complement ? 1-value : value;
+  gain.setValueAtTime(weight(0),now);
   for (const clip of clips) {
     if (clip.start + clip.duration <= time) continue;
     const envelope = getClipEnvelope(clip);
-    if (clip.start > time) gain.setValueAtTime(0,origin+clip.start);
+    if (clip.start > time) gain.setValueAtTime(weight(0),origin+clip.start);
     for (let index = 1; index < envelope.length; index++) {
       const [next,value] = envelope[index];
       if (next <= time) continue;
       const [previous,previousValue] = envelope[index-1];
-      if (previous <= time) gain.setValueAtTime(previousValue+(value-previousValue)*(time-previous)/(next-previous),now);
-      gain.linearRampToValueAtTime(value,origin+next);
+      if (previous <= time) gain.setValueAtTime(weight(previousValue+(value-previousValue)*(time-previous)/(next-previous)),now);
+      gain.linearRampToValueAtTime(weight(value),origin+next);
     }
   }
 }

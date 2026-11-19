@@ -36,7 +36,7 @@ export interface PatchArrangement {
 export const EMPTY_PATCH_ARRANGEMENT: PatchArrangement = {sections:[],clips:[],tail:2};
 
 export function isArrangementTrack(module: PatchModule): boolean {
-  return ['wave','drone','chord','automation'].includes(module.kind);
+  return ['wave','drone','chord','automation','chordProgression'].includes(module.kind);
 }
 
 export function readArrangementEnd(arrangement: PatchArrangement): number {
@@ -88,14 +88,17 @@ export function readPatchArrangement(value: unknown, patch: Patch): PatchArrange
     if (!isRecord(clip)) throw new Error('Invalid arrangement clip.');
     const moduleId = readText(clip.moduleId,128);
     const module = modules.get(moduleId);
-    if (!module) throw new Error('Choose a Wave, Drone, Chord Generator, or Automation node for the clip.');
+    if (!module) throw new Error('Choose a Wave, Drone, Chord Generator, Automation, or Chord Progression node for the clip.');
     const span = readSpan(clip);
     const fadeIn = readNumber(clip.fadeIn,0,span.duration);
     const fadeOut = readNumber(clip.fadeOut,0,span.duration);
     if (fadeIn + fadeOut > span.duration + 1e-8) throw new Error('The fades must fit inside the clip.');
     const base = {...span,moduleId,fadeIn,fadeOut,level:readNumber(clip.level,0,1)};
-    if (module.kind !== 'automation' && (clip.phase !== undefined || clip.automation !== undefined)) {
-      throw new Error('Curve and phase settings require an Automation node.');
+    if (clip.automation !== undefined && module.kind !== 'automation') {
+      throw new Error('Curve settings require an Automation node.');
+    }
+    if (clip.phase !== undefined && module.kind !== 'automation' && module.kind !== 'chordProgression') {
+      throw new Error('Phase settings require an Automation node or a Chord Progression node.');
     }
     if (clip.phase !== undefined && clip.phase !== 'restart' && clip.phase !== 'continue') {
       throw new Error('Choose a valid automation phase mode.');

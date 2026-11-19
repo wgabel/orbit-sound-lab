@@ -234,7 +234,7 @@ export function PatchCanvas({patch, arrangement, positions, selection, pending, 
             const input = getPatchPorts(destinationModule).find(port => port.id === cable.destination.portId);
             const select = () => onSelect({kind:'cable',id:cable.id});
             return <g key={cable.id}>
-              <path d={path} data-signal={cable.mapping ? 'control' : 'audio'} className="patch-wire"
+              <path d={path} data-signal={input?.signal} className="patch-wire"
                 data-selected={cable === selectedCable} data-disabled={cable.enabled === false}/>
               <path d={path} className="patch-wire-hit" role="button" tabIndex={0}
                 aria-label={`${getPatchModuleLabel(sourceModule)} to ${getPatchModuleLabel(destinationModule)} ${input?.label}${cable.enabled === false ? ' (disabled)' : ''}`}
@@ -263,7 +263,7 @@ export function PatchCanvas({patch, arrangement, positions, selection, pending, 
               {(['input','output'] as const).map(direction => <div key={direction} className={`patch-port-column ${direction}`}>
                 {portsOnSide(module,direction).map(port => {
                   const endpoint = {moduleId:module.id,portId:port.id};
-                  const label = `${getPatchModuleLabel(module)} ${port.label}${port.signal === 'control' ? ` ${port.direction}` : ''}`;
+                  const label = `${getPatchModuleLabel(module)} ${port.label}${port.signal !== 'audio' ? ` ${port.direction}` : ''}`;
                   return <div className="patch-port-row" key={port.id} data-signal={port.signal}>
                     <button className="patch-port" type="button" aria-label={label} title={label}
                       data-pending={Boolean(pending && sameEndpoint(pending,endpoint))}

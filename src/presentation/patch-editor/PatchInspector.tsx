@@ -1,5 +1,6 @@
+import { ChordProgressionSettings } from './ChordProgressionSettings';
 import { AutomationSettings } from './AutomationSettings';
-import { CHORD_TYPES, getChordMidiNotes, getMaximumChordInversion, getNoteName } from '../../domain/chord';
+import { CHORD_TYPES, getChordMidiNotes, getMaximumChordInversion, getNoteName, MAXIMUM_CHORD_ROOT, MINIMUM_CHORD_ROOT } from '../../domain/chord';
 import type { ChordType } from '../../domain/chord';
 import { PatchLfoSettings } from './PatchLfoSettings';
 import { OSCILLATOR_WAVEFORMS, supportsOscillatorShape } from '../../domain/drone';
@@ -27,10 +28,12 @@ interface InspectorProps {
 
 function ModuleSettings({module, sampleRate, onChange}: {module: PatchModule; sampleRate?: number; onChange(module: PatchModule): void}) {
   switch (module.kind) {
+    case 'chordProgression': return <ChordProgressionSettings settings={module.settings}
+      onChange={settings => onChange({...module,settings})}/>;
     case 'chord': return <div className="patch-fields">
       <label>Root note<select value={module.settings.rootNote} onChange={event =>
         onChange({...module,settings:{...module.settings,rootNote:Number(event.target.value)}})}>
-        {Array.from({length:37},(_,index)=>index+36).map(note=>
+        {Array.from({length:MAXIMUM_CHORD_ROOT-MINIMUM_CHORD_ROOT+1},(_,index) => index+MINIMUM_CHORD_ROOT).map(note=>
           <option key={note} value={note}>{getNoteName(note)}</option>)}
       </select></label>
       <label>Chord type<select value={module.settings.chord} onChange={event => {
@@ -46,7 +49,7 @@ function ModuleSettings({module, sampleRate, onChange}: {module: PatchModule; sa
         value={module.settings.octave} onChange={octave=>onChange({...module,settings:{...module.settings,octave}})}/>
       <NumericSlider label="Voicing spread" unit="oct" min={0} max={1} step={1}
         value={module.settings.spread} onChange={spread=>onChange({...module,settings:{...module.settings,spread}})}/>
-      <p>Notes: {getChordMidiNotes(module.settings).map(getNoteName).join(' · ')}</p>
+      <p>Notes: {getChordMidiNotes(module.settings).map(note => getNoteName(note)).join(' · ')}</p>
     </div>;
     case 'lfo': return <PatchLfoSettings settings={module.settings} onChange={settings => onChange({...module,settings})}/>;
     case 'wave': return <div className="patch-fields">
@@ -108,6 +111,7 @@ function ModuleSettings({module, sampleRate, onChange}: {module: PatchModule; sa
 function CableSettings({patch, cable, onChange}: {patch: Patch; cable: PatchCable; onChange(mapping: CableMapping): void}) {
   const port = getPatchPort(patch,cable.destination);
   const mapping = cable.mapping;
+  if (port?.signal === 'chords') return <p>Each step changes the generator’s root and chord quality.</p>;
   if (!port?.parameter || !mapping) return <p>This cable carries audio.</p>;
   const {minimum,maximum,unit,displayScale} = port.parameter;
   const step = unit === 'Hz' ? 1 : unit === 'dB' ? 0.5 : 0.01;
@@ -123,12 +127,15 @@ export function PatchInspector({patch, sampleRate, selection, onModule, onCopyDr
   const module = selection?.kind === 'module' ? patch.modules.find(item => item.id === selection.id) : undefined;
   const cable = selection?.kind === 'cable' ? patch.cables.find(item => item.id === selection.id) : undefined;
   const destination = cable && getPatchPort(patch,cable.destination);
+  const followsProgression = module?.kind === 'chord' && patch.cables.some(item =>
+    item.destination.moduleId === module.id && item.destination.portId === 'chords');
   return <section className="patch-inspector" aria-label="Patch inspector">
     <div className="patch-inspector-header">
       <h2>{module ? getPatchModuleLabel(module) : destination ? `Cable to ${destination.label}` : 'Patch inspector'}</h2>
       {selection && (module || cable) && <button type="button" onClick={() => onRemove(selection)}>
         {cable ? 'Disconnect cable' : 'Remove module'}</button>}
     </div>
+    {followsProgression && <p>Chord Progression sets the root and quality while active. The settings below supply the fallback chord and voicing.</p>}
     {module && <ModuleSettings module={module} sampleRate={sampleRate} onChange={onModule}/>}
     {module?.kind === 'drone' && <>
       <div className="patch-actions patch-drone-copy">

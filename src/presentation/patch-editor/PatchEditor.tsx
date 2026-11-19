@@ -339,7 +339,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
               <option key={kind} value={kind} className="patch-module-option-audio">● {MODULE_LABELS[kind]}</option>)}
           </optgroup>
           <optgroup label="◆ Automation sources">
-            {(['lfo','automation'] as const).map(kind =>
+            {(['lfo','automation','chordProgression'] as const).map(kind =>
               <option key={kind} value={kind} className="patch-module-option-control">◆ {MODULE_LABELS[kind]}</option>)}
           </optgroup>
           <optgroup label="Audio processing &amp; routing">

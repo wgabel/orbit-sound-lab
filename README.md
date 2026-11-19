@@ -38,6 +38,8 @@ To combine two sources, connect them to **Audio A** and **Audio B** on a **Mixer
 
 Use a **Crossfader** to transition between two audio signals. Connect them to **Audio A** and **Audio B**, then route **Audio out** onward. **Blend** moves from A at 0% to B at 100%. Connect an Automation or LFO **Value** output to **Blend** to shape the transition. For a one-way transition, set an Automation curve to rise from 0% to 100% and choose **Play once, hold end**.
 
+Add **Chord Progression** and connect its **Chords** output to a **Chord Generator → Chords** input. The default pattern is Cm, A♭, E♭, B♭. Edit the root and quality of each step, choose the time per chord, and choose whether to loop or hold the last chord. The generator keeps its octave and voicing settings. In an arrangement, schedule clips for both the generator and the progression where you want the chord changes.
+
 In an **Automation** node, **Smooth waves** loads editable curves with rounded transitions between points. The presets loop cleanly and keep your current duration and playback mode.
 
 Choose **Add module → LFO** for repeating modulation. Select a waveform, set the rate or cycle duration, and connect **Value** to a control input. The cable sets the modulation range. **Synchronize with patch** aligns the LFO to the patch transport and enables phase offsets. This node uses AudioWorklet.
@@ -46,7 +48,7 @@ Use an **Oscilloscope** node to display the waveform at any patch audio connecti
 
 ### Compose a piece
 
-Open **Arrangement** in the patch editor. Choose a Wave, Drone, Chord Generator, or Automation node and select **Add clip**. Select a clip to edit its start, length, level or modulation strength, and fades. Tracks can be named from any clip. During arrangement playback, source nodes and Automation cables are active where their clips run. LFOs and effects continue to run in the patch.
+Open **Arrangement** in the patch editor. Choose a Wave, Drone, Chord Generator, Automation, or Chord Progression node and select **Add clip**. Select a clip to edit its start, length, level or modulation strength, and fades. Tracks can be named from any clip. During arrangement playback, source nodes and Automation cables are active where their clips run. LFOs and effects continue to run in the patch.
 
 Add section labels to mark the form. **Duplicate section at end** copies the clips fully inside that section. A clip spanning several sections stays in place. An Automation clip can restart its curve, follow the arrangement clock, or use its own editable curve. **Play from start** or **Play from cursor** uses a ruler in seconds. The effect-tail setting leaves time for effects downstream of the source before playback stops.
 
