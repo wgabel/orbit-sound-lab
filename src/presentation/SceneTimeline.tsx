@@ -44,7 +44,7 @@ export function SceneTimeline({captureSound, onPlay, onStop, playing, blocked, s
 
   return <section className="preset-morph scene-timeline" aria-labelledby="scene-timeline-title">
     <div className="preset-morph-heading">
-      <h3 id="scene-timeline-title">Scene Timeline</h3>
+      <h2 id="scene-timeline-title">Scene Timeline</h2>
       {scenes.length > 0 && validTimes && <span>About {Number(duration.toFixed(1))} s</span>}
     </div>
     <p>Capture the current sound of both drones, then set how long each scene holds and blends into the next.</p>

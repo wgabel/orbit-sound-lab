@@ -1,19 +1,15 @@
-import { resolveReverb } from '../domain/reverb';
-import { ReverbControls } from './ReverbControls';
 import type { DroneMixSettings } from '../domain/drone';
 import type { DroneLayerId } from '../domain/drone-layers';
-import { ShelfEqControls } from './ShelfEqControls';
 import { NumericSlider } from './NumericSlider';
 
 interface DroneMixControlsProps {
   readonly layerId: DroneLayerId;
   readonly settings: DroneMixSettings;
-  readonly sampleRate?: number;
   readonly onChange: (settings: DroneMixSettings) => void;
 }
 
-export function DroneMixControls({layerId, settings, sampleRate, onChange}: DroneMixControlsProps) {
-  const {noise, filter, reverb} = settings;
+export function DroneMixControls({layerId, settings, onChange}: DroneMixControlsProps) {
+  const {noise, filter} = settings;
 
   return <section className="drone-mix" aria-label={`Drone ${layerId} mix`}>
     <h2>DRONE {layerId} MIX</h2>
@@ -37,16 +33,5 @@ export function DroneMixControls({layerId, settings, sampleRate, onChange}: Dron
           value={filter.cutoffHz} onChange={cutoffHz => onChange({...settings, filter: {...filter, cutoffHz}})}/>
       </div>
     </div>
-    <div className="drone-reverb">
-      <label className="switch">
-        <input type="checkbox" checked={reverb.enabled}
-          onChange={event => onChange({...settings, reverb: {...reverb, enabled: event.target.checked}})}/>
-        REVERB
-      </label>
-      <ReverbControls settings={resolveReverb(reverb)}
-        onChange={next => onChange({...settings,reverb:{...next,enabled:reverb.enabled}})}
-        onPreset={next => onChange({...settings,reverb:{...next,enabled:true}})}/>
-    </div>
-    <ShelfEqControls settings={settings} sampleRate={sampleRate} onChange={shelves => onChange({...settings,...shelves})}/>
   </section>;
 }
