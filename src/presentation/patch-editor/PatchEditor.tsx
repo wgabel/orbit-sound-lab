@@ -283,7 +283,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
         <summary>My patch presets</summary>
         <PresetLibrary<PatchPreset> label="Patch" nameLimit={PATCH_PRESET_NAME_LIMIT} showHeading={false} list={listPatchPresets}
           save={saveCurrentPatch} importFile={importPatchPreset} exportFile={exportPatchPreset}
-          remove={deletePatchPreset} onLoad={loadNamedPatch}/>
+          remove={deletePatchPreset} onLoad={loadNamedPatch} onLibraryChanged={() => void refreshSavedPresets()}/>
       </details>
       <div className="patch-workspace-content">
         <PatchCanvas viewportRef={viewport} scale={scale} patch={patch} positions={positions} selection={selection} pending={pending}
