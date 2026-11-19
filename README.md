@@ -41,7 +41,7 @@ Cutoff sliders use a logarithmic scale, and oscillator Volume and Amplitude LFO 
 
 Each oscillator uses the same section layout for Volume & Pan, Frequency & Waveform, and Low-pass Filter. LFO controls sit with the slider they affect. Amplitude LFO sits under Volume, Pitch LFO under Frequency, and Cutoff LFO in the low-pass filter controls.
 
-Use **5-oscillator preset** above the rack to load a factory bank into the selected drone. Each bank sets all five oscillator voices and their modulation. It replaces the layer's oscillator routes and selects Free harmony mode so the voiced pitches play as designed. Layer enable, gain, envelope and mix stay as set.
+Use **5-oscillator preset** above the rack to load a factory bank into the selected drone. The picker groups banks under **Drone Foundations**, **Cross-Modulation**, and **Routing Example**. Each bank sets all five oscillator voices and their modulation. It replaces the layer's oscillator routes and selects Free harmony mode so the voiced pitches play as designed. Layer enable, gain, envelope and mix stay as set.
 
 | Cross-modulation bank | Waveform route | What to listen for |
 | --- | --- | --- |
@@ -52,6 +52,14 @@ Use **5-oscillator preset** above the rack to load a factory bank into the selec
 | Breathing Reed | OSC 2 → OSC 3 Cutoff | The sawtooth filter moves at audio rate, with a slow LFO adding a second layer of motion |
 
 OSC 2 runs at zero audible volume in these banks. Its waveform feeds the route before the volume control. Open a target oscillator's **Route** button to compare the sound with the route on and off.
+
+| Routing Example | What to listen for | Routes to compare |
+| --- | --- | --- |
+| Ion Choir | Two bright FM voices spread across the stereo field | OSC 2 → OSC 3 and OSC 4 Frequency |
+| Relay Bells | Metallic voices fed by a three-stage FM chain | OSC 2 → 3 → 4 → 5 Frequency |
+| Split Pulse | Different audio-rate amplitude textures on the left and right | OSC 2 → OSC 4 Volume and OSC 3 → OSC 5 Volume |
+| Reed Reactor | Rough-edged filter movement on two voices with a separate FM tone | OSC 2 → OSC 3 and OSC 4 Cutoff, plus OSC 5 Frequency |
+| Prism Gate | FM and amplitude modulation on one voice, with its waveform routed to a second voice’s filter | OSC 2 → OSC 4 Frequency, OSC 3 → OSC 4 Volume, OSC 4 → OSC 5 Cutoff |
 
 Use **PRESETS** beside **COPY** on any oscillator to load a built-in sound into that slot. The list is bundled in `src/domain/built-in-oscillator-presets.json`.
 

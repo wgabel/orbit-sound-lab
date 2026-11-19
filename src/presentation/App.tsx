@@ -1,4 +1,4 @@
-import { builtInOscillatorBanks, loadBuiltInOscillatorBank } from '../domain/built-in-oscillator-banks';
+import { builtInOscillatorBanks, loadBuiltInOscillatorBank, oscillatorBankGroups } from '../domain/built-in-oscillator-banks';
 import { builtInOscillatorPresets, createBuiltInOscillatorSnapshot } from '../domain/built-in-oscillator-presets';
 import { OscillatorControlSection } from './OscillatorControlSection';
 import { OscillatorLfoControls } from './OscillatorLfoControls';
@@ -482,7 +482,9 @@ export function App() {
           <select value="" aria-label="Load five-oscillator preset"
             onChange={event => loadOscillatorBank(event.target.value)}>
             <option value="" disabled>Choose a preset</option>
-            {builtInOscillatorBanks.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+            {oscillatorBankGroups.map(group => <optgroup key={group.label} label={group.label}>
+              {group.presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+            </optgroup>)}
           </select>
         </label>
         <span className="oscillator-action-status" role="status">{oscillatorActionStatus}</span>

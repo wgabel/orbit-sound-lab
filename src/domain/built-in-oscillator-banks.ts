@@ -28,7 +28,7 @@ interface OscillatorBank {
   readonly oscillators: readonly [BankOscillator, BankOscillator, BankOscillator, BankOscillator, BankOscillator];
 }
 
-const banks = [
+const droneBanks = [
   {
     id: 'open-fifths', name: 'Open Fifths',
     oscillators: [
@@ -87,7 +87,10 @@ const banks = [
       {waveform: 'sine', frequencyHz: 220, volume: 0.1, pan: 0.34,
         movement: {destination: 'amplitude', frequencyHz: 0.073, depthAmplitude: 0.06}}
     ]
-  },
+  }
+] satisfies readonly OscillatorBank[];
+
+const crossModulationBanks = [
   {
     id: 'velvet-current', name: 'Velvet Current',
     oscillators: [
@@ -153,6 +156,95 @@ const banks = [
   }
 ] satisfies readonly OscillatorBank[];
 
+const routingExampleBanks = [
+  {
+    id: 'ion-choir', name: 'Ion Choir',
+    oscillators: [
+      {waveform: 'sine', frequencyHz: 51.5625, volume: 0.34, pan: 0},
+      {waveform: 'sineTriangle', frequencyHz: 103.125, volume: 0, pan: 0, shape: 0.2,
+        movement: {destination: 'shape', frequencyHz: 0.045, depthShape: 0.18}},
+      {waveform: 'sine', frequencyHz: 206.25, volume: 0.44, pan: -0.64},
+      {waveform: 'sine', frequencyHz: 309.375, volume: 0.35, pan: 0.64},
+      {waveform: 'triangle', frequencyHz: 154.6875, volume: 0.13, pan: 0, cutoffHz: 590}
+    ],
+    routes: [
+      {sourceSlot: 2, targetSlot: 3, parameter: 'frequency', depth: 102},
+      {sourceSlot: 2, targetSlot: 4, parameter: 'frequency', depth: 155}
+    ]
+  },
+  {
+    id: 'relay-bells', name: 'Relay Bells',
+    oscillators: [
+      {waveform: 'sine', frequencyHz: 70, volume: 0.34, pan: 0},
+      {waveform: 'sine', frequencyHz: 70, volume: 0, pan: 0},
+      {waveform: 'sineTriangle', frequencyHz: 117.5, volume: 0, pan: 0, shape: 0.22,
+        movement: {destination: 'shape', frequencyHz: 0.063, depthShape: 0.18}},
+      {waveform: 'sine', frequencyHz: 262.5, volume: 0.43, pan: -0.45},
+      {waveform: 'sine', frequencyHz: 437.5, volume: 0.31, pan: 0.61}
+    ],
+    routes: [
+      {sourceSlot: 2, targetSlot: 3, parameter: 'frequency', depth: 65},
+      {sourceSlot: 3, targetSlot: 4, parameter: 'frequency', depth: 145},
+      {sourceSlot: 4, targetSlot: 5, parameter: 'frequency', depth: 180}
+    ]
+  },
+  {
+    id: 'split-pulse', name: 'Split Pulse',
+    oscillators: [
+      {waveform: 'sine', frequencyHz: 85, volume: 0.31, pan: 0},
+      {waveform: 'sine', frequencyHz: 85, volume: 0, pan: 0},
+      {waveform: 'triangle', frequencyHz: 107.5, volume: 0, pan: 0},
+      {waveform: 'sine', frequencyHz: 255, volume: 0.36, pan: -0.83},
+      {waveform: 'sine', frequencyHz: 322.5, volume: 0.36, pan: 0.83}
+    ],
+    routes: [
+      {sourceSlot: 2, targetSlot: 4, parameter: 'volume', depth: 0.34},
+      {sourceSlot: 3, targetSlot: 5, parameter: 'volume', depth: 0.34}
+    ]
+  },
+  {
+    id: 'reed-reactor', name: 'Reed Reactor',
+    oscillators: [
+      {waveform: 'sine', frequencyHz: 52, volume: 0.29, pan: 0},
+      {waveform: 'sine', frequencyHz: 78, volume: 0, pan: 0},
+      {waveform: 'sawtooth', frequencyHz: 156, volume: 0.44, pan: -0.68, cutoffHz: 300},
+      {waveform: 'square', frequencyHz: 234, volume: 0.36, pan: 0.65, cutoffHz: 420,
+        movement: {destination: 'filterCutoff', frequencyHz: 0.051, depthHz: 65}},
+      {waveform: 'sine', frequencyHz: 312, volume: 0.22, pan: 0.14}
+    ],
+    routes: [
+      {sourceSlot: 2, targetSlot: 3, parameter: 'cutoff', depth: 270},
+      {sourceSlot: 2, targetSlot: 4, parameter: 'cutoff', depth: 360},
+      {sourceSlot: 2, targetSlot: 5, parameter: 'frequency', depth: 110}
+    ]
+  },
+  {
+    id: 'prism-gate', name: 'Prism Gate',
+    oscillators: [
+      {waveform: 'sine', frequencyHz: 67.5, volume: 0.31, pan: 0},
+      {waveform: 'sine', frequencyHz: 90, volume: 0, pan: 0},
+      {waveform: 'sine', frequencyHz: 112.5, volume: 0, pan: 0},
+      {waveform: 'sine', frequencyHz: 270, volume: 0.4, pan: -0.55},
+      {waveform: 'sawtooth', frequencyHz: 202.5, volume: 0.35, pan: 0.62, cutoffHz: 390}
+    ],
+    routes: [
+      {sourceSlot: 2, targetSlot: 4, parameter: 'frequency', depth: 112},
+      {sourceSlot: 3, targetSlot: 4, parameter: 'volume', depth: 0.36},
+      {sourceSlot: 4, targetSlot: 5, parameter: 'cutoff', depth: 330}
+    ]
+  }
+] satisfies readonly OscillatorBank[];
+
+export const oscillatorBankGroups: readonly {
+  readonly label: string;
+  readonly presets: readonly OscillatorBank[];
+}[] = [
+  {label: 'Drone Foundations', presets: droneBanks},
+  {label: 'Cross-Modulation', presets: crossModulationBanks},
+  {label: 'Routing Example', presets: routingExampleBanks}
+];
+
+const banks = oscillatorBankGroups.flatMap(group => group.presets);
 export const builtInOscillatorBanks: readonly Pick<OscillatorBank, 'id' | 'name'>[] = banks;
 
 export function loadBuiltInOscillatorBank(presetId: string, layer: DroneLayer): DroneLayer {
