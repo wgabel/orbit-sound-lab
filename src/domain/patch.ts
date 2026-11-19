@@ -29,6 +29,7 @@ export interface PatchModuleSettings {
   pitchShift: {readonly semitones: number; readonly cents: number};
   shelfEq: ShelfEqSettings;
   mixer: {readonly levelA: number; readonly levelB: number};
+  crossfader: {readonly blend: number};
   oscilloscope: Record<string, never>;
   output: {readonly level: number};
 }
@@ -96,7 +97,7 @@ export const MODULE_LABELS: Readonly<Record<PatchModuleKind, string>> = {
   pitchShift: 'Pitch Shift',
   oscilloscope: 'Oscilloscope',
   chord: 'Chord Generator', wave: 'Wave', drone: 'Drone', automation: 'Automation', filter: 'Low-pass filter', gain: 'Gain',
-  lfo: 'LFO', mixer: 'Mixer', output: 'Output'
+  lfo: 'LFO', mixer: 'Mixer', crossfader: 'Crossfader', output: 'Output'
 };
 
 export function getPatchModuleLabel(module: PatchModule): string {
@@ -139,6 +140,12 @@ export function getPatchPorts(module: PatchModule): readonly PatchPort[] {
     ];
     case 'pitchShift': return [audioInput, audioOutput];
     case 'gain': return [audioInput, audioOutput, level];
+    case 'crossfader': return [
+      {...audioInput, id:'inputA', label:'Audio A'},
+      {...audioInput, id:'inputB', label:'Audio B'},
+      {...level, id:'blend', label:'Blend'},
+      audioOutput
+    ];
     case 'mixer': return [
       {...audioInput, id:'inputA', label:'Audio A'},
       {...audioInput, id:'inputB', label:'Audio B'},
@@ -272,6 +279,7 @@ export function createPatchModule(kind: PatchModuleKind, id: string): PatchModul
     case 'gain': return {id, kind, settings:{level:0.55}};
     case 'shelfEq': return {id, kind, settings:createDefaultShelfEq()};
     case 'mixer': return {id, kind, settings:{levelA:0.5, levelB:0.5}};
+    case 'crossfader': return {id, kind, settings:{blend:0.5}};
     case 'oscilloscope': return {id, kind, settings:{}};
     case 'output': return {id, kind, settings:{level:0.7}};
   }

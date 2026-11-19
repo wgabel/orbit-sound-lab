@@ -75,6 +75,13 @@ function ModuleSettings({module, sampleRate, onChange}: {module: PatchModule; sa
     </div>;
     case 'shelfEq': return <ShelfEqControls settings={module.settings} sampleRate={sampleRate}
       onChange={settings => onChange({...module,settings})}/>;
+    case 'crossfader': return <>
+      <div className="patch-fields">
+        <NumericSlider label="Blend" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+          value={module.settings.blend} onChange={blend => onChange({...module,settings:{blend}})}/>
+      </div>
+      <p>0% plays Audio A, 50% blends both, and 100% plays Audio B.</p>
+    </>;
     case 'mixer': return <div className="patch-fields">
       <NumericSlider label="Level A" unit="%" displayFactor={100} min={0} max={1} step={0.01}
         value={module.settings.levelA} onChange={levelA => onChange({...module,settings:{...module.settings,levelA}})}/>
