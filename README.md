@@ -41,7 +41,7 @@ Cutoff sliders use a logarithmic scale, and oscillator Volume and Amplitude LFO 
 
 Each oscillator uses the same section layout for Volume & Pan, Frequency & Waveform, and Low-pass Filter. LFO controls sit with the slider they affect. Amplitude LFO sits under Volume, Pitch LFO under Frequency, and Cutoff LFO in the low-pass filter controls.
 
-Use **5-oscillator preset** above the rack to load a factory bank into the selected drone. The picker groups banks under **Drone Foundations**, **Cross-Modulation**, and **Routing Example**. Each bank sets all five oscillator voices and their modulation. It replaces the layer's oscillator routes and selects Free harmony mode so the voiced pitches play as designed. Layer enable, gain, envelope and mix stay as set.
+Use **5-oscillator preset** above the rack to load a factory bank into the selected drone. The picker groups banks under **Drone Foundations**, **Cross-Modulation**, **Routing Example**, and **Stepped Drones**. Each bank sets all five oscillator voices and their modulation. It replaces the layer's oscillator routes and selects Free harmony mode so the voiced pitches play as designed. Layer enable, gain, envelope and mix stay as set.
 
 | Cross-modulation bank | Waveform route | What to listen for |
 | --- | --- | --- |
@@ -60,6 +60,16 @@ OSC 2 runs at zero audible volume in these banks. Its waveform feeds the route b
 | Split Pulse | Different audio-rate amplitude textures on the left and right | OSC 2 → OSC 4 Volume and OSC 3 → OSC 5 Volume |
 | Reed Reactor | Rough-edged filter movement on two voices with a separate FM tone | OSC 2 → OSC 3 and OSC 4 Cutoff, plus OSC 5 Frequency |
 | Prism Gate | FM and amplitude modulation on one voice, with its waveform routed to a second voice’s filter | OSC 2 → OSC 4 Frequency, OSC 3 → OSC 4 Volume, OSC 4 → OSC 5 Cutoff |
+
+| Stepped Drones | What to listen for |
+| --- | --- |
+| Lockstep Bloom | Volume and cutoff rise and fall together on two voices over a steady bass. |
+| Stereo Relay | The left and right pairs take turns with matching rates and opposite phases. |
+| Four Windows | Four staggered gates rotate overlapping pairs of notes, with a change each second. |
+| Three Over Two | Three pulses on the right against two on the left, with a quieter accent over the eight-second pattern. |
+| Register Switch | One voice steps between roughly A3 and E4 as its filter and waveform change. Two side voices trade accents. |
+
+These banks run from the audio clock as soon as the drone plays. Open the oscillator's LFO controls to compare the synced rates and phase offsets.
 
 Use **PRESETS** beside **COPY** on any oscillator to load a built-in sound into that slot. The list is bundled in `src/domain/built-in-oscillator-presets.json`.
 
