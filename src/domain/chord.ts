@@ -15,10 +15,10 @@ const INTERVALS: Readonly<Record<ChordType,readonly number[]>> = {
 };
 export const DEFAULT_CHORD_SETTINGS: ChordSettings = {rootNote:48,chord:'major',inversion:0,octave:0,spread:0};
 export function validateChordSettings(settings: ChordSettings): void {
-  if (!settings || !Number.isInteger(settings.rootNote) || settings.rootNote < 36 || settings.rootNote > 84 ||
+  if (!settings || !Number.isInteger(settings.rootNote) || settings.rootNote < 36 || settings.rootNote > 72 ||
     !CHORD_TYPES.includes(settings.chord) || !Number.isInteger(settings.inversion) || settings.inversion < 0 || settings.inversion > 3 ||
-    !Number.isInteger(settings.octave) || settings.octave < -2 || settings.octave > 2 ||
-    !Number.isInteger(settings.spread) || settings.spread < 0 || settings.spread > 2)
+    !Number.isInteger(settings.octave) || settings.octave < -1 || settings.octave > 1 ||
+    !Number.isInteger(settings.spread) || settings.spread < 0 || settings.spread > 1)
     throw new Error('Invalid Chord Generator settings.');
 }
 export function getChordMidiNotes(settings: ChordSettings): readonly number[] {
