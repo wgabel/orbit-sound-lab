@@ -3,9 +3,12 @@ import type { CycleEnvelope } from '../../domain/cycle-envelope';
 
 const HARMONIC_COUNT = 64;
 
-/** Convert the repeating cycle to a band-limited Web Audio oscillator without a DC component. */
-export function createCycleEnvelopeWave(context: BaseAudioContext, envelope: CycleEnvelope): PeriodicWave {
-  const {samples} = sampleCycleEnvelope(envelope);
+/** Read the coefficients for a band-limited cycle without a DC component. */
+export function readCycleEnvelopeHarmonics(envelope: CycleEnvelope) {
+  return analyseCycleHarmonics(sampleCycleEnvelope(envelope).samples);
+}
+
+export function analyseCycleHarmonics(samples: Float64Array) {
   const cosine = new Float32Array(HARMONIC_COUNT + 1);
   const sine = new Float32Array(HARMONIC_COUNT + 1);
   for (let harmonic = 1; harmonic <= HARMONIC_COUNT; harmonic++) {
@@ -26,5 +29,5 @@ export function createCycleEnvelopeWave(context: BaseAudioContext, envelope: Cyc
     cosine[harmonic] = real * 2 / samples.length;
     sine[harmonic] = imaginary * 2 / samples.length;
   }
-  return context.createPeriodicWave(cosine,sine,{disableNormalization:true});
+  return {cosine,sine};
 }

@@ -87,6 +87,8 @@ Cutoff sliders use a logarithmic scale, and oscillator Volume and Amplitude LFO 
 
 Each oscillator uses the same section layout for Volume & Pan, Frequency & Waveform, and Low-pass Filter. LFO controls sit with the slider they affect. Amplitude LFO sits under Volume, Pitch LFO under Frequency, and Cutoff LFO in the low-pass filter controls.
 
+Orbit automatically matches oscillator waveforms to a sine at the same base pitch using a frequency-weighted loudness estimate. The Drone Editor and Patch Editor Wave nodes apply one smooth gain per waveform before filters and effects, so the waveform keeps its shape. The estimate follows the oscillator's pitch and shape settings. Audio-rate pitch and shape modulation can still change the apparent loudness, and the result varies with playback equipment.
+
 Use **5-oscillator preset** above the rack to load a factory bank into the selected drone. The picker groups banks under **Drone Foundations**, **Cross-Modulation**, **Routing Example**, **Stepped Drones**, **Grungy**, and **Wet**. Each bank sets all five oscillator voices and their modulation. It replaces the layer's oscillator routes and selects Free harmony mode so the voiced pitches play as designed. Layer enable, gain, envelope and mix stay as set.
 
 | Cross-modulation bank | Waveform route | What to listen for |
