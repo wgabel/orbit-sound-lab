@@ -1,3 +1,4 @@
+import { useId, useState } from 'react';
 import { LFO_WAVEFORM_LABELS } from './lfo-waveform-labels';
 import { AMPLITUDE_LFO_CENTER, DEFAULT_SHAPE_LFO_DEPTH, LOW_FREQUENCY_OSCILLATOR_WAVEFORMS, LFO_MAXIMUM_RATE_HZ, LFO_MINIMUM_RATE_HZ } from '../domain/modulation';
 import type { LowFrequencyOscillatorSettings, LowFrequencyOscillatorWaveform } from '../domain/modulation';
@@ -18,19 +19,30 @@ interface OscillatorLfoControlsProps {
 
 export function OscillatorLfoControls({modulation, onChange}: OscillatorLfoControlsProps) {
   const {destination, enabled, frequencyHz, depthCents, depthAmplitude, depthShape = DEFAULT_SHAPE_LFO_DEPTH, depthHz, waveform, sync = false, phaseDegrees = 0} = modulation;
+  const [expanded, setExpanded] = useState(false);
+  const panelId = useId();
   const destinationLabel = DESTINATION_LABELS[destination];
   const label = `${destinationLabel} LFO`;
 
-  return <details className="oscillator-lfo-disclosure">
-    <summary>
-      <span>{label}</span>
-      <span className="oscillator-lfo-state" data-active={enabled}>{enabled ? 'ON' : 'OFF'}</span>
-    </summary>
-    <div className="lfo-destination">
-      <label className="switch">
-        <input type="checkbox" checked={enabled} onChange={event => onChange({...modulation, enabled: event.target.checked})}/>
-        {' '}Enable {label}
+  return <div className="oscillator-lfo-disclosure">
+    <div className="oscillator-lfo-header">
+      <button type="button" className="oscillator-lfo-expand" aria-expanded={expanded} aria-controls={panelId}
+        onClick={() => setExpanded(value => !value)}>{label}</button>
+      <label className="oscillator-lfo-enable">
+        <input type="checkbox" aria-label={`Enable ${label}`} checked={enabled}
+          onChange={event => onChange({...modulation, enabled: event.target.checked})}/>
       </label>
+    </div>
+    <div className="lfo-destination" id={panelId} hidden={!expanded}>
+      <label className="oscillator-lfo-waveform">Waveform
+        <select aria-label="LFO waveform" disabled={!enabled} value={waveform}
+          onChange={event => onChange({...modulation, waveform: event.target.value as LowFrequencyOscillatorWaveform})}>
+          {LOW_FREQUENCY_OSCILLATOR_WAVEFORMS.map(option => <option key={option} value={option}>
+            {LFO_WAVEFORM_LABELS[option]}
+          </option>)}
+        </select>
+      </label>
+      {waveform === 'smoothRandom' && <p className="pitch-lfo-detail">Moves to a new random target each cycle.</p>}
       <NumericSlider label="RATE" unit="Hz" min={LFO_MINIMUM_RATE_HZ} max={LFO_MAXIMUM_RATE_HZ} step={0.01}
         disabled={!enabled} value={frequencyHz} onChange={value => onChange({...modulation, frequencyHz: value})}/>
       <LfoCycleInput rateHz={frequencyHz}
@@ -58,15 +70,6 @@ export function OscillatorLfoControls({modulation, onChange}: OscillatorLfoContr
         onChange={value => onChange({...modulation, depthShape: value})}/>
       : <NumericSlider label="DEPTH" unit="Hz" min={0} max={5000} step={0.1} scale="quadratic"
         disabled={!enabled} value={depthHz} onChange={value => onChange({...modulation, depthHz: value})}/>}
-      <label>LFO WAVEFORM
-        <select disabled={!enabled} value={waveform}
-          onChange={event => onChange({...modulation, waveform: event.target.value as LowFrequencyOscillatorWaveform})}>
-          {LOW_FREQUENCY_OSCILLATOR_WAVEFORMS.map(option => <option key={option} value={option}>
-            {LFO_WAVEFORM_LABELS[option]}
-          </option>)}
-        </select>
-      </label>
-      {waveform === 'smoothRandom' && <p className="pitch-lfo-detail">Moves to a new random target each cycle.</p>}
     </div>
-  </details>;
+  </div>;
 }

@@ -285,19 +285,23 @@ body{margin:0;background:#0c1016;color:#e8e9df;font-family:system-ui,sans-serif}
 
 
 .oscillator-lfo-disclosure{margin:0;border:1px solid #35414c;border-radius:7px;background:#15202b}
-.oscillator-lfo-disclosure summary{display:flex;align-items:center;list-style:none;gap:7px;padding:7px 8px;color:#c7d1d8;font-size:12px;cursor:pointer}
-.oscillator-lfo-disclosure summary::-webkit-details-marker{display:none}
-.oscillator-lfo-disclosure summary::before{
+.oscillator-lfo-header{display:grid;grid-template-columns:minmax(0,1fr) auto}
+.oscillator-lfo-expand{
+  display:flex;align-items:center;gap:7px;min-height:36px;padding:6px 8px;border:0;
+  background:transparent;color:#c7d1d8;font:inherit;font-size:12px;text-align:left;cursor:pointer
+}
+.oscillator-lfo-expand::before{
   content:"";width:6px;height:6px;flex:none;border-right:1px solid currentColor;border-bottom:1px solid currentColor;
   transform:rotate(-45deg)
 }
-.oscillator-lfo-disclosure[open] summary::before{transform:rotate(45deg)}
-.oscillator-lfo-disclosure summary:focus-visible{outline:2px solid #77dcff;outline-offset:2px}
-.oscillator-lfo-state{margin-left:auto;color:#9caeba;font-size:10px;font-weight:700;line-height:17px}
-.oscillator-lfo-state[data-active=true]{color:#77dcff}
-.oscillator-lfo-disclosure .lfo-destination{display:grid;gap:8px;padding:8px;border-top:1px solid #35414c}
+.oscillator-lfo-expand[aria-expanded=true]::before{transform:rotate(45deg)}
+.oscillator-lfo-expand:focus-visible,.oscillator-lfo-enable:focus-within{outline:2px solid #77dcff;outline-offset:-2px}
+.oscillator-lfo-enable{display:grid;place-items:center;min-width:40px;cursor:pointer}
+.oscillator-lfo-enable input{width:16px;height:16px;margin:0;cursor:pointer}
+.oscillator-lfo-disclosure .lfo-destination:not([hidden]){display:grid;gap:8px;padding:8px;border-top:1px solid #35414c}
 .oscillator-lfo-disclosure input[type=range]{margin:7px 0 0}
-.oscillator-lfo-disclosure select{display:block;width:100%;margin-top:5px}
+.oscillator-lfo-waveform{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px}
+.oscillator-lfo-waveform select{width:100%;min-width:0}
 .oscillator-lfo-disclosure input:disabled,.oscillator-lfo-disclosure select:disabled{opacity:.55}
 
 
