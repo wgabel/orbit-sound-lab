@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { DroneLayer, DroneLayerId } from '../../domain/drone-layers';
 import type { PatchPlayback } from '../../application/patch-playback';
 import { connectPatchPorts, copyDroneLayerToPatch, createExamplePatch, createPatchModule, getPatchPort, hasPatchCycle,
   MODULE_LABELS, sameEndpoint, validatePatch } from '../../domain/patch';
-import type { CableMapping, Patch, PatchDrone, PatchEndpoint, PatchModule, PatchModuleKind, PatchPort } from '../../domain/patch';
+import type { CableMapping, NodePosition, PatchLayout, Patch, PatchDrone, PatchEndpoint, PatchModule, PatchModuleKind, PatchPort } from '../../domain/patch';
 import { createExampleLayout, PatchCanvas } from './PatchCanvas';
 import type { PatchSelection } from './PatchCanvas';
 import { placeNewPatchNode } from './patch-layout';
-import type { PatchLayout } from './patch-layout';
 import { PatchInspector } from './PatchInspector';
+import { PATCH_PRESET_NAME_LIMIT } from '../../domain/patch-preset';
+import type { PatchPreset } from '../../domain/patch-preset';
+import { deletePatchPreset, exportPatchPreset, importPatchPreset, listPatchPresets, savePatchPreset } from '../../infrastructure/storage/patch-preset-library';
+import { PresetLibrary } from './PresetLibrary';
 import './patch-editor.css';
 
 export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
@@ -18,8 +21,8 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   createPlayback(): PatchPlayback;
 }) {
   const engine = useRef<PatchPlayback | null>(null);
-  const nextId = useRef(1);
   const viewport = useRef<HTMLDivElement>(null);
+  const pendingViewport = useRef<NodePosition | null>(null);
   const [patch, setPatch] = useState(createExamplePatch);
   const [positions, setPositions] = useState<PatchLayout>(createExampleLayout);
   const [selection, setSelection] = useState<PatchSelection | null>({kind:'cable',id:'filter-control'});
@@ -44,6 +47,13 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
     }, 80);
     return () => window.clearInterval(interval);
   }, [playing]);
+
+  useLayoutEffect(() => {
+    const position = pendingViewport.current;
+    if (!position || !viewport.current) return;
+    viewport.current.scrollTo(position.x,position.y);
+    pendingViewport.current = null;
+  }, [positions]);
 
   function apply(next: Patch): boolean {
     try {
@@ -103,7 +113,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
       setMessage('Select an output first.');
       return;
     }
-    const id = `cable-${nextId.current++}`;
+    const id = `cable-${crypto.randomUUID()}`;
     try {
       if (apply(connectPatchPorts(patch,id,pending,endpoint))) {
         setPending(null);
@@ -116,7 +126,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   }
 
   function addModule(kind: PatchModuleKind) {
-    const id = `module-${nextId.current++}`;
+    const id = `module-${crypto.randomUUID()}`;
     const module = createPatchModule(kind,id);
     const position = viewport.current ? placeNewPatchNode(viewport.current,module) : {x:28,y:38};
     if (!apply({...patch,modules:[...patch.modules,module]})) return;
@@ -155,6 +165,21 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
     setMessage(item.kind === 'module' ? 'Module removed.' : 'Cable disconnected.');
   }
 
+  function loadSavedPatch(preset: PatchPreset) {
+    const snapshot = structuredClone(preset);
+    if (!apply(snapshot.patch)) return;
+    pendingViewport.current = snapshot.viewport;
+    setPositions(snapshot.layout);
+    setPending(null);
+    setSelection(null);
+    setMessage(`Loaded patch "${snapshot.name}".`);
+  }
+
+  function saveCurrentPatch(name: string) {
+    return savePatchPreset(name,{patch,layout:positions,
+      viewport:{x:viewport.current?.scrollLeft ?? 0,y:viewport.current?.scrollTop ?? 0}});
+  }
+
   function loadPatch(example: boolean) {
     if (!apply(example ? createExamplePatch() : {version:1,modules:[],cables:[]})) return;
     setPositions(example ? createExampleLayout() : {});
@@ -186,6 +211,12 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
         <button type="button" onClick={() => loadPatch(false)}>Empty patch</button>
         <span className="patch-legend"><span>Audio</span><span>Automation</span></span>
       </div>
+      <details className="patch-presets">
+        <summary>Patch presets</summary>
+        <PresetLibrary label="Patch" nameLimit={PATCH_PRESET_NAME_LIMIT} showHeading={false} list={listPatchPresets}
+          save={saveCurrentPatch} importFile={importPatchPreset} exportFile={exportPatchPreset}
+          remove={deletePatchPreset} onLoad={loadSavedPatch}/>
+      </details>
       <PatchCanvas viewportRef={viewport} patch={patch} positions={positions} selection={selection} pending={pending}
         playing={playing} readAudibleElapsed={readAudibleElapsed} readLfoPhase={readLfoPhase} readControlValue={readControlValue} getWaveformAnalyser={getWaveformAnalyser} outputLevel={outputLevel}
         onPort={handlePort} canConnect={canConnect}

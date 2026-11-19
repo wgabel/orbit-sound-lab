@@ -39,6 +39,10 @@ export function copyDroneLayerToPatch(module: PatchDrone, layerId: DroneLayerId,
   })};
 }
 
+export interface NodePosition {readonly x: number; readonly y: number}
+export type PatchLayout = Readonly<Record<string, NodePosition>>;
+export const MAXIMUM_NODE_POSITION = 2400;
+
 export interface PatchEndpoint { readonly moduleId: string; readonly portId: string; }
 export interface CableMapping { readonly from: number; readonly to: number; }
 export interface PatchCable {

@@ -16,7 +16,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function readSettings(value: unknown): PatchAutomation {
+export function readAutomationSettings(value: unknown): PatchAutomation {
   if (!isRecord(value)) throw new Error('Invalid automation settings.');
   const {duration, mode, shape, points, glide} = value;
   if (typeof duration !== 'number' || (mode !== 'loop' && mode !== 'once') ||
@@ -46,5 +46,5 @@ export function readAutomationPreset(value: unknown): AutomationPreset {
   if (typeof id !== 'string' || !id || typeof createdAt !== 'string' || !Number.isFinite(Date.parse(createdAt))) {
     throw new Error('Invalid automation preset metadata.');
   }
-  return {kind:'orbit-automation',schemaVersion:1,id,name:name.trim(),createdAt,automation:readSettings(automation)};
+  return {kind:'orbit-automation',schemaVersion:1,id,name:name.trim(),createdAt,automation:readAutomationSettings(automation)};
 }

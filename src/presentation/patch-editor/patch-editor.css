@@ -95,7 +95,11 @@
   .patch-editor .patch-port-column.output .patch-port {left:auto;right:-15px}
 }
 
-.automation-preset-library {margin-top:16px;padding-top:12px;border-top:1px solid var(--patch-line)}
-.automation-preset-library h3 {font-size:14px;margin:0 0 9px}
-.patch-editor .automation-preset-library [role=alert] {color:#ffaaa5}
-.automation-preset-library .preset-item strong {overflow-wrap:anywhere}
+.patch-preset-library {margin-top:16px;padding-top:12px;border-top:1px solid var(--patch-line)}
+.patch-preset-library h3 {font-size:14px;margin:0 0 9px}
+.patch-editor .patch-preset-library [role=alert] {color:#ffaaa5}
+.patch-preset-library .preset-item strong {overflow-wrap:anywhere}
+
+.patch-presets {margin:0 0 10px;padding:8px 11px;border:1px solid var(--patch-line);border-radius:6px;background:#18212c}
+.patch-presets summary {cursor:pointer;font-size:13px;font-weight:650}
+.patch-presets .patch-preset-library {margin-top:8px}
