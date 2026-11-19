@@ -142,7 +142,9 @@ export function getPatchPorts(module: PatchModule): readonly PatchPort[] {
       {id:'highFrequency',label:'High frequency',direction:'input',signal:'control',parameter:shelfFrequency},
       {id:'highGain',label:'High gain',direction:'input',signal:'control',parameter:shelfGain}
     ];
-    case 'pitchShift': return [audioInput, audioOutput];
+    case 'pitchShift': return [audioInput, audioOutput,
+      {id:'semitones',label:'Pitch',direction:'input',signal:'control',parameter:{unit:'st',minimum:-24,maximum:24}}
+    ];
     case 'gain': return [audioInput, audioOutput, level];
     case 'crossfader': return [
       {...audioInput, id:'inputA', label:'Audio A'},

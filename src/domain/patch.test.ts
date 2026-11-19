@@ -178,6 +178,17 @@ describe('Pitch Shift patch module', () => {
     expect(getPatchModuleLabel(pitch)).toBe('Pitch Shift');
   });
 
+  it('accepts a semitone mapping from Automation or LFO and rejects invalid endpoints', () => {
+    const pitch = createPatchModule('pitchShift','pitch');
+    for (const kind of ['automation','lfo'] as const) {
+      const source = createPatchModule(kind,'source');
+      const connected = connectPatchPorts({version:1,modules:[source,pitch],cables:[]},'sweep',
+        {moduleId:source.id,portId:'control'},{moduleId:pitch.id,portId:'semitones'});
+      expect(connected.cables[0].mapping).toEqual({from:-24,to:24});
+      expect(() => validatePatch({...connected,cables:[{...connected.cables[0],mapping:{from:-25,to:12}}]})).toThrow('Pitch mapping');
+    }
+  });
+
   it('rejects out-of-range tuning', () => {
     const pitch = createPatchModule('pitchShift','pitch');
     if (pitch.kind !== 'pitchShift') throw new Error('Expected Pitch Shift.');
