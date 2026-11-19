@@ -1,5 +1,6 @@
 import { readPatchLfoPhase } from '../../domain/patch-lfo';
-import type { PatchLfo, PatchLfoReading } from '../../domain/patch-lfo';
+import { createControlMonitor } from './web-audio-control-monitor';
+import type { PatchLfo } from '../../domain/patch-lfo';
 import type { WebAudioLfoWorkletFactory } from './web-audio-lfo-worklet';
 
 export function createPatchLfoSignal(context: AudioContext, factory: WebAudioLfoWorkletFactory,
@@ -17,26 +18,18 @@ export function createPatchLfoSignal(context: AudioContext, factory: WebAudioLfo
   const output = context.createWaveShaper();
   output.curve = new Float32Array([0,0.5,1]);
   source.connect(smoothing).connect(output);
-  const analyser = settings.waveform === 'smoothRandom' ? context.createAnalyser() : undefined;
-  const samples = analyser ? new Float32Array(32) : undefined;
-  if (analyser) {
-    analyser.fftSize = 32;
-    output.connect(analyser);
-  }
+  const monitor = createControlMonitor(context,output);
 
   return {
     output,
-    read(elapsed: number): PatchLfoReading {
-      if (analyser && samples) analyser.getFloatTimeDomainData(samples);
-      return {phase:readPatchLfoPhase(settings,elapsed - elapsedOffset), sample:samples?.at(-1)};
-    },
+    readValue:monitor.read,
+    readPhase:(elapsed: number) => readPatchLfoPhase(settings,elapsed - elapsedOffset),
     dispose() {
       source.port.postMessage('stop');
       source.port.close();
       source.disconnect();
       smoothing.disconnect();
       output.disconnect();
-      analyser?.disconnect();
     }
   };
 }
