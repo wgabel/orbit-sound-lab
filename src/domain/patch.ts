@@ -22,6 +22,7 @@ export interface PatchModuleSettings {
   gain: {readonly level: number};
   shelfEq: ShelfEqSettings;
   mixer: {readonly levelA: number; readonly levelB: number};
+  oscilloscope: Record<string, never>;
   output: {readonly level: number};
 }
 
@@ -67,6 +68,7 @@ export interface PatchPort {
 
 export const MODULE_LABELS: Readonly<Record<PatchModuleKind, string>> = {
   shelfEq: 'Shelf EQ',
+  oscilloscope: 'Oscilloscope',
   wave: 'Wave', drone: 'Drone', automation: 'Automation', filter: 'Low-pass filter', gain: 'Gain',
   lfo: 'LFO', mixer: 'Mixer', output: 'Output'
 };
@@ -116,6 +118,7 @@ export function getPatchPorts(module: PatchModule): readonly PatchPort[] {
       {...level, id:'levelB', label:'Level B'},
       audioOutput
     ];
+    case 'oscilloscope': return [audioInput,audioOutput];
     case 'output': return [audioInput, level];
   }
 }
@@ -224,6 +227,7 @@ export function createPatchModule(kind: PatchModuleKind, id: string): PatchModul
     case 'gain': return {id, kind, settings:{level:0.55}};
     case 'shelfEq': return {id, kind, settings:createDefaultShelfEq()};
     case 'mixer': return {id, kind, settings:{levelA:0.5, levelB:0.5}};
+    case 'oscilloscope': return {id, kind, settings:{}};
     case 'output': return {id, kind, settings:{level:0.7}};
   }
 }

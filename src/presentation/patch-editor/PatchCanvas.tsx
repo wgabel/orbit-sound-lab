@@ -1,3 +1,4 @@
+import { AudioWaveform } from '../AudioWaveform';
 import { useEffect, useMemo, useRef } from 'react';
 import type { PointerEvent, Ref } from 'react';
 import { getPatchModuleLabel, getPatchPorts, sameEndpoint } from '../../domain/patch';
@@ -27,6 +28,7 @@ interface PatchCanvasProps {
   readAudibleElapsed(): number;
   readLfo(moduleId: string, elapsed: number): PatchLfoReading | undefined;
   readonly outputLevel: number;
+  getWaveformAnalyser(moduleId: string): AnalyserNode | null;
   onSelect(selection: PatchSelection): void;
   onPort(endpoint: PatchEndpoint, port: PatchPort): void;
   canConnect(endpoint: PatchEndpoint): boolean;
@@ -67,11 +69,13 @@ function LfoScope({moduleId, settings}: {moduleId: string; settings: PatchLfo}) 
   </svg>;
 }
 
-export function PatchCanvas({patch, positions, selection, pending, playing, readAudibleElapsed, readLfo, outputLevel, viewportRef,
+export function PatchCanvas({patch, positions, selection, pending, playing, readAudibleElapsed, readLfo, getWaveformAnalyser, outputLevel, viewportRef,
   onSelect, onPort, canConnect, onMove}: PatchCanvasProps) {
   const canvas = useRef<HTMLDivElement>(null);
   const drag = useRef<{id: string; pointer: number; x: number; y: number} | null>(null);
   const modules = new Map(patch.modules.map(module => [module.id, module]));
+  const connectedInputs = new Set(patch.cables.filter(cable => cable.destination.portId === 'in')
+    .map(cable => cable.destination.moduleId));
   const width = Math.max(900, ...Object.values(positions).map(point => point.x + PATCH_NODE_WIDTH + 30));
   const height = Math.max(408, ...Object.values(positions).map(point => point.y + 206));
 
@@ -187,6 +191,9 @@ export function PatchCanvas({patch, positions, selection, pending, playing, read
           </div>
           {module.kind === 'automation' && <AutomationScope moduleId={module.id} settings={module.settings}/>}
           {module.kind === 'lfo' && <LfoScope moduleId={module.id} settings={module.settings}/>}
+          {module.kind === 'oscilloscope' && <AudioWaveform sourceId={module.id} playing={playing}
+            enabled={connectedInputs.has(module.id)} getAnalyser={getWaveformAnalyser}
+            label="Live oscilloscope waveform" disabledLabel="No input" verticalZoom={4}/>}
           {module.kind === 'output' && <meter className="patch-meter" aria-label="Output level"
             min={0} max={1} value={Math.min(1,outputLevel * 5)}/>}
         </article>;

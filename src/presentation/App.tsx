@@ -42,7 +42,7 @@ import { applyStepValues } from '../domain/oscillator-step-sequence';
 import type { StepValue } from '../domain/oscillator-step-sequence';
 import { getEffectiveOscillatorFrequency } from '../domain/harmony';
 import type { HarmonySettings } from '../domain/harmony';
-import { OscillatorWaveform } from './OscillatorWaveform';
+import { AudioWaveform } from './AudioWaveform';
 import './styles.css';
 import { createPatchPlayback } from '../composition/create-patch-playback';
 import { PatchEditor } from './patch-editor/PatchEditor';
@@ -514,7 +514,7 @@ export function App() {
               <strong>OSC {String(oscillatorNumber).padStart(2, '0')}</strong>
               <span title="Tuned pitch before modulation">{Number(tunedFrequency.toFixed(1))} Hz</span>
             </div>
-            <OscillatorWaveform oscillatorId={oscillator.id} playing={playing && (layerEnabled || holdModes[activeLayer])}
+            <AudioWaveform sourceId={oscillator.id} playing={playing && (layerEnabled || holdModes[activeLayer])}
               enabled={oscillator.enabled} getAnalyser={getWaveformAnalyser}/>
             <div className="oscillator-rack-volume">
               {renderOscillatorModulationSlider(oscillator, index, 'volume')}

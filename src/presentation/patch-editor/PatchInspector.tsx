@@ -91,6 +91,7 @@ function ModuleSettings({module, sampleRate, onChange}: {module: PatchModule; sa
       <NumericSlider label="Level B" unit="%" displayFactor={100} min={0} max={1} step={0.01}
         value={module.settings.levelB} onChange={levelB => onChange({...module,settings:{...module.settings,levelB}})}/>
     </div>;
+    case 'oscilloscope': return <p>Connect an audio signal to inspect it. Audio out passes it through.</p>;
     case 'gain':
     case 'output': return <div className="patch-fields">
       <NumericSlider label="Base level" unit="%" displayFactor={100} min={0} max={1} step={0.01} value={module.settings.level}

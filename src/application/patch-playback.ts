@@ -7,6 +7,7 @@ export interface PatchPlayback {
   update(patch: Patch): void;
   readAudibleElapsed(): number;
   readOutputLevel(): number;
+  getWaveformAnalyser(moduleId: string): AnalyserNode | null;
   readLfo(moduleId: string, elapsed: number): PatchLfoReading | undefined;
   stop(): Promise<void>;
   dispose(): void;

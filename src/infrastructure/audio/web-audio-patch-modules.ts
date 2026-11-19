@@ -27,6 +27,7 @@ export interface PatchRuntimeModule {
   readonly inputs?: Readonly<Partial<Record<string, AudioNode>>>;
   readonly output?: AudioNode;
   readonly parameters?: Readonly<Record<string, ParameterBinding>>;
+  readonly waveformAnalyser?: AnalyserNode;
   readLfo?(elapsed: number): PatchLfoReading;
   dispose(): void;
 }
@@ -144,6 +145,15 @@ export function createPatchRuntimeModule(
         highFrequency:{parameter:highShelf.frequency,base:highShelf.frequency.value,constrain},
         highGain:{parameter:highShelf.gain,base:highShelf.gain.value}
       }, dispose:() => shelf.dispose()};
+    }
+    case 'oscilloscope': {
+      const signal = context.createGain();
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 2048;
+      // Keep analysis on a side branch so the audio output carries the original channels.
+      signal.connect(analyser);
+      return {definition, inputs:{in:signal}, output:signal, waveformAnalyser:analyser,
+        dispose() {signal.disconnect(); analyser.disconnect();}};
     }
     case 'gain':
     case 'output': {

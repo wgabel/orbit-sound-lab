@@ -71,6 +71,7 @@
 .patch-scope {display:block;width:calc(100% - 20px);margin:3px 10px 10px;background:#111923;border-radius:5px}
 .patch-scope path {stroke:var(--patch-control);stroke-width:1.5;fill:none}
 .patch-scope line {stroke:#f3f3e8;stroke-width:1}
+.patch-node .audio-waveform {height:76px;margin:3px 10px 10px}
 .patch-meter {display:block;width:calc(100% - 20px);height:9px;margin:3px 10px 12px;accent-color:var(--patch-audio)}
 .patch-status {min-height:20px;margin:8px 0;color:#b8c7d6;font-size:13px}
 .patch-status[role=alert] {color:#ffaaa5}
