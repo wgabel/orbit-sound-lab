@@ -7,7 +7,7 @@ describe('built-in oscillator banks', () => {
   const layer = createDefaultDroneLayer('B');
 
   it('loads five playable oscillators and valid modulation into the destination slots', () => {
-    expect(builtInOscillatorBanks).toHaveLength(15);
+    expect(builtInOscillatorBanks).toHaveLength(20);
     const frequencySets = new Set<string>();
     for (const {id} of builtInOscillatorBanks) {
       const loaded = loadBuiltInOscillatorBank(id, layer);
@@ -18,11 +18,11 @@ describe('built-in oscillator banks', () => {
       expect(loaded.modulation).toHaveLength(20);
       frequencySets.add(oscillators.map(oscillator => oscillator.frequencyHz).join(','));
     }
-    expect(frequencySets.size).toBe(15);
+    expect(frequencySets.size).toBe(20);
   });
 
   it('groups the five advanced routing banks and loads their routes into either drone', () => {
-    expect(oscillatorBankGroups.map(group => group.label)).toEqual(['Drone Foundations', 'Cross-Modulation', 'Routing Example']);
+    expect(oscillatorBankGroups.map(group => group.label)).toEqual(['Drone Foundations', 'Cross-Modulation', 'Routing Example', 'Stepped Drones']);
     const examples = oscillatorBankGroups.find(group => group.label === 'Routing Example')?.presets ?? [];
     expect(examples.map(preset => preset.id)).toEqual(['ion-choir', 'relay-bells', 'split-pulse', 'reed-reactor', 'prism-gate']);
     for (const layerId of ['A', 'B'] as const) {
@@ -40,6 +40,30 @@ describe('built-in oscillator banks', () => {
         }
       }
     }
+  });
+
+  it('loads five stepped banks with synchronized square LFOs and independent destinations', () => {
+    const examples = oscillatorBankGroups.find(group => group.label === 'Stepped Drones')?.presets ?? [];
+    expect(examples).toHaveLength(5);
+    for (const {id} of examples) {
+      const loaded = loadBuiltInOscillatorBank(id, layer);
+      const active = loaded.modulation.filter(settings => settings.enabled);
+      expect(active.length).toBeGreaterThanOrEqual(4);
+      expect(active.every(settings => settings.sync && settings.waveform === 'square')).toBe(true);
+    }
+    const relay = loadBuiltInOscillatorBank('stereo-relay', layer);
+    const [, left, right] = relay.drone.oscillators;
+    const getTiming = (oscillatorId: string) => relay.modulation.filter(settings =>
+      settings.targetOscillatorId === oscillatorId && settings.enabled)
+      .map(({destination, frequencyHz, phaseDegrees}) => ({destination, frequencyHz, phaseDegrees}));
+    expect(getTiming(left.id)).toEqual([
+      {destination: 'filterCutoff', frequencyHz: 0.4, phaseDegrees: 0},
+      {destination: 'amplitude', frequencyHz: 0.4, phaseDegrees: 0}
+    ]);
+    expect(getTiming(right.id)).toEqual([
+      {destination: 'filterCutoff', frequencyHz: 0.4, phaseDegrees: 180},
+      {destination: 'amplitude', frequencyHz: 0.4, phaseDegrees: 180}
+    ]);
   });
 
   it.each([
