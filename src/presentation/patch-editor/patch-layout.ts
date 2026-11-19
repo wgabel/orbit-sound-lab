@@ -27,7 +27,7 @@ function getNewNodeSize(module: PatchModule): Size {
   const inputCount = ports.filter(port => port.direction === 'input').length;
   const rows = Math.max(inputCount, ports.length - inputCount);
   const bodyHeight = Math.max(36, rows * PATCH_PORT_HEIGHT);
-  const previewHeight = module.kind === 'automation' ? 49 : module.kind === 'output' ? 24 : 0;
+  const previewHeight = (module.kind === 'automation' || module.kind === 'lfo') ? 49 : module.kind === 'output' ? 24 : 0;
   return {width:PATCH_NODE_WIDTH, height:PATCH_NODE_TITLE_HEIGHT + bodyHeight + previewHeight};
 }
 

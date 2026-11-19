@@ -3,6 +3,8 @@ import type { PointerEvent, Ref } from 'react';
 import { getPatchModuleLabel, getPatchPorts, sameEndpoint } from '../../domain/patch';
 import type { Patch, PatchEndpoint, PatchModule, PatchPort } from '../../domain/patch';
 import { readAutomationPhase, readAutomationValue } from '../../domain/patch-automation';
+import { readLfoPreviewValue, readPatchLfoPhase } from '../../domain/patch-lfo';
+import type { PatchLfo, PatchLfoReading } from '../../domain/patch-lfo';
 import type { PatchAutomation } from '../../domain/patch-automation';
 
 import { boundNodePosition, PATCH_NODE_WIDTH, PATCH_NODE_TITLE_HEIGHT, PATCH_PORT_HEIGHT } from './patch-layout';
@@ -23,6 +25,7 @@ interface PatchCanvasProps {
   readonly pending: PatchEndpoint | null;
   readonly playing: boolean;
   readAudibleElapsed(): number;
+  readLfo(moduleId: string, elapsed: number): PatchLfoReading | undefined;
   readonly outputLevel: number;
   onSelect(selection: PatchSelection): void;
   onPort(endpoint: PatchEndpoint, port: PatchPort): void;
@@ -40,20 +43,31 @@ function portPosition(module: PatchModule, position: NodePosition, port: PatchPo
     y:position.y + PATCH_NODE_TITLE_HEIGHT + (index + 0.5) * PATCH_PORT_HEIGHT};
 }
 
-function automationPath(settings: PatchAutomation): string {
-  const values = Array.from({length:129}, (_, index) => index / 128);
-  return values.map((phase, index) =>
-    `${index === 0 ? 'M' : 'L'}${phase * 140},${29 - 26 * readAutomationValue(settings, phase)}`).join(' ');
+function controlPath(readValue: (phase: number) => number): string {
+  return Array.from({length:129}, (_, index) => {
+    const phase = index / 128;
+    return `${index === 0 ? 'M' : 'L'}${phase * 140},${29 - 26 * readValue(phase)}`;
+  }).join(' ');
 }
 
 function AutomationScope({moduleId, settings}: {moduleId: string; settings: PatchAutomation}) {
-  const path = useMemo(() => automationPath(settings), [settings]);
+  const path = useMemo(() => controlPath(phase => readAutomationValue(settings,phase)), [settings]);
   return <svg className="patch-scope" viewBox="0 0 140 32" role="img" aria-label="Automation shape and playhead">
     <path d={path}/><line data-automation-playhead={moduleId} x1="0" x2="0" y1="0" y2="32"/>
   </svg>;
 }
 
-export function PatchCanvas({patch, positions, selection, pending, playing, readAudibleElapsed, outputLevel, viewportRef,
+function LfoScope({moduleId, settings}: {moduleId: string; settings: PatchLfo}) {
+  const {waveform} = settings;
+  const path = useMemo(() => waveform === 'smoothRandom' ? '' :
+    controlPath(phase => readLfoPreviewValue(waveform,phase)), [waveform]);
+  return <svg className="patch-scope" viewBox="0 0 140 32" role="img" aria-label="LFO shape and playhead">
+    <path d={path} data-lfo-random-trace={waveform === 'smoothRandom' ? '' : undefined}/>
+    <line data-automation-playhead={moduleId} x1="0" x2="0" y1="0" y2="32"/>
+  </svg>;
+}
+
+export function PatchCanvas({patch, positions, selection, pending, playing, readAudibleElapsed, readLfo, outputLevel, viewportRef,
   onSelect, onPort, canConnect, onMove}: PatchCanvasProps) {
   const canvas = useRef<HTMLDivElement>(null);
   const drag = useRef<{id: string; pointer: number; x: number; y: number} | null>(null);
@@ -62,25 +76,42 @@ export function PatchCanvas({patch, positions, selection, pending, playing, read
   const height = Math.max(408, ...Object.values(positions).map(point => point.y + 206));
 
   useEffect(() => {
-    const settingsById = new Map(patch.modules.flatMap(module =>
-      module.kind === 'automation' ? [[module.id,module.settings] as const] : []));
+    const modulesById = new Map(patch.modules.map(module => [module.id,module]));
     const lines = canvas.current?.querySelectorAll<SVGLineElement>('[data-automation-playhead]');
     if (!lines?.length) return;
-    const playheads = Array.from(lines, line => ({line, settings:settingsById.get(line.dataset.automationPlayhead ?? '')}));
+    const playheads = Array.from(lines, line => {
+      const module = modulesById.get(line.dataset.automationPlayhead ?? '');
+      const trace = line.parentElement?.querySelector<SVGPathElement>('[data-lfo-random-trace]');
+      trace?.setAttribute('d','');
+      return {line,module,trace, lastColumn:-1, history:''};
+    });
     let frame = 0;
     function draw() {
       const elapsed = playing ? readAudibleElapsed() : 0;
-      for (const {line,settings} of playheads) {
-        if (!settings) continue;
-        const x = String(140 * readAutomationPhase(settings, elapsed));
+      for (const playhead of playheads) {
+        const {line,module,trace} = playhead;
+        if (!module || (module.kind !== 'automation' && module.kind !== 'lfo')) continue;
+        const reading = module.kind === 'lfo' && playing ? readLfo(module.id,elapsed) : undefined;
+        const phase = module.kind === 'automation' ? readAutomationPhase(module.settings,elapsed) :
+          reading?.phase ?? readPatchLfoPhase(module.settings,elapsed);
+        const x = String(140 * phase);
         line.setAttribute('x1',x);
         line.setAttribute('x2',x);
+        if (trace && reading?.sample !== undefined) {
+          const column = Math.floor(140 * phase);
+          if (column === playhead.lastColumn) continue;
+          if (column < playhead.lastColumn) playhead.history = '';
+          const y = Math.round(29 - 26 * reading.sample);
+          playhead.history += `${playhead.history ? 'L' : 'M'}${column},${y} `;
+          playhead.lastColumn = column;
+          trace.setAttribute('d',playhead.history);
+        }
       }
       if (playing) frame = requestAnimationFrame(draw);
     }
     draw();
     return () => cancelAnimationFrame(frame);
-  }, [patch.modules, playing, readAudibleElapsed]);
+  }, [patch.modules, playing, readAudibleElapsed, readLfo]);
 
   function endpointPosition(endpoint: PatchEndpoint) {
     const module = modules.get(endpoint.moduleId);
@@ -155,6 +186,7 @@ export function PatchCanvas({patch, positions, selection, pending, playing, read
             </div>)}
           </div>
           {module.kind === 'automation' && <AutomationScope moduleId={module.id} settings={module.settings}/>}
+          {module.kind === 'lfo' && <LfoScope moduleId={module.id} settings={module.settings}/>}
           {module.kind === 'output' && <meter className="patch-meter" aria-label="Output level"
             min={0} max={1} value={Math.min(1,outputLevel * 5)}/>}
         </article>;

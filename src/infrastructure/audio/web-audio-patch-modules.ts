@@ -1,6 +1,9 @@
 import { createDefaultDroneSettings } from '../../domain/drone';
 import type { PatchModule } from '../../domain/patch';
 import { readAutomationValue } from '../../domain/patch-automation';
+import type { PatchLfoReading } from '../../domain/patch-lfo';
+import type { WebAudioLfoWorkletFactory } from './web-audio-lfo-worklet';
+import { createPatchLfoSignal } from './web-audio-patch-lfo';
 import type { PatchAutomation } from '../../domain/patch-automation';
 import { DroneController } from '../../application/drone-controller';
 import { createDefaultLowFrequencyOscillators } from '../../domain/modulation';
@@ -21,6 +24,7 @@ export interface PatchRuntimeModule {
   readonly inputs?: Readonly<Partial<Record<string, AudioNode>>>;
   readonly output?: AudioNode;
   readonly parameters?: Readonly<Record<string, ParameterBinding>>;
+  readLfo?(elapsed: number): PatchLfoReading;
   dispose(): void;
 }
 
@@ -52,7 +56,7 @@ const defaultWave = createDefaultDroneSettings().oscillators[0];
 
 export function createPatchRuntimeModule(
   context: AudioContext, definition: PatchModule, pulse: WebAudioPulseWorkletFactory,
-  modulationFactory: WebAudioLowFrequencyOscillatorFactory, master: AudioNode, origin: number
+  modulationFactory: WebAudioLowFrequencyOscillatorFactory, lfo: WebAudioLfoWorkletFactory, master: AudioNode, origin: number
 ): PatchRuntimeModule {
   switch (definition.kind) {
     case 'wave': {
@@ -85,6 +89,10 @@ export function createPatchRuntimeModule(
         throw error;
       }
       return {definition, output, dispose};
+    }
+    case 'lfo': {
+      const signal = createPatchLfoSignal(context,lfo,definition.settings,origin);
+      return {definition, output:signal.output, readLfo:signal.read, dispose:signal.dispose};
     }
     case 'automation': {
       const source = createAutomationSignal(context, definition.settings, origin);

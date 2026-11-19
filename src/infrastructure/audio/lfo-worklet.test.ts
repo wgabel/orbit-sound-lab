@@ -1,6 +1,7 @@
 import workletSource from './lfo.worklet.js?raw';
 import { expect, it } from 'vitest';
 import type { LfoWorkletConfiguration } from './web-audio-lfo-worklet';
+import { readLfoPreviewValue, readPatchLfoPhase } from '../../domain/patch-lfo';
 
 interface WorkletInstance {
   readonly port: {onmessage: (event: {data: string | LfoWorkletConfiguration}) => void};
@@ -60,4 +61,15 @@ it('shares synced random targets even when the second LFO starts later', () => {
   const late = render(createProcessor(configuration, 80, [0.1]), 100);
   expect(late).toEqual(active.subarray(80));
   expect(new Set(late).size).toBeGreaterThan(40);
+});
+
+it('uses the patch transport origin and matches the displayed phase and waveform', () => {
+  const settings = {waveform:'triangle', rateHz:2, sync:true, phaseDegrees:90} as const;
+  const configuration = {waveform:settings.waveform, synchronized:true, phaseDegrees:settings.phaseDegrees,
+    frequencyHz:settings.rateHz, phaseOriginFrame:120};
+  const samples = render(createProcessor(configuration,145),50);
+  for (const [index,sample] of samples.entries()) {
+    const phase = readPatchLfoPhase(settings,(25+index)/100);
+    expect((sample+1)/2).toBeCloseTo(readLfoPreviewValue(settings.waveform,phase),6);
+  }
 });
