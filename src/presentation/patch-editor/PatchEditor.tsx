@@ -8,8 +8,9 @@ import { createExampleLayout, PatchCanvas } from './PatchCanvas';
 import type { PatchSelection } from './PatchCanvas';
 import { placeNewPatchNode } from './patch-layout';
 import { PatchInspector } from './PatchInspector';
+import { FACTORY_PATCH_GROUPS } from '../../domain/factory-patch-presets';
 import { PATCH_PRESET_NAME_LIMIT } from '../../domain/patch-preset';
-import type { PatchPreset } from '../../domain/patch-preset';
+import type { PatchPreset, PatchSnapshot } from '../../domain/patch-preset';
 import { deletePatchPreset, exportPatchPreset, importPatchPreset, listPatchPresets, savePatchPreset } from '../../infrastructure/storage/patch-preset-library';
 import { PresetLibrary } from './PresetLibrary';
 import './patch-editor.css';
@@ -165,7 +166,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
     setMessage(item.kind === 'module' ? 'Module removed.' : 'Cable disconnected.');
   }
 
-  function loadSavedPatch(preset: PatchPreset) {
+  function loadNamedPatch(preset: PatchSnapshot & {readonly name: string}) {
     const snapshot = structuredClone(preset);
     if (!apply(snapshot.patch)) return;
     pendingViewport.current = snapshot.viewport;
@@ -207,15 +208,24 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
           <option value="" disabled>Add module</option>
           {Object.entries(MODULE_LABELS).map(([kind,label]) => <option key={kind} value={kind}>{label}</option>)}
         </select>
+        <select aria-label="Factory patch preset" value="" onChange={event => {
+          const preset = FACTORY_PATCH_GROUPS.flatMap(group => group.presets).find(item => item.id === event.target.value);
+          if (preset) loadNamedPatch(preset);
+        }}>
+          <option value="" disabled>Factory patch presets</option>
+          {FACTORY_PATCH_GROUPS.map(group => <optgroup key={group.label} label={group.label}>
+            {group.presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+          </optgroup>)}
+        </select>
         <button type="button" onClick={() => loadPatch(true)}>Load example</button>
         <button type="button" onClick={() => loadPatch(false)}>Empty patch</button>
         <span className="patch-legend"><span>Audio</span><span>Automation</span></span>
       </div>
       <details className="patch-presets">
-        <summary>Patch presets</summary>
-        <PresetLibrary label="Patch" nameLimit={PATCH_PRESET_NAME_LIMIT} showHeading={false} list={listPatchPresets}
+        <summary>My patch presets</summary>
+        <PresetLibrary<PatchPreset> label="Patch" nameLimit={PATCH_PRESET_NAME_LIMIT} showHeading={false} list={listPatchPresets}
           save={saveCurrentPatch} importFile={importPatchPreset} exportFile={exportPatchPreset}
-          remove={deletePatchPreset} onLoad={loadSavedPatch}/>
+          remove={deletePatchPreset} onLoad={loadNamedPatch}/>
       </details>
       <PatchCanvas viewportRef={viewport} patch={patch} positions={positions} selection={selection} pending={pending}
         playing={playing} readAudibleElapsed={readAudibleElapsed} readLfoPhase={readLfoPhase} readControlValue={readControlValue} getWaveformAnalyser={getWaveformAnalyser} outputLevel={outputLevel}
