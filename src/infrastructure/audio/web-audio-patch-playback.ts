@@ -121,6 +121,10 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     return this.audibleElapsed;
   }
 
+  readLfo(moduleId: string, elapsed: number) {
+    if (this.state === 'playing') return this.modules.get(moduleId)?.readLfo?.(elapsed);
+  }
+
   readOutputLevel(): number {
     if (this.state !== 'playing') return 0;
     this.analyser.getFloatTimeDomainData(this.samples);
@@ -138,7 +142,7 @@ export class WebAudioPatchPlayback implements PatchPlayback {
       for (const definition of patch.modules) {
         const previous = this.modules.get(definition.id);
         const module = previous?.definition === definition ? previous :
-          createPatchRuntimeModule(this.context, definition, this.pulse, this.modulationFactory, this.master, this.origin);
+          createPatchRuntimeModule(this.context, definition, this.pulse, this.modulationFactory, this.lfo, this.master, this.origin);
         if (module !== previous) createdModules.push(module);
         nextModules.set(definition.id, module);
       }

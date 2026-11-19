@@ -1,3 +1,4 @@
+import { PatchLfoSettings } from './PatchLfoSettings';
 import { OSCILLATOR_WAVEFORMS, supportsOscillatorShape } from '../../domain/drone';
 import type { OscillatorWaveform } from '../../domain/drone';
 import { DRONE_LAYER_IDS } from '../../domain/drone-layers';
@@ -61,6 +62,7 @@ function AutomationSettings({settings, onChange}: {settings: PatchAutomation; on
 
 function ModuleSettings({module, onChange}: {module: PatchModule; onChange(module: PatchModule): void}) {
   switch (module.kind) {
+    case 'lfo': return <PatchLfoSettings settings={module.settings} onChange={settings => onChange({...module,settings})}/>;
     case 'wave': return <div className="patch-fields">
       <label>Waveform<select value={module.settings.waveform} onChange={event =>
         onChange({...module,settings:{...module.settings,waveform:event.target.value as OscillatorWaveform}})}>

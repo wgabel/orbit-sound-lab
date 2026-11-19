@@ -29,6 +29,18 @@ describe('copied drone nodes', () => {
 });
 
 describe('patch routing', () => {
+  it('allows an LFO to drive multiple control inputs and rejects invalid rates', () => {
+    const lfo = createPatchModule('lfo','lfo');
+    if (lfo.kind !== 'lfo') throw new Error('Expected an LFO module.');
+    const source = {moduleId:lfo.id,portId:'control'};
+    const patch: Patch = {version:1,modules:[lfo,createPatchModule('gain','gain'),createPatchModule('filter','filter')],cables:[]};
+    const first = connectPatchPorts(patch,'level',source,{moduleId:'gain',portId:'level'});
+    const second = connectPatchPorts(first,'cutoff',source,{moduleId:'filter',portId:'cutoff'});
+    expect(second.cables).toHaveLength(2);
+    expect(() => connectPatchPorts(patch,'audio',source,{moduleId:'gain',portId:'in'})).toThrow('compatible');
+    expect(() => validatePatch({...patch,modules:[{...lfo,settings:{...lfo.settings,rateHz:21}}]})).toThrow('Invalid LFO');
+  });
+
   it('uses one automation output for two independent destinations', () => {
     const patch = createExamplePatch();
     expect(() => validatePatch(patch)).not.toThrow();

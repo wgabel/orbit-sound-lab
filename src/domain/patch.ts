@@ -3,6 +3,8 @@ import type { DroneSettings, OscillatorWaveform } from './drone';
 import type { DroneLayer, DroneLayerId } from './drone-layers';
 import type { LowFrequencyOscillatorSettings } from './modulation';
 import { tuneSceneLayer } from './sound-scene';
+import { DEFAULT_PATCH_LFO, validatePatchLfo } from './patch-lfo';
+import type { PatchLfo } from './patch-lfo';
 import { validateAutomation } from './patch-automation';
 import type { PatchAutomation } from './patch-automation';
 
@@ -14,6 +16,7 @@ export interface PatchModuleSettings {
     readonly copiedFrom?: DroneLayerId;
   };
   automation: PatchAutomation;
+  lfo: PatchLfo;
   filter: {readonly cutoff: number; readonly resonance: number};
   gain: {readonly level: number};
   mixer: {readonly levelA: number; readonly levelB: number};
@@ -62,7 +65,7 @@ export interface PatchPort {
 
 export const MODULE_LABELS: Readonly<Record<PatchModuleKind, string>> = {
   wave: 'Wave', drone: 'Drone', automation: 'Automation', filter: 'Low-pass filter', gain: 'Gain',
-  mixer: 'Mixer', output: 'Output'
+  lfo: 'LFO', mixer: 'Mixer', output: 'Output'
 };
 
 export function getPatchModuleLabel(module: PatchModule): string {
@@ -85,6 +88,7 @@ export function getPatchPorts(module: PatchModule): readonly PatchPort[] {
       ...(supportsOscillatorShape(module.settings.waveform) ? [shape] : [])
     ];
     case 'drone': return [audioOutput];
+    case 'lfo':
     case 'automation': return [{id:'control', label:'Value', direction:'output', signal:'control'}];
     case 'filter': return [
       audioInput, audioOutput,
@@ -147,6 +151,10 @@ export function validatePatch(patch: Patch): void {
       validateAutomation(module.settings);
       continue;
     }
+    if (module.kind === 'lfo') {
+      validatePatchLfo(module.settings);
+      continue;
+    }
     if (module.kind === 'drone') {
       validateDroneSettings(module.settings.voice);
       continue;
@@ -194,6 +202,7 @@ export function createPatchModule(kind: PatchModuleKind, id: string): PatchModul
     case 'drone': return {id, kind, settings:{voice:createDefaultDroneSettings()}};
     case 'automation': return {id, kind, settings:{shape:'steps', mode:'loop', duration:8, glide:0,
       points:[0, 0.75, 0.25, 1, 0.1, 0.58, 0.23, 0.87, 0.87].map((value, index) => ({position:index / 8, value}))}};
+    case 'lfo': return {id, kind, settings:DEFAULT_PATCH_LFO};
     case 'filter': return {id, kind, settings:{cutoff:900, resonance:0.7}};
     case 'gain': return {id, kind, settings:{level:0.55}};
     case 'mixer': return {id, kind, settings:{levelA:0.5, levelB:0.5}};

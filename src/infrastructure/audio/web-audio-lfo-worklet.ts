@@ -6,6 +6,7 @@ export interface LfoWorkletConfiguration {
   readonly frequencyHz: number;
   readonly synchronized: boolean;
   readonly phaseDegrees: number;
+  readonly phaseOriginFrame?: number;
 }
 
 export class WebAudioLfoWorkletFactory {
@@ -25,12 +26,12 @@ export class WebAudioLfoWorkletFactory {
     return this.registration;
   }
 
-  create(configuration: LfoWorkletConfiguration): AudioWorkletNode {
-    if (!this.ready) throw new Error('Sync and Smooth Random require AudioWorklet support in this browser.');
+  create(configuration: LfoWorkletConfiguration, {independentSeed = false} = {}): AudioWorkletNode {
+    if (!this.ready) throw new Error('LFO worklet is unavailable in this browser.');
     return new AudioWorkletNode(this.context, 'orbit-lfo', {
       numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1],
       parameterData: {rate: configuration.frequencyHz},
-      processorOptions: {configuration, seed: this.seed}
+      processorOptions: {configuration, seed: independentSeed ? Math.floor(Math.random() * 0x100000000) : this.seed}
     });
   }
 }

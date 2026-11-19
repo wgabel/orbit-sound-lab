@@ -35,7 +35,7 @@ class LfoProcessor extends AudioWorkletProcessor {
       }
       const current = this.configuration;
       if (data.waveform === current.waveform && data.synchronized === current.synchronized &&
-          data.phaseDegrees === current.phaseDegrees && (!data.synchronized || data.frequencyHz === current.frequencyHz)) return;
+          data.phaseDegrees === current.phaseDegrees && data.phaseOriginFrame === current.phaseOriginFrame && (!data.synchronized || data.frequencyHz === current.frequencyHz)) return;
       this.configuration = data;
       if (this.lastSample !== null) {
         this.transitionFrom = this.lastSample;
@@ -50,7 +50,7 @@ class LfoProcessor extends AudioWorkletProcessor {
 
   synchronizedSample(frame, configuration) {
     // All nodes in this context calculate phase from the same audio render frame.
-    const cycles = (frame / sampleRate) * configuration.frequencyHz + configuration.phaseDegrees / 360;
+    const cycles = ((frame - (configuration.phaseOriginFrame ?? 0)) / sampleRate) * configuration.frequencyHz + configuration.phaseDegrees / 360;
     const cycle = Math.floor(cycles);
     const phase = cycles - cycle;
     switch (configuration.waveform) {
