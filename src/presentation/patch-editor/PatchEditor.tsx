@@ -255,7 +255,18 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
       <div className="patch-toolbar">
         <select aria-label="Add module" value="" onChange={event => addModule(event.target.value as PatchModuleKind)}>
           <option value="" disabled>Add module</option>
-          {Object.entries(MODULE_LABELS).map(([kind,label]) => <option key={kind} value={kind}>{label}</option>)}
+          <optgroup label="● Sound sources">
+            {(['wave','drone'] as const).map(kind =>
+              <option key={kind} value={kind} className="patch-module-option-audio">● {MODULE_LABELS[kind]}</option>)}
+          </optgroup>
+          <optgroup label="◆ Automation sources">
+            {(['lfo','automation'] as const).map(kind =>
+              <option key={kind} value={kind} className="patch-module-option-control">◆ {MODULE_LABELS[kind]}</option>)}
+          </optgroup>
+          <optgroup label="Audio processing &amp; routing">
+            {(['filter','gain','shelfEq','mixer','oscilloscope','pitchShift','output'] as const).map(kind =>
+              <option key={kind} value={kind}>{MODULE_LABELS[kind]}</option>)}
+          </optgroup>
         </select>
         <select aria-label="Factory patch preset" value="" onChange={event => {
           const preset = FACTORY_PATCH_GROUPS.flatMap(group => group.presets).find(item => item.id === event.target.value);
