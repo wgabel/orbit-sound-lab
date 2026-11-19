@@ -1,6 +1,9 @@
 import { createDefaultDelaySettings, validateDelaySettings } from './delay';
 import type { DelaySettings } from './delay';
 
+export const DEFAULT_DRONE_EFFECT_ORDER = ['eq','overdrive','compressor','chorus','flanger','delay','reverb'] as const;
+export type DroneEffectId = typeof DEFAULT_DRONE_EFFECT_ORDER[number];
+
 export interface ChorusSettings {
   readonly enabled: boolean;
   readonly rateHz: number;
@@ -28,6 +31,7 @@ export interface CompressorSettings {
 }
 
 export interface DroneEffectsSettings {
+  readonly order?: readonly DroneEffectId[];
   readonly delay: DelaySettings;
   readonly chorus: ChorusSettings;
   readonly flanger: FlangerSettings;
@@ -60,6 +64,14 @@ export const DEFAULT_DRONE_EFFECTS: DroneEffectsSettings = {
   compressor: {enabled:false,thresholdDecibels:-24,ratio:4,attackMilliseconds:10,releaseMilliseconds:180}
 };
 
+export function moveDroneEffect(order: readonly DroneEffectId[], index: number, direction: -1 | 1): readonly DroneEffectId[] {
+  const destination = index + direction;
+  if (index < 0 || index >= order.length || destination < 0 || destination >= order.length) return order;
+  const moved = [...order];
+  [moved[index],moved[destination]] = [moved[destination],moved[index]];
+  return moved;
+}
+
 type EffectRange = {readonly min:number; readonly max:number};
 
 function isInRange(value: number, {min,max}: EffectRange): boolean {
@@ -73,6 +85,11 @@ function hasEnableSwitch(effect?: {readonly enabled: boolean}): boolean {
 export function validateDroneEffects(settings: DroneEffectsSettings): void {
   const ranges = DRONE_EFFECT_RANGES;
   if (!settings || typeof settings.eqEnabled !== 'boolean') throw new Error('Invalid drone effects.');
+  const {order} = settings;
+  if (order !== undefined && (!Array.isArray(order) || order.length !== DEFAULT_DRONE_EFFECT_ORDER.length ||
+      !DEFAULT_DRONE_EFFECT_ORDER.every(effect => order.includes(effect)))) {
+    throw new Error('Drone effect order must include each effect exactly once.');
+  }
   const {delay,chorus,flanger,overdrive,compressor} = settings;
   if (!hasEnableSwitch(delay)) throw new Error('Invalid drone delay.');
   validateDelaySettings(delay);

@@ -159,7 +159,7 @@ Choose **Folded Sine** and raise **Fold Amount** to bend the sine peaks back inw
 
 ## Drone effects
 
-In **Sound → Effects**, click an effect’s name to edit its settings and use its switch to enable or bypass it. The cards follow the signal order from EQ to Reverb. Each drone stores its own settings in presets and carries them into the Patch Editor when used in a Drone node. **Studio → Master delay** processes the combined output of both drones.
+In **Sound → Effects**, click an effect’s name to edit its settings and use its switch to enable or bypass it. Audio runs through the list from top to bottom. Use **↑** and **↓** to move an effect one place. Each drone stores its own settings and effect order in presets and carries them into the Patch Editor when used in a Drone node. **Studio → Master delay** processes the combined output of both drones.
 
 - **EQ** uses a low shelf and a high shelf with a combined response graph.
 - **Overdrive** soft-clips the signal. Drive sets the amount, Tone rolls off highs, and Wet Mix blends the result back in.
@@ -167,7 +167,7 @@ In **Sound → Effects**, click an effect’s name to edit its settings and use 
 - **Chorus** varies two short stereo delays to widen the sound. **Flanger** uses a shorter modulated delay with feedback for a sweeping tone.
 - **Delay** repeats the drone at the selected Time and Feedback. **Reverb** adds a tail with adjustable Decay, Pre-delay and Damping. Its editable spaces are shared with the Reverb node.
 
-Older presets retain their shelf, reverb and shared delay settings. The added per-drone stages start bypassed.
+Older presets retain their shelf, reverb and shared delay settings and use the default effect order. The added per-drone stages start bypassed.
 
 ## Step Sequencer
 
