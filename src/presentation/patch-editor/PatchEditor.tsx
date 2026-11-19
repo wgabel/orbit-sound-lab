@@ -6,13 +6,14 @@ import { connectPatchPorts, copyDroneLayerToPatch, createExamplePatch, createPat
 import type { CableMapping, NodePosition, PatchLayout, Patch, PatchDrone, PatchEndpoint, PatchModule, PatchModuleKind, PatchPort } from '../../domain/patch';
 import { createExampleLayout, PatchCanvas } from './PatchCanvas';
 import type { PatchSelection } from './PatchCanvas';
-import { placeNewPatchNode } from './patch-layout';
+import { getVisiblePatchViewport, getZoomedCanvasOrigin, placeNewPatchNode } from './patch-layout';
 import { PatchInspector } from './PatchInspector';
 import { FACTORY_PATCH_GROUPS } from '../../domain/factory-patch-presets';
 import { PATCH_PRESET_NAME_LIMIT } from '../../domain/patch-preset';
 import type { PatchPreset, PatchSnapshot } from '../../domain/patch-preset';
 import { deletePatchPreset, exportPatchPreset, importPatchPreset, listPatchPresets, savePatchPreset } from '../../infrastructure/storage/patch-preset-library';
 import { PresetLibrary } from './PresetLibrary';
+import { PatchViewControls } from './PatchViewControls';
 import './patch-editor.css';
 
 export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
@@ -31,6 +32,9 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   const [message, setMessage] = useState('Select an output, then a highlighted input to connect it.');
   const [error, setError] = useState('');
   const [playing, setPlaying] = useState(false);
+  const [zoom, setZoom] = useState(100);
+  const [expanded, setExpanded] = useState(false);
+  const scale = zoom / 100;
   const [transition, setTransition] = useState(false);
   const [outputLevel, setOutputLevel] = useState(0);
   const readLfoPhase = useCallback((moduleId: string, elapsed: number) => engine.current?.readLfoPhase(moduleId,elapsed), []);
@@ -52,9 +56,24 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   useLayoutEffect(() => {
     const position = pendingViewport.current;
     if (!position || !viewport.current) return;
-    viewport.current.scrollTo(position.x,position.y);
+    viewport.current.scrollTo(position.x*scale,position.y*scale);
     pendingViewport.current = null;
-  }, [positions]);
+  }, [positions, scale]);
+
+  function changeZoom(nextZoom: number) {
+    const element = viewport.current;
+    if (element) {
+      const visible = getVisiblePatchViewport(element);
+      pendingViewport.current = getZoomedCanvasOrigin({x:element.scrollLeft,y:element.scrollTop},
+        {x:visible.x + visible.width/2,y:visible.y + visible.height/2},scale,nextZoom/100);
+    }
+    setZoom(nextZoom);
+  }
+
+  function closeEditor() {
+    setExpanded(false);
+    onClose();
+  }
 
   function apply(next: Patch): boolean {
     try {
@@ -71,7 +90,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
 
   async function togglePlayback(close = false) {
     if (transition) return;
-    if (close && !playing) {onClose(); return;}
+    if (close && !playing) {closeEditor(); return;}
     setTransition(true);
     setError('');
     try {
@@ -86,7 +105,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
         if (engine.current !== playback) return;
         setPlaying(true);
       }
-      if (close) onClose();
+      if (close) closeEditor();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not play the patch.');
     } finally {
@@ -129,7 +148,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
   function addModule(kind: PatchModuleKind) {
     const id = `module-${crypto.randomUUID()}`;
     const module = createPatchModule(kind,id);
-    const position = viewport.current ? placeNewPatchNode(viewport.current,module) : {x:28,y:38};
+    const position = viewport.current ? placeNewPatchNode(viewport.current,module,scale) : {x:28,y:38};
     if (!apply({...patch,modules:[...patch.modules,module]})) return;
     setPositions(previous => ({...previous,[id]:position}));
     setSelection({kind:'module',id});
@@ -178,7 +197,7 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
 
   function saveCurrentPatch(name: string) {
     return savePatchPreset(name,{patch,layout:positions,
-      viewport:{x:viewport.current?.scrollLeft ?? 0,y:viewport.current?.scrollTop ?? 0}});
+      viewport:{x:(viewport.current?.scrollLeft ?? 0)/scale,y:(viewport.current?.scrollTop ?? 0)/scale}});
   }
 
   function loadPatch(example: boolean) {
@@ -189,20 +208,26 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
     setMessage(example ? 'Example loaded. Play to hear the stepped drone.' : 'Add a module to start patching.');
   }
 
-  return <main className="patch-editor" hidden={hidden} onKeyDown={event => {
-    if (event.key !== 'Escape' || !pending) return;
-    setPending(null);
-    setMessage('Cable cancelled.');
+  return <main className="patch-editor" data-expanded={expanded} hidden={hidden} onKeyDown={event => {
+    if (event.defaultPrevented || event.key !== 'Escape') return;
+    if (pending) {
+      setPending(null);
+      setMessage('Cable cancelled.');
+    } else if (expanded) setExpanded(false);
   }}>
     <header className="patch-heading">
       <div><span>ORBIT SOUND LAB</span><h1>Patch editor</h1></div>
       <div className="patch-actions">
-        <button type="button" className="patch-play" disabled={transition} onClick={() => void togglePlayback()}>
-          {transition ? 'Please wait' : playing ? 'Stop patch' : 'Play patch'}</button>
-        <button type="button" disabled={transition} onClick={() => void togglePlayback(true)}>Drone editor</button>
+        <div className="patch-transport">
+          <button type="button" className="patch-play" disabled={transition} onClick={() => void togglePlayback()}>
+            {transition ? 'Please wait' : playing ? 'Stop patch' : 'Play patch'}</button>
+          <button type="button" disabled={transition} onClick={() => void togglePlayback(true)}>Drone editor</button>
+        </div>
+        <PatchViewControls zoom={zoom} expanded={expanded} onZoom={changeZoom}
+          onToggleExpanded={() => setExpanded(value => !value)}/>
       </div>
     </header>
-    <div inert={transition}>
+    <div className="patch-workspace" inert={transition}>
       <div className="patch-toolbar">
         <select aria-label="Add module" value="" onChange={event => addModule(event.target.value as PatchModuleKind)}>
           <option value="" disabled>Add module</option>
@@ -227,13 +252,15 @@ export function PatchEditor({hidden, droneLayers, onClose, createPlayback}: {
           save={saveCurrentPatch} importFile={importPatchPreset} exportFile={exportPatchPreset}
           remove={deletePatchPreset} onLoad={loadNamedPatch}/>
       </details>
-      <PatchCanvas viewportRef={viewport} patch={patch} positions={positions} selection={selection} pending={pending}
-        playing={playing} readAudibleElapsed={readAudibleElapsed} readLfoPhase={readLfoPhase} readControlValue={readControlValue} getWaveformAnalyser={getWaveformAnalyser} outputLevel={outputLevel}
-        onPort={handlePort} canConnect={canConnect}
-        onSelect={item => {setSelection(item); setPending(null); setError('');}}
-        onMove={(id,position) => setPositions(previous => ({...previous,[id]:position}))}/>
-      <p className="patch-status" role={error ? 'alert' : 'status'}>{error || message}</p>
-      <PatchInspector patch={patch} sampleRate={engine.current?.sampleRate} selection={selection} onModule={updateModule} onCopyDrone={copyDrone} onMapping={updateMapping} onRemove={remove}/>
+      <div className="patch-workspace-content">
+        <PatchCanvas viewportRef={viewport} scale={scale} patch={patch} positions={positions} selection={selection} pending={pending}
+          playing={playing} readAudibleElapsed={readAudibleElapsed} readLfoPhase={readLfoPhase} readControlValue={readControlValue} getWaveformAnalyser={getWaveformAnalyser} outputLevel={outputLevel}
+          onPort={handlePort} canConnect={canConnect}
+          onSelect={item => {setSelection(item); setPending(null); setError('');}}
+          onMove={(id,position) => setPositions(previous => ({...previous,[id]:position}))}/>
+        <p className="patch-status" role={error ? 'alert' : 'status'}>{error || message}</p>
+        <PatchInspector patch={patch} sampleRate={engine.current?.sampleRate} selection={selection} onModule={updateModule} onCopyDrone={copyDrone} onMapping={updateMapping} onRemove={remove}/>
+      </div>
     </div>
   </main>;
 }

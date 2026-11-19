@@ -20,6 +20,7 @@ export function createExampleLayout(): PatchLayout {
 interface PatchCanvasProps {
   readonly patch: Patch;
   readonly viewportRef: Ref<HTMLDivElement>;
+  readonly scale: number;
   readonly positions: PatchLayout;
   readonly selection: PatchSelection | null;
   readonly pending: PatchEndpoint | null;
@@ -69,7 +70,7 @@ function LfoScope({moduleId, settings}: {moduleId: string; settings: PatchLfo}) 
   </svg>;
 }
 
-export function PatchCanvas({patch, positions, selection, pending, playing, readAudibleElapsed, readLfoPhase, readControlValue, getWaveformAnalyser, outputLevel, viewportRef,
+export function PatchCanvas({patch, positions, selection, pending, scale, playing, readAudibleElapsed, readLfoPhase, readControlValue, getWaveformAnalyser, outputLevel, viewportRef,
   onSelect, onPort, canConnect, onMove}: PatchCanvasProps) {
   const canvas = useRef<HTMLDivElement>(null);
   const controlBadges = useRef(new Map<string,HTMLSpanElement>());
@@ -133,86 +134,97 @@ export function PatchCanvas({patch, positions, selection, pending, playing, read
     return module && point && port ? portPosition(module, point, port) : null;
   }
 
+  function getCanvasPoint(event: PointerEvent<HTMLButtonElement>): NodePosition | undefined {
+    const bounds = canvas.current?.getBoundingClientRect();
+    if (!bounds) return;
+    return {x:(event.clientX-bounds.left)/scale,y:(event.clientY-bounds.top)/scale};
+  }
+
   function beginDrag(event: PointerEvent<HTMLButtonElement>, id: string, position: NodePosition) {
     if (event.button !== 0) return;
-    drag.current = {id, pointer:event.pointerId, x:event.clientX - position.x, y:event.clientY - position.y};
+    const point = getCanvasPoint(event);
+    if (!point) return;
+    drag.current = {id,pointer:event.pointerId,x:point.x-position.x,y:point.y-position.y};
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
   function moveDrag(event: PointerEvent<HTMLButtonElement>) {
     const moving = drag.current;
     if (!moving || moving.pointer !== event.pointerId) return;
-    onMove(moving.id, boundNodePosition({x:event.clientX - moving.x,y:event.clientY - moving.y}));
+    const point = getCanvasPoint(event);
+    if (point) onMove(moving.id,boundNodePosition({x:point.x-moving.x,y:point.y-moving.y}));
   }
 
   return <div ref={viewportRef} className="patch-viewport" tabIndex={0} aria-label="Patch canvas. Scroll to see more nodes.">
-    <div ref={canvas} className="patch-canvas" style={{width,height}}>
-      <svg className="patch-cables" width={width} height={height} aria-label="Patch cables">
-        {patch.cables.map(cable => {
-          const from = endpointPosition(cable.source);
-          const to = endpointPosition(cable.destination);
-          if (!from || !to) return null;
-          const bend = Math.max(32, Math.abs(to.x - from.x) * 0.46);
-          const path = `M ${from.x} ${from.y} C ${from.x+bend} ${from.y} ${to.x-bend} ${to.y} ${to.x} ${to.y}`;
-          const sourceModule = modules.get(cable.source.moduleId);
-          const destinationModule = modules.get(cable.destination.moduleId);
-          if (!sourceModule || !destinationModule) return null;
-          const input = getPatchPorts(destinationModule).find(port => port.id === cable.destination.portId);
-          const select = () => onSelect({kind:'cable',id:cable.id});
-          return <g key={cable.id}>
-            <path d={path} data-signal={cable.mapping ? 'control' : 'audio'} className="patch-wire"
-              data-selected={selection?.kind === 'cable' && selection.id === cable.id}/>
-            <path d={path} className="patch-wire-hit" role="button" tabIndex={0}
-              aria-label={`${getPatchModuleLabel(sourceModule)} to ${getPatchModuleLabel(destinationModule)} ${input?.label}`}
-              onClick={select} onKeyDown={event => {
-                if (event.key !== 'Enter' && event.key !== ' ') return;
-                event.preventDefault();
-                select();
-              }}/>
-          </g>;
+    <div className="patch-stage" style={{width:width*scale,height:height*scale}}>
+      <div ref={canvas} className="patch-canvas" style={{width,height,transform:`scale(${scale})`}}>
+        <svg className="patch-cables" width={width} height={height} aria-label="Patch cables">
+          {patch.cables.map(cable => {
+            const from = endpointPosition(cable.source);
+            const to = endpointPosition(cable.destination);
+            if (!from || !to) return null;
+            const bend = Math.max(32, Math.abs(to.x - from.x) * 0.46);
+            const path = `M ${from.x} ${from.y} C ${from.x+bend} ${from.y} ${to.x-bend} ${to.y} ${to.x} ${to.y}`;
+            const sourceModule = modules.get(cable.source.moduleId);
+            const destinationModule = modules.get(cable.destination.moduleId);
+            if (!sourceModule || !destinationModule) return null;
+            const input = getPatchPorts(destinationModule).find(port => port.id === cable.destination.portId);
+            const select = () => onSelect({kind:'cable',id:cable.id});
+            return <g key={cable.id}>
+              <path d={path} data-signal={cable.mapping ? 'control' : 'audio'} className="patch-wire"
+                data-selected={selection?.kind === 'cable' && selection.id === cable.id}/>
+              <path d={path} className="patch-wire-hit" role="button" tabIndex={0}
+                aria-label={`${getPatchModuleLabel(sourceModule)} to ${getPatchModuleLabel(destinationModule)} ${input?.label}`}
+                onClick={select} onKeyDown={event => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                  event.preventDefault();
+                  select();
+                }}/>
+            </g>;
+          })}
+        </svg>
+        {patch.modules.map(module => {
+          const position = positions[module.id];
+          if (!position) return null;
+          const highlighted = selection?.kind === 'module' && selection.id === module.id;
+          return <article key={module.id} aria-label={getPatchModuleLabel(module)} className="patch-node"
+            data-selected={highlighted} style={{left:position.x,top:position.y,width:PATCH_NODE_WIDTH}}>
+            <button className="patch-node-title" type="button"
+              onClick={() => onSelect({kind:'module',id:module.id})}
+              onPointerDown={event => beginDrag(event,module.id,position)}
+              onPointerMove={moveDrag}
+              onLostPointerCapture={() => {drag.current = null;}}>{getPatchModuleLabel(module)}</button>
+            <div className="patch-port-columns">
+              {(['input','output'] as const).map(direction => <div key={direction} className={`patch-port-column ${direction}`}>
+                {portsOnSide(module,direction).map(port => {
+                  const endpoint = {moduleId:module.id,portId:port.id};
+                  const label = `${getPatchModuleLabel(module)} ${port.label}${port.signal === 'control' ? ` ${port.direction}` : ''}`;
+                  return <div className="patch-port-row" key={port.id} data-signal={port.signal}>
+                    <button className="patch-port" type="button" aria-label={label} title={label}
+                      data-pending={Boolean(pending && sameEndpoint(pending,endpoint))}
+                      data-compatible={Boolean(pending && canConnect(endpoint))}
+                      onClick={() => onPort(endpoint,port)}/>
+                    <span>{port.label}</span>
+                    {port.direction === 'output' && port.signal === 'control' && connectedControlSources.has(module.id) &&
+                      <span className="patch-control-value" title="Normalized signal before cable mapping"
+                        ref={badge => {
+                          if (badge) controlBadges.current.set(module.id,badge);
+                          else controlBadges.current.delete(module.id);
+                        }}>—</span>}
+                  </div>;
+                })}
+              </div>)}
+            </div>
+            {module.kind === 'automation' && <AutomationScope moduleId={module.id} settings={module.settings}/>}
+            {module.kind === 'lfo' && <LfoScope moduleId={module.id} settings={module.settings}/>}
+            {module.kind === 'oscilloscope' && <AudioWaveform sourceId={module.id} playing={playing}
+              enabled={connectedInputs.has(module.id)} getAnalyser={getWaveformAnalyser}
+              label="Live oscilloscope waveform" disabledLabel="No input" verticalZoom={4}/>}
+            {module.kind === 'output' && <meter className="patch-meter" aria-label="Output level"
+              min={0} max={1} value={Math.min(1,outputLevel * 5)}/>}
+          </article>;
         })}
-      </svg>
-      {patch.modules.map(module => {
-        const position = positions[module.id];
-        if (!position) return null;
-        const highlighted = selection?.kind === 'module' && selection.id === module.id;
-        return <article key={module.id} aria-label={getPatchModuleLabel(module)} className="patch-node"
-          data-selected={highlighted} style={{left:position.x,top:position.y,width:PATCH_NODE_WIDTH}}>
-          <button className="patch-node-title" type="button"
-            onClick={() => onSelect({kind:'module',id:module.id})}
-            onPointerDown={event => beginDrag(event,module.id,position)}
-            onPointerMove={moveDrag}
-            onLostPointerCapture={() => {drag.current = null;}}>{getPatchModuleLabel(module)}</button>
-          <div className="patch-port-columns">
-            {(['input','output'] as const).map(direction => <div key={direction} className={`patch-port-column ${direction}`}>
-              {portsOnSide(module,direction).map(port => {
-                const endpoint = {moduleId:module.id,portId:port.id};
-                const label = `${getPatchModuleLabel(module)} ${port.label}${port.signal === 'control' ? ` ${port.direction}` : ''}`;
-                return <div className="patch-port-row" key={port.id} data-signal={port.signal}>
-                  <button className="patch-port" type="button" aria-label={label} title={label}
-                    data-pending={Boolean(pending && sameEndpoint(pending,endpoint))}
-                    data-compatible={Boolean(pending && canConnect(endpoint))}
-                    onClick={() => onPort(endpoint,port)}/>
-                  <span>{port.label}</span>
-                  {port.direction === 'output' && port.signal === 'control' && connectedControlSources.has(module.id) &&
-                    <span className="patch-control-value" title="Normalized signal before cable mapping"
-                      ref={badge => {
-                        if (badge) controlBadges.current.set(module.id,badge);
-                        else controlBadges.current.delete(module.id);
-                      }}>—</span>}
-                </div>;
-              })}
-            </div>)}
-          </div>
-          {module.kind === 'automation' && <AutomationScope moduleId={module.id} settings={module.settings}/>}
-          {module.kind === 'lfo' && <LfoScope moduleId={module.id} settings={module.settings}/>}
-          {module.kind === 'oscilloscope' && <AudioWaveform sourceId={module.id} playing={playing}
-            enabled={connectedInputs.has(module.id)} getAnalyser={getWaveformAnalyser}
-            label="Live oscilloscope waveform" disabledLabel="No input" verticalZoom={4}/>}
-          {module.kind === 'output' && <meter className="patch-meter" aria-label="Output level"
-            min={0} max={1} value={Math.min(1,outputLevel * 5)}/>}
-        </article>;
-      })}
+      </div>
     </div>
   </div>;
 }
