@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { connectPatchPorts, copyDroneLayerToPatch, createExamplePatch, createPatchModule, getPatchModuleLabel, validatePatch } from './patch';
+import { connectPatchPorts, createExamplePatch, createPatchModule, getPatchModuleLabel, readPatchDroneLayer, setPatchDroneLayer, validatePatch } from './patch';
 import type { Patch } from './patch';
 import { readAutomationPhase, readAutomationValue } from './patch-automation';
 import { createDefaultDroneLayer } from './drone-layers';
+import { tuneSceneLayer } from './sound-scene';
+import { createDefaultDelaySettings } from './delay';
+import { createPreset, loadPresetSound, validatePreset } from './preset-library';
 
 describe('copied drone nodes', () => {
   it('captures tuned settings and LFOs independently of the source layer and keeps its cable endpoint', () => {
@@ -11,10 +14,13 @@ describe('copied drone nodes', () => {
       modulation:original.modulation.map((settings,index) => index === 0 ? {...settings, enabled:true} : settings)};
     const node = createPatchModule('drone','existing');
     if (node.kind !== 'drone') throw new Error('Expected a Drone node.');
-    const snapshot = copyDroneLayerToPatch(node,'B',source);
+    const snapshot = setPatchDroneLayer(node,source,'B');
     expect(snapshot.id).toBe(node.id);
     expect(getPatchModuleLabel(snapshot)).toBe('Drone B');
-    expect(snapshot.settings.voice.oscillators[0].frequencyHz).toBe(250);
+    expect(snapshot.settings.voice.oscillators[0].frequencyHz).toBe(220);
+    expect(tuneSceneLayer(readPatchDroneLayer(snapshot)).oscillators[0].frequencyHz).toBe(250);
+    expect(snapshot.settings.harmony).toEqual(source.harmony);
+    expect(snapshot.settings.harmony).not.toBe(source.harmony);
     expect(source.drone.oscillators[0].frequencyHz).toBe(220);
     expect(snapshot.settings.voice.mix).toEqual(source.drone.mix);
     expect(snapshot.settings.voice.mix).not.toBe(source.drone.mix);
@@ -25,6 +31,23 @@ describe('copied drone nodes', () => {
     const connected = connectPatchPorts({version:1, modules:[node,output], cables:[]},'cable',
       {moduleId:node.id,portId:'out'},{moduleId:output.id,portId:'in'});
     expect(() => validatePatch({...connected,modules:[snapshot,output]})).not.toThrow();
+  });
+  it('loads the saved source layer and saves a standalone drone preset with its original tuning', () => {
+    const primary = createDefaultDroneLayer('A');
+    const secondary = createDefaultDroneLayer('B');
+    const harmony = {...secondary.harmony,mode:'natural' as const,rootFrequencyHz:125};
+    const preset = createPreset('Drone B',primary.drone,primary.modulation,createDefaultDelaySettings(),primary.harmony,
+      {firstLayerEnabled:true,secondLayer:{...secondary,harmony},masterGain:0.5},'B');
+    const node = createPatchModule('drone','preset-drone');
+    if (node.kind !== 'drone') throw new Error('Expected a Drone node.');
+    const loaded = setPatchDroneLayer(node,loadPresetSound(preset,readPatchDroneLayer(node)));
+    const layer = readPatchDroneLayer(loaded);
+    expect(layer.drone).toEqual(secondary.drone);
+    expect(layer.harmony).toEqual(harmony);
+    const saved = createPreset('From node',layer.drone,layer.modulation,createDefaultDelaySettings(),layer.harmony);
+    const restored = loadPresetSound(validatePreset(JSON.parse(JSON.stringify(saved))),primary);
+    expect(restored).toEqual(layer);
+    expect(tuneSceneLayer(restored).oscillators[0].frequencyHz).toBe(250);
   });
 });
 

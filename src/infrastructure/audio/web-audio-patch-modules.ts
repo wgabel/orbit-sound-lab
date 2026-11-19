@@ -8,7 +8,8 @@ import type { WebAudioLfoWorkletFactory } from './web-audio-lfo-worklet';
 import { createPatchLfoSignal } from './web-audio-patch-lfo';
 import type { PatchAutomation } from '../../domain/patch-automation';
 import { DroneController } from '../../application/drone-controller';
-import { createDefaultLowFrequencyOscillators } from '../../domain/modulation';
+import { readPatchDroneLayer } from '../../domain/patch';
+import { tuneSceneLayer } from '../../domain/sound-scene';
 import { WebAudioDroneFactory } from './web-audio-drone-factory';
 import { WebAudioGraph } from './web-audio-graph';
 import type { WebAudioLowFrequencyOscillatorFactory } from './web-audio-low-frequency-oscillator';
@@ -78,13 +79,12 @@ export function createPatchRuntimeModule(
       }, dispose() {voice.dispose(); level.disconnect();}};
     }
     case 'drone': {
-      const {voice, modulation} = definition.settings;
+      const layer = readPatchDroneLayer(definition);
       const output = context.createGain();
       const graph = new WebAudioGraph();
       graph.register({id:'output',inputs:[{id:'audio',node:output}],outputs:[]});
       const controller = new DroneController(context, new WebAudioDroneFactory(context,pulse), graph,
-        new WebAudioModulationMatrix(), modulationFactory, voice,
-        modulation ?? createDefaultLowFrequencyOscillators(voice.oscillators.map(oscillator => oscillator.id)),
+        new WebAudioModulationMatrix(), modulationFactory, tuneSceneLayer(layer), layer.modulation,
         'drone', {moduleId:'output',portId:'audio'});
       const dispose = () => {controller.dispose(); graph.dispose(); output.disconnect();};
       try {

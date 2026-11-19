@@ -1,5 +1,6 @@
-import { builtInOscillatorBanks, loadBuiltInOscillatorBank, oscillatorBankGroups } from '../domain/built-in-oscillator-banks';
+import { builtInOscillatorBanks, loadBuiltInOscillatorBank } from '../domain/built-in-oscillator-banks';
 import { builtInOscillatorPresets, createBuiltInOscillatorSnapshot } from '../domain/built-in-oscillator-presets';
+import { OscillatorBankPicker } from './OscillatorBankPicker';
 import { OscillatorControlSection } from './OscillatorControlSection';
 import { OscillatorLfoControls } from './OscillatorLfoControls';
 import { OscillatorShapeControls } from './OscillatorShapeControls';
@@ -32,7 +33,7 @@ import { DroneMixControls } from './DroneMixControls';
 import { NumericSlider } from './NumericSlider';
 import { OscillatorPanControl } from './OscillatorPanControl';
 import { useRenderingActivityDiagnostic } from './use-rendering-activity-diagnostic';
-import { createPreset, deletePreset, exportPreset, importPreset, listPresets, loadPresetSound, savePreset } from '../domain/preset-library';
+import { createDroneSnapshotName, createPreset, deletePreset, DRONE_PRESET_NAME_LIMIT, exportPreset, importPreset, listPresets, loadPresetSound, savePreset } from '../domain/preset-library';
 import type { SoundPreset } from '../domain/preset-library';
 import { sceneFromPreset, tuneSceneLayer } from '../domain/sound-scene';
 import type { ArrangementScene, SoundScene } from '../domain/sound-scene';
@@ -215,10 +216,19 @@ export function App() {
     }
   }
 
-  useEffect(() => { void listPresets().then(setPresets).catch(reason => setError(String(reason))); }, []);
+  useEffect(() => {
+    if (showPatchEditor) return;
+    let active = true;
+    void listPresets().then(presets => {
+      if (active) setPresets(presets);
+    }).catch(reason => {
+      if (active) setError(String(reason));
+    });
+    return () => { active = false; };
+  }, [showPatchEditor]);
   async function saveCurrentPreset(snapshot: boolean) {
     try {
-      const name = snapshot ? `Snapshot ${new Date().toLocaleString()}` : presetName.trim();
+      const name = snapshot ? createDroneSnapshotName() : presetName.trim();
       if (!name) { setError('Enter a preset name.'); return; }
       const preset = createPreset(name, layers.A.drone, layers.A.modulation, delaySettings, layers.A.harmony,
         {firstLayerEnabled: layers.A.enabled, secondLayer: layers.B, masterGain}, activeLayer);
@@ -486,15 +496,7 @@ export function App() {
     <section className="oscillators" data-layer={activeLayer} aria-labelledby="oscillator-rack-title">
       <div className="oscillator-rack-heading">
         <h2 id="oscillator-rack-title">Drone {activeLayer} oscillators</h2>
-        <label className="oscillator-bank-picker">5-oscillator preset
-          <select value="" aria-label="Load five-oscillator preset"
-            onChange={event => loadOscillatorBank(event.target.value)}>
-            <option value="" disabled>Choose a preset</option>
-            {oscillatorBankGroups.map(group => <optgroup key={group.label} label={group.label}>
-              {group.presets.map(preset => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
-            </optgroup>)}
-          </select>
-        </label>
+        <OscillatorBankPicker onLoad={loadOscillatorBank}/>
         <span className="oscillator-action-status" role="status">{oscillatorActionStatus}</span>
       </div>
       {settings.oscillators.map((oscillator, index) => {
@@ -621,7 +623,7 @@ export function App() {
       disabled={!delaySettings.enabled} value={delaySettings.timeSeconds} onChange={value => updateDelay({...delaySettings,timeSeconds:value})}/><NumericSlider label="FEEDBACK" unit="%" displayFactor={100} min={0} max={0.85} step={0.01}
       disabled={!delaySettings.enabled} value={delaySettings.feedback} onChange={value => updateDelay({...delaySettings,feedback:value})}/><NumericSlider label="WET MIX" unit="%" displayFactor={100} min={0} max={1} step={0.01}
       disabled={!delaySettings.enabled} value={delaySettings.mix} onChange={value => updateDelay({...delaySettings,mix:value})}/></div><p>Echo repeats the combined drone. Start with low feedback and mix.</p></section>
-    <section className="preset-library"><h2>PRESET LIBRARY</h2><div className="preset-actions"><input aria-label="Preset name" placeholder="Preset name" maxLength={120} value={presetName} onChange={event => setPresetName(event.target.value)}/><button type="button" onClick={() => void saveCurrentPreset(false)}>SAVE PRESET</button><button type="button" onClick={() => void saveCurrentPreset(true)}>SAVE SNAPSHOT</button><button type="button" onClick={() => importInput.current?.click()}>IMPORT JSON</button><input ref={importInput} type="file" accept=".json,application/json" hidden onChange={event => { const file = event.target.files?.[0]; if (file) void handlePresetImport(file); event.target.value = ''; }}/></div><div className="preset-morph">
+    <section className="preset-library"><h2>PRESET LIBRARY</h2><div className="preset-actions"><input aria-label="Preset name" placeholder="Preset name" maxLength={DRONE_PRESET_NAME_LIMIT} value={presetName} onChange={event => setPresetName(event.target.value)}/><button type="button" onClick={() => void saveCurrentPreset(false)}>SAVE PRESET</button><button type="button" onClick={() => void saveCurrentPreset(true)}>SAVE SNAPSHOT</button><button type="button" onClick={() => importInput.current?.click()}>IMPORT JSON</button><input ref={importInput} type="file" accept=".json,application/json" hidden onChange={event => { const file = event.target.files?.[0]; if (file) void handlePresetImport(file); event.target.value = ''; }}/></div><div className="preset-morph">
       <div className="preset-morph-heading">
         <h3>Preset Morph</h3>
         <label className="preset-morph-toggle"><input type="checkbox" checked={morphEnabled}

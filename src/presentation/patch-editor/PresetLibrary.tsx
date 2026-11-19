@@ -12,13 +12,14 @@ interface PresetLibraryProps<Preset extends PresetItem> {
   readonly showHeading?: boolean;
   list(): Promise<Preset[]>;
   save(name: string): Promise<unknown>;
+  createSnapshotName?(): string;
   importFile(file: File): Promise<unknown>;
   exportFile(preset: Preset): void;
   remove(id: string): Promise<void>;
   onLoad(preset: Preset): void;
 }
 
-export function PresetLibrary<Preset extends PresetItem>({label, nameLimit, showHeading = true, list, save,
+export function PresetLibrary<Preset extends PresetItem>({label, nameLimit, showHeading = true, list, save, createSnapshotName,
   importFile, exportFile, remove, onLoad}: PresetLibraryProps<Preset>) {
   const input = useRef<HTMLInputElement>(null);
   const [presets,setPresets] = useState<Preset[]>([]);
@@ -65,6 +66,8 @@ export function PresetLibrary<Preset extends PresetItem>({label, nameLimit, show
       <input aria-label={`${label} preset name`} placeholder="Preset name" maxLength={nameLimit}
         value={name} disabled={busy} onChange={event => setName(event.target.value)}/>
       <button type="submit" disabled={busy || !name.trim()}>Save preset</button>
+      {createSnapshotName && <button type="button" disabled={busy}
+        onClick={() => void changeLibrary(() => save(createSnapshotName()))}>Save snapshot</button>}
       <button type="button" disabled={busy} onClick={() => input.current?.click()}>Import JSON</button>
       <input ref={input} type="file" accept=".json,application/json" hidden onChange={event => {
         const file = event.target.files?.[0];

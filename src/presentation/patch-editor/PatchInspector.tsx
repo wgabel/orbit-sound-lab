@@ -12,6 +12,7 @@ import { applySmoothWavePreset, readSmoothWavePresetId, SMOOTH_WAVE_PRESETS } fr
 import type { PatchSelection } from './PatchCanvas';
 import { NumericSlider } from '../NumericSlider';
 import { AutomationPresetLibrary } from './AutomationPresetLibrary';
+import { DroneNodePresets } from './DroneNodePresets';
 
 interface InspectorProps {
   readonly patch: Patch;
@@ -141,10 +142,13 @@ export function PatchInspector({patch, sampleRate, selection, onModule, onCopyDr
         {cable ? 'Disconnect cable' : 'Remove module'}</button>}
     </div>
     {module && <ModuleSettings module={module} sampleRate={sampleRate} onChange={onModule}/>}
-    {module?.kind === 'drone' && <div className="patch-actions patch-drone-copy">
-      {DRONE_LAYER_IDS.map(layerId => <button key={layerId} type="button" onClick={() => onCopyDrone(module,layerId)}>
-        Copy Drone {layerId}</button>)}
-    </div>}
+    {module?.kind === 'drone' && <>
+      <div className="patch-actions patch-drone-copy">
+        {DRONE_LAYER_IDS.map(layerId => <button key={layerId} type="button" onClick={() => onCopyDrone(module,layerId)}>
+          Copy Drone {layerId}</button>)}
+      </div>
+      <DroneNodePresets key={module.id} module={module} onLoad={onModule}/>
+    </>}
     {cable && <CableSettings patch={patch} cable={cable} onChange={mapping => onMapping(cable.id,mapping)}/>}
     {!module && !cable && <p>Select a module or cable to edit its settings.</p>}
   </section>;
