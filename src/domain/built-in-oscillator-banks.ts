@@ -3,6 +3,16 @@ import type { OscillatorSettings } from './drone';
 import type { DroneLayer } from './drone-layers';
 import { createDefaultLowFrequencyOscillators, validateLowFrequencyOscillatorSettings } from './modulation';
 import type { LowFrequencyOscillatorSettings } from './modulation';
+import type { OscillatorModulationParameter } from './oscillator-modulation';
+
+type OscillatorSlot = 1 | 2 | 3 | 4 | 5;
+
+interface OscillatorBankRoute {
+  readonly sourceSlot: OscillatorSlot;
+  readonly targetSlot: OscillatorSlot;
+  readonly parameter: OscillatorModulationParameter;
+  readonly depth: number;
+}
 
 interface BankOscillator extends Pick<OscillatorSettings, 'waveform' | 'frequencyHz' | 'volume' | 'pan' | 'shape'> {
   readonly cutoffHz?: number;
@@ -14,6 +24,7 @@ interface BankOscillator extends Pick<OscillatorSettings, 'waveform' | 'frequenc
 interface OscillatorBank {
   readonly id: string;
   readonly name: string;
+  readonly routes?: readonly OscillatorBankRoute[];
   readonly oscillators: readonly [BankOscillator, BankOscillator, BankOscillator, BankOscillator, BankOscillator];
 }
 
@@ -76,6 +87,69 @@ const banks = [
       {waveform: 'sine', frequencyHz: 220, volume: 0.1, pan: 0.34,
         movement: {destination: 'amplitude', frequencyHz: 0.073, depthAmplitude: 0.06}}
     ]
+  },
+  {
+    id: 'velvet-current', name: 'Velvet Current',
+    oscillators: [
+      {waveform: 'sine', frequencyHz: 55, volume: 0.54, pan: 0},
+      {waveform: 'sine', frequencyHz: 82.5, volume: 0, pan: 0},
+      {waveform: 'sine', frequencyHz: 165, volume: 0.36, pan: -0.3},
+      {waveform: 'triangle', frequencyHz: 110, volume: 0.23, pan: 0.34, cutoffHz: 490},
+      {waveform: 'sine', frequencyHz: 220, volume: 0.15, pan: 0.62,
+        movement: {destination: 'amplitude', frequencyHz: 0.06, depthAmplitude: 0.10}}
+    ],
+    routes: [{sourceSlot: 2, targetSlot: 3, parameter: 'frequency', depth: 30}]
+  },
+  {
+    id: 'glass-bell', name: 'Glass Bell',
+    oscillators: [
+      {waveform: 'sine', frequencyHz: 62.5, volume: 0.44, pan: 0},
+      {waveform: 'sine', frequencyHz: 218.75, volume: 0, pan: 0},
+      {waveform: 'sine', frequencyHz: 312.5, volume: 0.32, pan: 0.41,
+        movement: {destination: 'amplitude', frequencyHz: 0.085, depthAmplitude: 0.12}},
+      {waveform: 'triangle', frequencyHz: 125, volume: 0.22, pan: -0.29, cutoffHz: 650},
+      {waveform: 'sine', frequencyHz: 187.5, volume: 0.14, pan: -0.57}
+    ],
+    routes: [{sourceSlot: 2, targetSlot: 3, parameter: 'frequency', depth: 160}]
+  },
+  {
+    id: 'cascade-drift', name: 'Cascade Drift',
+    oscillators: [
+      {waveform: 'sine', frequencyHz: 65.4, volume: 0.51, pan: 0},
+      {waveform: 'sine', frequencyHz: 65.4, volume: 0, pan: 0},
+      {waveform: 'sineTriangle', frequencyHz: 130.8, volume: 0.22, pan: -0.45, shape: 0.25,
+        movement: {destination: 'shape', frequencyHz: 0.045, depthShape: 0.22}},
+      {waveform: 'sine', frequencyHz: 196.2, volume: 0.29, pan: 0.45},
+      {waveform: 'triangle', frequencyHz: 261.6, volume: 0.13, pan: -0.61, cutoffHz: 860}
+    ],
+    routes: [
+      {sourceSlot: 2, targetSlot: 3, parameter: 'frequency', depth: 46},
+      {sourceSlot: 3, targetSlot: 4, parameter: 'frequency', depth: 105}
+    ]
+  },
+  {
+    id: 'copper-pulse', name: 'Copper Pulse',
+    oscillators: [
+      {waveform: 'sine', frequencyHz: 60, volume: 0.52, pan: 0},
+      {waveform: 'sine', frequencyHz: 90, volume: 0, pan: 0},
+      {waveform: 'sine', frequencyHz: 270, volume: 0.28, pan: 0.3},
+      {waveform: 'triangle', frequencyHz: 120, volume: 0.24, pan: -0.42, cutoffHz: 620},
+      {waveform: 'sineTriangle', frequencyHz: 360, volume: 0.1, pan: -0.57, shape: 0.35,
+        movement: {destination: 'shape', frequencyHz: 0.052, depthShape: 0.28}}
+    ],
+    routes: [{sourceSlot: 2, targetSlot: 3, parameter: 'volume', depth: 0.25}]
+  },
+  {
+    id: 'breathing-reed', name: 'Breathing Reed',
+    oscillators: [
+      {waveform: 'sine', frequencyHz: 73.4, volume: 0.46, pan: 0},
+      {waveform: 'sine', frequencyHz: 73.4, volume: 0, pan: 0},
+      {waveform: 'sawtooth', frequencyHz: 146.8, volume: 0.29, pan: -0.37, cutoffHz: 460,
+        movement: {destination: 'filterCutoff', frequencyHz: 0.048, depthHz: 95}},
+      {waveform: 'triangle', frequencyHz: 110.1, volume: 0.24, pan: 0.42, cutoffHz: 700},
+      {waveform: 'sine', frequencyHz: 293.6, volume: 0.12, pan: 0.58}
+    ],
+    routes: [{sourceSlot: 2, targetSlot: 3, parameter: 'cutoff', depth: 320}]
   }
 ] satisfies readonly OscillatorBank[];
 
@@ -96,7 +170,15 @@ export function loadBuiltInOscillatorBank(presetId: string, layer: DroneLayer): 
     const movement = movementById.get(settings.targetOscillatorId);
     return movement?.destination === settings.destination ? {...settings, ...movement, enabled: true} : settings;
   });
-  const drone = {...layer.drone, oscillators, oscillatorModulations: []};
+  const oscillatorModulations = (preset.routes ?? []).map(({sourceSlot, targetSlot, parameter, depth}) => ({
+    sourceId: oscillators[sourceSlot - 1].id,
+    targetId: oscillators[targetSlot - 1].id,
+    parameter,
+    depth,
+    signal: 'waveform' as const,
+    enabled: true
+  }));
+  const drone = {...layer.drone, oscillators, oscillatorModulations};
   validateDroneSettings(drone);
   for (const settings of modulation) validateLowFrequencyOscillatorSettings(settings);
   // Free tuning plays the bank's exact voicing even if the previous patch used a different harmony.
