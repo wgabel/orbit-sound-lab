@@ -16,7 +16,7 @@ import { PATCH_PRESET_NAME_LIMIT } from '../../domain/patch-preset';
 import type { PatchPreset, PatchSnapshot } from '../../domain/patch-preset';
 import { deletePatchPreset, exportPatchPreset, importPatchPreset, listPatchPresets, savePatchPreset } from '../../infrastructure/storage/patch-preset-library';
 import { PresetLibraryPanel } from './PresetLibrary';
-import { usePresetCollection } from './usePresetCollection';
+import { usePresetCollection } from '../usePresetCollection';
 import { PatchViewControls } from './PatchViewControls';
 import { resolvePatchOverlaps } from './patch-overlap';
 import './patch-editor.css';

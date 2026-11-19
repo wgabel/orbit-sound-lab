@@ -249,11 +249,11 @@ body{margin:0;background:#0c1016;color:#e8e9df;font-family:system-ui,sans-serif}
 }
 .oscillator-modulation-button[data-active=true]{border-color:#77dcff;color:#77dcff}
 .oscillator-modulation-button:focus-visible,.oscillator-modulation-heading button:focus-visible{outline:2px solid #a5eaff;outline-offset:2px}
-.oscillator-modulation-dialog{
+.oscillator-modulation-dialog,.oscillator-preset-dialog{
   width:min(330px,calc(100% - 32px));max-height:calc(100% - 32px);padding:0;
   border:1px solid #537384;border-radius:12px;background:#172029;color:#e8e9df
 }
-.oscillator-modulation-dialog::backdrop{background:#091017b5}
+.oscillator-modulation-dialog::backdrop,.oscillator-preset-dialog::backdrop{background:#091017b5}
 .oscillator-modulation-panel{display:grid;gap:14px;padding:16px}
 .oscillator-modulation-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .oscillator-modulation-heading h3{margin:0;color:#a5eaff;font-size:13px;letter-spacing:.08em}
@@ -306,6 +306,12 @@ body{margin:0;background:#0c1016;color:#e8e9df;font-family:system-ui,sans-serif}
   background:#1e2b36;color:#e8e9df;font:700 10px system-ui;cursor:pointer
 }
 .oscillator-preset-select:focus-visible{outline:2px solid #a6efab;outline-offset:2px}
+.oscillator-preset-dialog form{display:grid;gap:14px;padding:14px}
+.oscillator-preset-dialog h3{margin:0}
+.oscillator-preset-dialog label{display:grid;gap:6px}
+.oscillator-preset-dialog input{min-width:0}
+.oscillator-preset-dialog-actions{display:flex;justify-content:flex-end;gap:8px}
+
 
 .scene-timeline .preset-morph-heading span,.scene-timeline-actions span{color:#a8b9b0;font-size:12px}
 .scene-timeline-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}

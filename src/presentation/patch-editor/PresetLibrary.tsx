@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { usePresetCollection } from './usePresetCollection';
+import { usePresetCollection } from '../usePresetCollection';
 
 interface PresetItem {
   readonly id: string;
