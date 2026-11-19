@@ -38,9 +38,20 @@ describe('oscillator slider modulation', () => {
       .toThrow('Invalid oscillator modulation route');
   });
 
+  it('rejects waveform frequency feedback loops while allowing level and cutoff routes', () => {
+    const waveformRoute = {...frequencyRoute(first.id, second.id), signal: 'waveform' as const};
+    const returnRoute = {...frequencyRoute(second.id, first.id), signal: 'waveform' as const};
+    expect(() => validateDroneSettings({...drone, oscillatorModulations: [waveformRoute, returnRoute]}))
+      .toThrow('cannot form a feedback loop');
+    expect(() => validateDroneSettings({...drone, oscillatorModulations: [waveformRoute, {...returnRoute, parameter: 'cutoff'}]}))
+      .not.toThrow();
+    expect(() => validateDroneSettings({...drone, oscillatorModulations: [waveformRoute, {...returnRoute, signal: 'level'}]}))
+      .not.toThrow();
+  });
+
   it('replaces a slider route and round-trips the settings through a preset', () => {
     const route = frequencyRoute(first.id, second.id);
-    const edited = {...route, sourceId: third.id, depth: 50, direction: 'decrease' as const};
+    const edited = {...route, sourceId: third.id, depth: 50, signal: 'waveform' as const};
     const routes = replaceOscillatorModulationRoute([route], edited);
     const modulations = createDefaultLowFrequencyOscillators(drone.oscillators.map(oscillator => oscillator.id));
     const preset = createPreset('Modulated', {...drone, oscillatorModulations: routes}, modulations, createDefaultDelaySettings());

@@ -9,12 +9,19 @@ export const OSCILLATOR_MODULATION_PARAMETERS = {
 
 export type OscillatorModulationParameter = keyof typeof OSCILLATOR_MODULATION_PARAMETERS;
 
+export type OscillatorModulationSignal = 'level' | 'waveform';
+
 export interface OscillatorModulationRoute {
   readonly targetId: string;
   readonly parameter: OscillatorModulationParameter;
   readonly sourceId: string;
+  readonly signal?: OscillatorModulationSignal;
   readonly enabled: boolean;
   readonly depth: number;
+}
+
+export function usesWaveformFrequency(route: OscillatorModulationRoute): boolean {
+  return route.parameter === 'frequency' && route.signal === 'waveform';
 }
 
 export function getOscillatorModulationRange(
@@ -51,9 +58,11 @@ export function validateOscillatorModulationRoutes(
   if (!Array.isArray(candidates)) throw new Error('Invalid oscillator modulation routes.');
   const ids = new Set(oscillators.map(oscillator => oscillator.id));
   const destinations = new Set<string>();
+  const waveformFrequencySources = new Map<string, string>();
   for (const route of routes) {
     if (!route || !Object.hasOwn(OSCILLATOR_MODULATION_PARAMETERS, route.parameter) ||
       !ids.has(route.sourceId) || !ids.has(route.targetId) || route.sourceId === route.targetId ||
+      (route.signal !== undefined && route.signal !== 'level' && route.signal !== 'waveform') ||
       typeof route.enabled !== 'boolean' || !Number.isFinite(route.depth) || route.depth < 0 ||
       route.depth > getOscillatorSliderSpan(route.parameter)) {
       throw new Error('Invalid oscillator modulation route.');
@@ -61,5 +70,15 @@ export function validateOscillatorModulationRoutes(
     const destination = `${route.targetId}:${route.parameter}`;
     if (destinations.has(destination)) throw new Error('Each slider allows one oscillator modulation source.');
     destinations.add(destination);
+    if (route.enabled && usesWaveformFrequency(route)) waveformFrequencySources.set(route.targetId, route.sourceId);
+  }
+  for (const targetId of waveformFrequencySources.keys()) {
+    const visited = new Set<string>();
+    let oscillatorId: string | undefined = targetId;
+    while (oscillatorId !== undefined) {
+      if (visited.has(oscillatorId)) throw new Error('Waveform frequency routes cannot form a feedback loop.');
+      visited.add(oscillatorId);
+      oscillatorId = waveformFrequencySources.get(oscillatorId);
+    }
   }
 }

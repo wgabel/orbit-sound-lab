@@ -1,10 +1,11 @@
-import { useCallback, useId, useRef } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
 import { applyPitchOffset, getEffectiveCutoffLfoDepth } from '../domain/modulation';
 import type { OscillatorSettings } from '../domain/drone';
 import {
-  getAmplitudeModulationRange, getOscillatorModulationRange, getOscillatorSliderSpan, OSCILLATOR_MODULATION_PARAMETERS
+  getAmplitudeModulationRange, getOscillatorModulationRange, getOscillatorSliderSpan, OSCILLATOR_MODULATION_PARAMETERS,
+  replaceOscillatorModulationRoute, validateOscillatorModulationRoutes
 } from '../domain/oscillator-modulation';
-import type { OscillatorModulationParameter, OscillatorModulationRoute } from '../domain/oscillator-modulation';
+import type { OscillatorModulationParameter, OscillatorModulationRoute, OscillatorModulationSignal } from '../domain/oscillator-modulation';
 import { NumericSlider } from './NumericSlider';
 
 interface OscillatorModulationSliderProps {
@@ -33,14 +34,30 @@ export function OscillatorModulationSlider({
 }: OscillatorModulationSliderProps) {
   const dialog = useRef<HTMLDialogElement>(null);
   const dialogId = useId();
+  const [routeError, setRouteError] = useState('');
   const {label, unit, minimum, maximum, step} = OSCILLATOR_MODULATION_PARAMETERS[parameter];
   const span = getOscillatorSliderSpan(parameter);
   const factor = unit === '%' ? 100 : 1;
-  const sources = oscillators.map((item, index) => ({id: item.id, name: `OSC ${String(index + 1).padStart(2, '0')}`}))
-    .filter(source => source.id !== oscillator.id);
+  const oscillatorOptions = oscillators.map((item, index) => ({
+    id: item.id, enabled: item.enabled, name: `OSC ${String(index + 1).padStart(2, '0')}`
+  }));
+  const sources = oscillatorOptions.filter(source => source.id !== oscillator.id);
   const route = routes.find(item => item.targetId === oscillator.id && item.parameter === parameter) ?? {
-    targetId: oscillator.id, parameter, sourceId: sources[0].id, depth: span / 10, enabled: false
+    targetId: oscillator.id, parameter, sourceId: sources[0].id, signal: 'waveform', depth: parameter === 'volume' ? 0.1 : parameter === 'frequency' ? 10 : 100, enabled: false
   };
+  const source = sources.find(item => item.id === route.sourceId);
+  const target = oscillatorOptions.find(item => item.id === oscillator.id);
+  const signal = route.signal ?? 'level';
+  function applyRoute(patch: Partial<Pick<OscillatorModulationRoute, 'sourceId' | 'signal' | 'depth' | 'enabled'>>) {
+    const next = {...route, ...patch};
+    try {
+      validateOscillatorModulationRoutes(replaceOscillatorModulationRoute(routes, next), oscillators);
+      onRouteChange(next);
+      setRouteError('');
+    } catch (reason) {
+      setRouteError(reason instanceof Error ? reason.message : 'Cannot change oscillator route.');
+    }
+  }
   const baseRange = getOscillatorModulationRange(oscillator, parameter, 0);
   const range = getOscillatorModulationRange({...oscillator, frequencyHz: effectiveFrequency}, parameter,
     route.enabled ? route.depth : 0, sampleRate);
@@ -53,8 +70,10 @@ export function OscillatorModulationSlider({
     if (!analyser) return null;
     const buffer = samples.current;
     analyser.getFloatTimeDomainData(buffer);
-    return range.base + buffer.reduce((total, sample) => total + sample, 0) / buffer.length;
-  }, [amplitudeDepth, getModulationAnalyser, oscillator.id, parameter, range.base, readOscillatorCutoff, readOscillatorFrequency, readOscillatorVolume]);
+    const offset = signal === 'waveform' ? buffer[buffer.length - 1] :
+      buffer.reduce((total, sample) => total + sample, 0) / buffer.length;
+    return range.base + offset;
+  }, [amplitudeDepth, getModulationAnalyser, oscillator.id, parameter, range.base, signal, readOscillatorCutoff, readOscillatorFrequency, readOscillatorVolume]);
   const showPreview = !disabled && (route.enabled || pitchDepthCents !== undefined ||
     amplitudeDepth !== undefined || cutoffDepthHz !== undefined);
   const depthCents = pitchDepthCents ?? 0;
@@ -75,26 +94,38 @@ export function OscillatorModulationSlider({
       modulationRange={showPreview ? bounds : undefined}
       readLiveValue={playing && showPreview ? readLiveValue : undefined} showLiveValue={parameter !== 'volume' || amplitudeDepth !== undefined}
       action={<button type="button" className="oscillator-modulation-button" data-active={route.enabled}
-        aria-label={`${label} modulation`} title={`${label} modulation`} aria-haspopup="dialog" aria-controls={dialogId}
-        onClick={() => dialog.current?.showModal()}><span aria-hidden="true">∿</span></button>}/>
+        aria-label={`Route to ${label.toLowerCase()}${route.enabled && source ? ` from ${source.name}` : ''}`} aria-haspopup="dialog" aria-controls={dialogId}
+        onClick={() => { setRouteError(''); dialog.current?.showModal(); }}>
+        {route.enabled ? source?.name : 'Route'}
+      </button>}/>
     <dialog id={dialogId} ref={dialog} className="oscillator-modulation-dialog" aria-labelledby={`${dialogId}-title`}
       onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close(); }}>
       <div className="oscillator-modulation-panel">
         <div className="oscillator-modulation-heading">
-          <h3 id={`${dialogId}-title`}>{label} MODULATION</h3>
-          <button type="button" aria-label="Close modulation settings" onClick={() => dialog.current?.close()}>×</button>
+          <h3 id={`${dialogId}-title`}>{target?.name} · {label}</h3>
+          <button type="button" aria-label="Close oscillator route" onClick={() => dialog.current?.close()}>×</button>
         </div>
         <label className="switch"><input type="checkbox" checked={route.enabled}
-          onChange={event => onRouteChange({...route, enabled: event.target.checked})}/> ENABLE MODULATION</label>
-        <label>SOURCE OSCILLATOR
-          <select value={route.sourceId} onChange={event => onRouteChange({...route, sourceId: event.target.value})}>
-            {sources.map(source => <option key={source.id} value={source.id}>{source.name}</option>)}
+          onChange={event => applyRoute({enabled: event.target.checked})}/> Enable route</label>
+        <label>Source oscillator
+          <select value={route.sourceId} onChange={event => applyRoute({sourceId: event.target.value})}>
+            {sources.map(item => <option key={item.id} value={item.id}>{item.name}{item.enabled ? '' : ' (off)'}</option>)}
           </select>
         </label>
-        <NumericSlider label="DEPTH ±" unit="%" displayFactor={100} min={0} max={1} step={0.001}
-          value={route.depth / span} onChange={depth => onRouteChange({...route, depth: depth * span})}/>
-        {disabled && <p>Enable the low-pass filter to hear this modulation.</p>}
-        <p>Follows the source’s volume and amplitude LFO.</p>
+        <label>Source signal
+          <select value={signal} onChange={event => applyRoute({signal: event.target.value as OscillatorModulationSignal})}>
+            <option value="waveform">Waveform</option>
+            <option value="level">Level and Amplitude LFO</option>
+          </select>
+        </label>
+        <p>{signal === 'waveform' ? 'Uses the source waveform before its filter and volume.' :
+          'Follows the source volume and Amplitude LFO.'}</p>
+        <NumericSlider label="Depth ±" unit={parameter === 'volume' ? 'pp' : 'Hz'} displayFactor={factor} min={0} max={span}
+          step={parameter === 'volume' ? 0.001 : 0.1} scale="quadratic"
+          value={route.depth} onChange={depth => applyRoute({depth})}/>
+        {route.enabled && source?.enabled === false && <p>Turn on {source.name} to hear this route.</p>}
+        {disabled && <p>Enable the low-pass filter to hear this route.</p>}
+        {routeError && <p role="alert" className="oscillator-route-error">{routeError}</p>}
       </div>
     </dialog>
   </>;
