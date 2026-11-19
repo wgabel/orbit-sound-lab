@@ -123,3 +123,21 @@ describe('Shelf EQ routing', () => {
       highShelf:{...shelf.settings.highShelf,gainDecibels:13}}}],cables:[]})).toThrow('Shelf gain');
   });
 });
+
+describe('oscilloscope routing', () => {
+  it('allows an inline connection and a monitoring branch from the same audio source', () => {
+    let patch: Patch = {version:1,modules:[
+      createPatchModule('gain','gain'), createPatchModule('oscilloscope','inline'),
+      createPatchModule('oscilloscope','tap'), createPatchModule('output','output')
+    ],cables:[]};
+    const gain = {moduleId:'gain',portId:'out'};
+    patch = connectPatchPorts(patch,'to-inline',gain,{moduleId:'inline',portId:'in'});
+    patch = connectPatchPorts(patch,'to-output',{moduleId:'inline',portId:'out'},{moduleId:'output',portId:'in'});
+    patch = connectPatchPorts(patch,'to-tap',gain,{moduleId:'tap',portId:'in'});
+    expect(patch.cables.every(cable => cable.mapping === undefined)).toBe(true);
+    expect(() => connectPatchPorts(patch,'feedback',{moduleId:'inline',portId:'out'},
+      {moduleId:'gain',portId:'in'})).toThrow('feedback loop');
+    expect(() => connectPatchPorts(patch,'control',{moduleId:'tap',portId:'out'},
+      {moduleId:'gain',portId:'level'})).toThrow('compatible');
+  });
+});

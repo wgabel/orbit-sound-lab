@@ -177,9 +177,9 @@ body{margin:0;background:#0c1016;color:#e8e9df;font-family:system-ui,sans-serif}
 @media(max-width:450px){.preset-morph-automation{grid-template-columns:1fr}}
 
 /* Always-visible per-voice oscilloscope, including collapsed oscillator panels. */
-.oscillator-waveform{position:relative;height:42px;margin:0;min-width:0;border:1px solid #304e51;border-radius:6px;background:#0b171c;overflow:hidden}
-.oscillator-waveform canvas{display:block;width:100%;height:100%}
-.oscillator-waveform-idle{
+.audio-waveform{position:relative;height:42px;margin:0;min-width:0;border:1px solid #304e51;border-radius:6px;background:#0b171c;overflow:hidden}
+.audio-waveform canvas{display:block;width:100%;height:100%}
+.audio-waveform-idle{
   position:absolute;inset:0;display:grid;place-items:center;color:#9cb6b8;
   font:10px monospace;pointer-events:none
 }

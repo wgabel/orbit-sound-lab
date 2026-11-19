@@ -1,14 +1,18 @@
 import { useEffect, useRef } from 'react';
 
-interface OscillatorWaveformProps {
-  readonly oscillatorId: string;
+interface AudioWaveformProps {
+  readonly sourceId: string;
   readonly playing: boolean;
   readonly enabled: boolean;
-  readonly getAnalyser: (oscillatorId: string) => AnalyserNode | null;
+  readonly label?: string;
+  readonly disabledLabel?: string;
+  readonly verticalZoom?: number;
+  readonly getAnalyser: (sourceId: string) => AnalyserNode | null;
 }
 
-/** Draws real post-filter, post-amplitude samples without React render updates. */
-export function OscillatorWaveform({oscillatorId, playing, enabled, getAnalyser}: OscillatorWaveformProps) {
+/** Draws audio samples at the connected analyser without React render updates. */
+export function AudioWaveform({sourceId, playing, enabled, getAnalyser, label,
+  disabledLabel = 'Off', verticalZoom = 1}: AudioWaveformProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -27,7 +31,7 @@ export function OscillatorWaveform({oscillatorId, playing, enabled, getAnalyser}
       frame = requestAnimationFrame(draw);
       if (!visible || document.hidden || timestamp - lastDraw < 33) return;
       lastDraw = timestamp;
-      const analyser = getAnalyser(oscillatorId);
+      const analyser = getAnalyser(sourceId);
       if (!analyser) return;
       if (samples.length !== analyser.fftSize) samples = new Float32Array(analyser.fftSize);
       analyser.getFloatTimeDomainData(samples as Float32Array<ArrayBuffer>);
@@ -56,16 +60,16 @@ export function OscillatorWaveform({oscillatorId, playing, enabled, getAnalyser}
       context.lineWidth = 1.6 * ratio;
       for (let x = 0; x < width; x++) {
         const index = start + Math.min(available - 1, Math.floor(x / width * available));
-        const y = height / 2 - Math.max(-1, Math.min(1, samples[index])) * height * 0.43;
+        const y = height / 2 - Math.max(-1, Math.min(1, samples[index] * verticalZoom)) * height * 0.43;
         if (x === 0) context.moveTo(x, y); else context.lineTo(x, y);
       }
       context.stroke();
     };
     frame = requestAnimationFrame(draw);
     return () => { cancelAnimationFrame(frame); observer?.disconnect(); context.clearRect(0, 0, canvas.width, canvas.height); };
-  }, [oscillatorId, playing, enabled, getAnalyser]);
-  return <div className="oscillator-waveform" aria-label={`Live audio waveform for ${oscillatorId}`}>
+  }, [sourceId, playing, enabled, getAnalyser, verticalZoom]);
+  return <div className="audio-waveform" role="img" aria-label={label ?? `Live audio waveform for ${sourceId}`}>
     <canvas ref={canvasRef} aria-hidden="true"/>
-    {!playing || !enabled ? <span className="oscillator-waveform-idle">{enabled ? 'Standby' : 'Off'}</span> : null}
+    {!playing || !enabled ? <span className="audio-waveform-idle">{enabled ? 'Standby' : disabledLabel}</span> : null}
   </div>;
 }

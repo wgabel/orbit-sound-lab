@@ -129,6 +129,10 @@ export class WebAudioPatchPlayback implements PatchPlayback {
     if (this.state === 'playing') return this.modules.get(moduleId)?.readLfo?.(elapsed);
   }
 
+  getWaveformAnalyser(moduleId: string): AnalyserNode | null {
+    return this.state === 'playing' ? this.modules.get(moduleId)?.waveformAnalyser ?? null : null;
+  }
+
   readOutputLevel(): number {
     if (this.state !== 'playing') return 0;
     this.analyser.getFloatTimeDomainData(this.samples);
