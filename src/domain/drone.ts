@@ -5,13 +5,13 @@ import { validateOscillatorModulationRoutes } from './oscillator-modulation';
 import type { OscillatorModulationRoute } from './oscillator-modulation';
 
 export const OSCILLATORS_PER_DRONE = 5 as const;
-export const OSCILLATOR_WAVEFORMS = ['sine', 'triangle', 'sawtooth', 'square', 'sineTriangle', 'variablePulse'] as const;
+export const OSCILLATOR_WAVEFORMS = ['sine', 'triangle', 'sawtooth', 'square', 'sineTriangle', 'variablePulse', 'foldedSine'] as const;
 export type OscillatorWaveform = typeof OSCILLATOR_WAVEFORMS[number];
 export const DEFAULT_OSCILLATOR_SHAPE = 0.5;
 export const MINIMUM_PULSE_WIDTH = 0.05;
 export const MAXIMUM_PULSE_WIDTH = 0.95;
 export function supportsOscillatorShape(waveform: OscillatorWaveform): boolean {
-  return waveform === 'sineTriangle' || waveform === 'variablePulse';
+  return waveform === 'sineTriangle' || waveform === 'variablePulse' || waveform === 'foldedSine';
 }
 export interface LowPassFilterSettings {
   readonly enabled: boolean;
