@@ -1,4 +1,4 @@
-import { validateAutomation } from './patch-automation';
+import { isAutomationShape, validateAutomation } from './patch-automation';
 import type { AutomationPoint, PatchAutomation } from './patch-automation';
 
 export const AUTOMATION_PRESET_NAME_LIMIT = 120;
@@ -20,7 +20,7 @@ export function readAutomationSettings(value: unknown): PatchAutomation {
   if (!isRecord(value)) throw new Error('Invalid automation settings.');
   const {duration, mode, shape, points, glide} = value;
   if (typeof duration !== 'number' || (mode !== 'loop' && mode !== 'once') ||
-      (shape !== 'sine' && shape !== 'square' && shape !== 'curve' && shape !== 'steps') ||
+      !isAutomationShape(shape) ||
       !Array.isArray(points) || points.length > 32 || typeof glide !== 'number') {
     throw new Error('Invalid automation settings.');
   }

@@ -3,17 +3,24 @@ export interface AutomationPoint {
   readonly value: number;
 }
 
+const AUTOMATION_SHAPES = ['sine','square','curve','smoothCurve','steps'] as const;
+type AutomationShape = typeof AUTOMATION_SHAPES[number];
+
+export function isAutomationShape(value: unknown): value is AutomationShape {
+  return AUTOMATION_SHAPES.some(shape => shape === value);
+}
+
 export interface PatchAutomation {
   readonly duration: number;
   readonly mode: 'loop' | 'once';
-  readonly shape: 'sine' | 'square' | 'curve' | 'steps';
+  readonly shape: AutomationShape;
   readonly points: readonly AutomationPoint[];
   readonly glide: number;
 }
 
 export function validateAutomation(settings: PatchAutomation): void {
   if (!Number.isFinite(settings.duration) || settings.duration < 0.05 || settings.duration > 60 ||
-      !['loop', 'once'].includes(settings.mode) || !['sine', 'square', 'curve', 'steps'].includes(settings.shape) ||
+      !['loop', 'once'].includes(settings.mode) || !isAutomationShape(settings.shape) ||
       !isNormalized(settings.glide) || settings.points.length < 2 || settings.points.length > 32 ||
       settings.points[0].position !== 0 || settings.points.at(-1)?.position !== 1 ||
       settings.points.some(({position, value}, index) =>
@@ -40,6 +47,10 @@ export function readAutomationValue(settings: PatchAutomation, phase: number): n
   const previous = settings.points[nextIndex - 1];
   const next = settings.points[nextIndex];
   const position = (phase - previous.position) / (next.position - previous.position);
+  if (settings.shape === 'smoothCurve') {
+    const eased = position * position * (3 - 2 * position);
+    return previous.value + (next.value - previous.value) * eased;
+  }
   const fraction = settings.shape === 'steps'
     ? settings.glide === 0 ? 0 : Math.max(0, (position - (1 - settings.glide)) / settings.glide)
     : position;
