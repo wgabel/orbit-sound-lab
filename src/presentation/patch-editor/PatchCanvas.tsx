@@ -1,17 +1,14 @@
 import { useMemo, useRef } from 'react';
-import type { PointerEvent } from 'react';
+import type { PointerEvent, Ref } from 'react';
 import { getPatchPorts, MODULE_LABELS, sameEndpoint } from '../../domain/patch';
 import type { Patch, PatchEndpoint, PatchModule, PatchPort } from '../../domain/patch';
 import { readAutomationPhase, readAutomationValue } from '../../domain/patch-automation';
 import type { PatchAutomation } from '../../domain/patch-automation';
 
-export interface NodePosition {readonly x: number; readonly y: number}
-export type PatchLayout = Readonly<Record<string, NodePosition>>;
-export type PatchSelection = {readonly kind: 'module' | 'cable'; readonly id: string};
+import { boundNodePosition, PATCH_NODE_WIDTH, PATCH_NODE_TITLE_HEIGHT, PATCH_PORT_HEIGHT } from './patch-layout';
+import type { NodePosition, PatchLayout } from './patch-layout';
 
-const NODE_WIDTH = 174;
-const TITLE_HEIGHT = 40;
-const PORT_HEIGHT = 32;
+export type PatchSelection = {readonly kind: 'module' | 'cable'; readonly id: string};
 
 export function createExampleLayout(): PatchLayout {
   return {drone:{x:28,y:38}, filter:{x:249,y:38}, gain:{x:470,y:38},
@@ -20,6 +17,7 @@ export function createExampleLayout(): PatchLayout {
 
 interface PatchCanvasProps {
   readonly patch: Patch;
+  readonly viewportRef: Ref<HTMLDivElement>;
   readonly positions: PatchLayout;
   readonly selection: PatchSelection | null;
   readonly pending: PatchEndpoint | null;
@@ -37,8 +35,8 @@ function portsOnSide(module: PatchModule, side: PatchPort['direction']) {
 
 function portPosition(module: PatchModule, position: NodePosition, port: PatchPort): NodePosition {
   const index = portsOnSide(module, port.direction).findIndex(item => item.id === port.id);
-  return {x:position.x + (port.direction === 'output' ? NODE_WIDTH : 0),
-    y:position.y + TITLE_HEIGHT + (index + 0.5) * PORT_HEIGHT};
+  return {x:position.x + (port.direction === 'output' ? PATCH_NODE_WIDTH : 0),
+    y:position.y + PATCH_NODE_TITLE_HEIGHT + (index + 0.5) * PATCH_PORT_HEIGHT};
 }
 
 function automationPath(settings: PatchAutomation): string {
@@ -55,11 +53,11 @@ function AutomationScope({settings, elapsed}: {settings: PatchAutomation; elapse
   </svg>;
 }
 
-export function PatchCanvas({patch, positions, selection, pending, elapsed, outputLevel,
+export function PatchCanvas({patch, positions, selection, pending, elapsed, outputLevel, viewportRef,
   onSelect, onPort, canConnect, onMove}: PatchCanvasProps) {
   const drag = useRef<{id: string; pointer: number; x: number; y: number} | null>(null);
   const modules = new Map(patch.modules.map(module => [module.id, module]));
-  const width = Math.max(900, ...Object.values(positions).map(point => point.x + NODE_WIDTH + 30));
+  const width = Math.max(900, ...Object.values(positions).map(point => point.x + PATCH_NODE_WIDTH + 30));
   const height = Math.max(408, ...Object.values(positions).map(point => point.y + 206));
 
   function endpointPosition(endpoint: PatchEndpoint) {
@@ -78,11 +76,10 @@ export function PatchCanvas({patch, positions, selection, pending, elapsed, outp
   function moveDrag(event: PointerEvent<HTMLButtonElement>) {
     const moving = drag.current;
     if (!moving || moving.pointer !== event.pointerId) return;
-    onMove(moving.id, {x:Math.min(2400, Math.max(16,event.clientX - moving.x)),
-      y:Math.min(2400, Math.max(12,event.clientY - moving.y))});
+    onMove(moving.id, boundNodePosition({x:event.clientX - moving.x,y:event.clientY - moving.y}));
   }
 
-  return <div className="patch-viewport" tabIndex={0} aria-label="Patch canvas. Scroll to see more nodes.">
+  return <div ref={viewportRef} className="patch-viewport" tabIndex={0} aria-label="Patch canvas. Scroll to see more nodes.">
     <div className="patch-canvas" style={{width,height}}>
       <svg className="patch-cables" width={width} height={height} aria-label="Patch cables">
         {patch.cables.map(cable => {
@@ -114,7 +111,7 @@ export function PatchCanvas({patch, positions, selection, pending, elapsed, outp
         if (!position) return null;
         const highlighted = selection?.kind === 'module' && selection.id === module.id;
         return <article key={module.id} aria-label={MODULE_LABELS[module.kind]} className="patch-node"
-          data-selected={highlighted} style={{left:position.x,top:position.y,width:NODE_WIDTH}}>
+          data-selected={highlighted} style={{left:position.x,top:position.y,width:PATCH_NODE_WIDTH}}>
           <button className="patch-node-title" type="button"
             onClick={() => onSelect({kind:'module',id:module.id})}
             onPointerDown={event => beginDrag(event,module.id,position)}
