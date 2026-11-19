@@ -47,13 +47,26 @@ import { AudioWaveform } from './AudioWaveform';
 import './styles.css';
 import { createPatchPlayback } from '../composition/create-patch-playback';
 import { PatchEditor } from './patch-editor/PatchEditor';
+import { readPatchDroneLayer } from '../domain/patch';
+import type { PatchDrone } from '../domain/patch';
+
+interface PatchDroneEdit {
+  readonly layer: DroneLayer;
+  readonly holdMode: boolean;
+  applyEdits(layer: DroneLayer): boolean;
+}
+
 export function App() {
   const controller = useRef<SoundLabController | null>(null);
   const [showPatchEditor, setShowPatchEditor] = useState(false);
-  const [activeLayer, setActiveLayer] = useState<DroneLayerId>('A');
-  const [layers, setLayers] = useState<Record<DroneLayerId, DroneLayer>>(() =>
+  const [selectedLayer, setActiveLayer] = useState<DroneLayerId>('A');
+  const [mainLayers, setMainLayers] = useState<Record<DroneLayerId, DroneLayer>>(() =>
     ({A: createDefaultDroneLayer('A'), B: createDefaultDroneLayer('B')}));
-  const [holdModes, setHoldModes] = useState({A: false, B: false});
+  const [mainHoldModes, setMainHoldModes] = useState({A:false,B:false});
+  const [patchDroneEdit, setPatchDroneEdit] = useState<PatchDroneEdit | null>(null);
+  const activeLayer = patchDroneEdit ? 'A' : selectedLayer;
+  const layers = patchDroneEdit ? {A:patchDroneEdit.layer,B:{...mainLayers.B,enabled:false}} : mainLayers;
+  const holdModes = patchDroneEdit ? {A:patchDroneEdit.holdMode,B:false} : mainHoldModes;
   const [masterGain, setMasterGain] = useState(1);
   const performancePosition = useRef(NEUTRAL_PERFORMANCE_POSITION);
   const [playing, setPlaying] = useState(false);
@@ -80,8 +93,16 @@ export function App() {
   const readOscillatorCutoff = useCallback((oscillatorId: string) =>
     controller.current?.layers[activeLayer].readOscillatorCutoff(oscillatorId) ?? null, [activeLayer]);
 
+  function updateLayer(id: DroneLayerId, update: (layer: DroneLayer) => DroneLayer) {
+    if (patchDroneEdit) {
+      if (id === 'A') setPatchDroneEdit(current => current && {...current,layer:update(current.layer)});
+      return;
+    }
+    setMainLayers(previous => ({...previous,[id]:update(previous[id])}));
+  }
+
   function updateActiveLayer(update: (layer: DroneLayer) => DroneLayer) {
-    setLayers(previous => ({...previous, [activeLayer]: update(previous[activeLayer])}));
+    updateLayer(activeLayer,update);
   }
   function applyLayer(id: DroneLayerId, layer: DroneLayer) {
     const engine = controller.current?.layers[id];
@@ -98,7 +119,7 @@ export function App() {
   function updateLayerEnabled(id: DroneLayerId, enabled: boolean) {
     const next = {...layers, [id]: {...layers[id], enabled}};
     setError('');
-    setLayers(next);
+    setMainLayers(next);
     applyLayersEnabled(next);
   }
   function updateHarmony(next: HarmonySettings) {
@@ -230,8 +251,10 @@ export function App() {
     try {
       const name = snapshot ? createDroneSnapshotName() : presetName.trim();
       if (!name) { setError('Enter a preset name.'); return; }
-      const preset = createPreset(name, layers.A.drone, layers.A.modulation, delaySettings, layers.A.harmony,
-        {firstLayerEnabled: layers.A.enabled, secondLayer: layers.B, masterGain}, activeLayer);
+      const preset = patchDroneEdit
+        ? createPreset(name,layers.A.drone,layers.A.modulation,createDefaultDelaySettings(),layers.A.harmony)
+        : createPreset(name,layers.A.drone,layers.A.modulation,delaySettings,layers.A.harmony,
+          {firstLayerEnabled:layers.A.enabled,secondLayer:layers.B,masterGain},activeLayer);
       await savePreset(preset);
       setPresets(await listPresets());
       setPresetName('');
@@ -274,15 +297,16 @@ export function App() {
       applyLayer(id, layers[id]);
       void engine.setLayerHoldMode(id, holdModes[id]);
     }
-    engine.setMasterGain(masterGain);
-    engine.setPerformancePosition(performancePosition.current);
-    engine.updateDelay(delaySettings);
+    engine.setMasterGain(patchDroneEdit ? 1 : masterGain);
+    engine.setPerformancePosition(patchDroneEdit ? NEUTRAL_PERFORMANCE_POSITION : performancePosition.current);
+    engine.updateDelay(patchDroneEdit ? createDefaultDelaySettings() : delaySettings);
     applyLayersEnabled(layers);
     return engine;
   }
 
   function updateHoldMode(id: DroneLayerId, holding: boolean) {
-    setHoldModes(previous => ({...previous, [id]: holding}));
+    if (patchDroneEdit) setPatchDroneEdit(current => current && {...current,holdMode:holding});
+    else setMainHoldModes(previous => ({...previous,[id]:holding}));
     void controller.current?.setLayerHoldMode(id, holding).catch(reason => {
       setError(reason instanceof Error ? reason.message : 'Cannot change drone key mode.');
     });
@@ -290,7 +314,7 @@ export function App() {
 
   function updateLayerEnvelope(id: DroneLayerId, envelope: DroneEnvelope) {
     controller.current?.setLayerEnvelope(id, envelope);
-    setLayers(previous => ({...previous, [id]: {...previous[id], drone: {...previous[id].drone, envelope}}}));
+    updateLayer(id,layer => ({...layer,drone:{...layer.drone,envelope}}));
   }
 
   async function pressLayerKey(id: DroneLayerId) {
@@ -348,7 +372,7 @@ export function App() {
         engine.setOscillatorModulations(next.oscillatorModulations);
       }
     }
-    setLayers(previous => ({...previous, [id]: {...previous[id], drone: next}}));
+    updateLayer(id,layer => ({...layer,drone:next}));
     return next;
   }
   function updateOscillator(oscillator: OscillatorSettings) {
@@ -468,22 +492,55 @@ export function App() {
   }
   function updateLayerGain(id: DroneLayerId, gain: number) {
     controller.current?.layers[id].setGain(gain);
-    setLayers(previous => ({...previous, [id]: {...previous[id], drone: {...previous[id].drone, gain}}}));
+    updateLayer(id,layer => ({...layer,drone:{...layer.drone,gain}}));
   }
+  function openPatchDrone(module: PatchDrone, applyEdits: PatchDroneEdit['applyEdits']) {
+    controller.current?.dispose();
+    controller.current = null;
+    setError('');
+    setPatchDroneEdit({layer:structuredClone(readPatchDroneLayer(module)),holdMode:false,applyEdits});
+    setShowPatchEditor(false);
+    window.scrollTo(0,0);
+  }
+
+  async function returnToPatch() {
+    if (!patchDroneEdit || playbackTransition) return;
+    setPlaybackTransition(true);
+    setError('');
+    try {
+      const engine = controller.current;
+      if (engine?.isPlaying) await engine.stop();
+      setPlaying(false);
+      if (!patchDroneEdit.applyEdits(patchDroneEdit.layer)) throw new Error('Could not apply changes to the drone node.');
+      engine?.dispose();
+      controller.current = null;
+      setPatchDroneEdit(null);
+      setShowPatchEditor(true);
+      window.scrollTo(0,0);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not return to the patch editor.');
+    } finally {
+      setPlaybackTransition(false);
+    }
+  }
+
   return <>
-    <PatchEditor hidden={!showPatchEditor} droneLayers={layers} onClose={() => setShowPatchEditor(false)} createPlayback={createPatchPlayback}/>
-    <main className="instrument" hidden={showPatchEditor}>
+    <PatchEditor hidden={!showPatchEditor} droneLayers={mainLayers} onClose={() => setShowPatchEditor(false)}
+      onEditDrone={openPatchDrone} createPlayback={createPatchPlayback}/>
+    <main className="instrument" hidden={showPatchEditor} inert={Boolean(patchDroneEdit) && playbackTransition}>
     <section className="master" aria-label="Playback">
       <h1>Orbit <span>Sound Lab</span></h1>
       <button type="button" className={playingOutput ? 'playing' : ''} disabled={playbackTransition}
         onClick={() => void togglePlayback()}>{previewMode ? '■ Stop playback' : playing ? '■ Stop drones' : '▶ Start drones'}</button>
-      <NumericSlider label="MASTER LEVEL" unit="%" displayFactor={100} min={0} max={1} step={0.01}
-        disabled={previewMode !== null} value={masterGain} onChange={gain => {controller.current?.setMasterGain(gain); setMasterGain(gain);}}/>
+      {!patchDroneEdit && <NumericSlider label="MASTER LEVEL" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+        disabled={previewMode !== null} value={masterGain} onChange={gain => {controller.current?.setMasterGain(gain); setMasterGain(gain);}}/>}
     </section>
-    <button type="button" className="patch-entry" disabled={playingOutput || playbackTransition}
-      onClick={() => setShowPatchEditor(true)}>Open patch editor</button>
+    {patchDroneEdit ? <button type="button" className="patch-entry" disabled={playbackTransition}
+      onClick={() => void returnToPatch()}>Apply edits and return to patch</button> :
+      <button type="button" className="patch-entry" disabled={playingOutput || playbackTransition}
+        onClick={() => setShowPatchEditor(true)}>Open patch editor</button>}
     {error && <p role="alert" className="error">{error}</p>}
-    <section className="drone-picker" aria-label="Drone layers">
+    {!patchDroneEdit && <section className="drone-picker" aria-label="Drone layers">
       {DRONE_LAYER_IDS.map(id => <div key={id} className="drone-layer-choice" data-layer={id}>
         <button type="button" aria-pressed={activeLayer === id} onClick={() => setActiveLayer(id)}>Drone {id}</button>
         <label className="rack-switch">
@@ -492,10 +549,10 @@ export function App() {
           <span aria-hidden="true">{holdModes[id] ? 'Key' : layers[id].enabled ? 'On' : 'Off'}</span>
         </label>
       </div>)}
-    </section>
+    </section>}
     <section className="oscillators" data-layer={activeLayer} aria-labelledby="oscillator-rack-title">
       <div className="oscillator-rack-heading">
-        <h2 id="oscillator-rack-title">Drone {activeLayer} oscillators</h2>
+        <h2 id="oscillator-rack-title">{patchDroneEdit ? 'Patch drone oscillators' : `Drone ${activeLayer} oscillators`}</h2>
         <OscillatorBankPicker onLoad={loadOscillatorBank}/>
         <span className="oscillator-action-status" role="status">{oscillatorActionStatus}</span>
       </div>
@@ -588,14 +645,15 @@ export function App() {
     </section>
     <section className="performance-controls" aria-labelledby="performance-controls-title">
       <h2 id="performance-controls-title">Performance</h2>
-      <PerformancePad onChange={position => {
+      <div hidden={Boolean(patchDroneEdit)}><PerformancePad onChange={position => {
         performancePosition.current = position;
         controller.current?.setPerformancePosition(position);
-      }}/>
+      }}/></div>
       <div className="drone-layers">
-        {DRONE_LAYER_IDS.map(id => <div key={id} className="drone-layer" data-layer={id}>
-            <h3>Drone {id}</h3>
-            <NumericSlider label={`DRONE ${id} LEVEL`} unit="%" displayFactor={100} min={0} max={0.4} step={0.01}
+        {(patchDroneEdit ? [activeLayer] : DRONE_LAYER_IDS).map(id => <div key={id} className="drone-layer" data-layer={id}>
+            <h3>{patchDroneEdit ? 'Patch drone' : `Drone ${id}`}</h3>
+            <NumericSlider label={patchDroneEdit ? 'DRONE LEVEL' : `DRONE ${id} LEVEL`} unit="%" displayFactor={100}
+              min={0} max={patchDroneEdit ? 1 : 0.4} step={0.01}
               value={layers[id].drone.gain} onChange={gain => updateLayerGain(id, gain)}/>
             <label className="switch drone-key-mode">
               <input type="checkbox" aria-label={`Key mode for Drone ${id}`} checked={holdModes[id]}
@@ -609,21 +667,21 @@ export function App() {
 
       </div>)}
       </div>
-      {DRONE_LAYER_IDS.map(id => <OscillatorStepSequencer key={id} layerId={id} active={id === activeLayer}
-        canPlay={playing && layers[id].enabled && !holdModes[id] && !previewMode && !playbackTransition} drone={layers[id].drone}
+      <div hidden={Boolean(patchDroneEdit)}>{DRONE_LAYER_IDS.map(id => <OscillatorStepSequencer key={id} layerId={id} active={!patchDroneEdit && id === activeLayer}
+        canPlay={!patchDroneEdit && playing && layers[id].enabled && !holdModes[id] && !previewMode && !playbackTransition} drone={layers[id].drone}
         readAudioTime={() => controller.current?.readAudioTime() ?? 0}
-        applyValues={(drone, values) => applyOscillatorStep(id, drone, values)}/>)}
+        applyValues={(drone, values) => applyOscillatorStep(id, drone, values)}/>)}</div>
     </section>
     <DroneMixControls key={activeLayer} layerId={activeLayer} settings={settings.mix}
       sampleRate={controller.current?.layers[activeLayer].sampleRate} onChange={updateDroneMix}/>
     <section className="harmony-engine" key={`harmony-${activeLayer}`}><h2>HARMONY ENGINE</h2><div className="harmony-modes">{(['free','natural','piano'] as const).map(mode => <button type="button" key={mode} className={harmony.mode === mode ? 'selected' : ''} aria-pressed={harmony.mode === mode} onClick={() => updateHarmony({...harmony,mode})}>{mode.toUpperCase()}</button>)}</div><div className="harmony-controls"><NumericSlider label="ROOT FREQUENCY" unit="Hz" min={55} max={220} step={1}
       value={harmony.rootFrequencyHz} onChange={value => updateHarmony({...harmony,rootFrequencyHz:value})}/><label>HARMONY<select value={harmony.chord} onChange={event => updateHarmony({...harmony,chord:event.target.value as HarmonySettings['chord']})}><option value="minor">Minor / melancholic</option><option value="major">Major / warm</option><option value="fifth">Open fifths / spacious</option><option value="ambient">Ambient / suspended</option></select></label><NumericSlider label="DETUNE / SPREAD" unit="cents" min={0} max={20} step={1}
       value={harmony.spreadCents} onChange={value => updateHarmony({...harmony,spreadCents:value})}/></div><div className="harmony-preview">{settings.oscillators.map((oscillator,index) => <span key={oscillator.id}>OSC {index+1} · {oscillator.frequencyHz.toFixed(1)} → {getEffectiveOscillatorFrequency(harmony,oscillator.frequencyHz,index).toFixed(1)} Hz</span>)}</div><p>{harmony.mode === 'free' ? 'FREE: frequency sliders and RANDOM use unrestricted frequencies.' : 'NATURAL / PIANO: RANDOM chooses a note from the selected harmony. Harmony processes the audible pitch without changing source frequencies.'}</p></section>
-    <section className="master-delay"><div className="oscillator-title"><strong>MASTER ECHO / DELAY</strong><label className="switch"><input type="checkbox" checked={delaySettings.enabled} onChange={event => updateDelay({...delaySettings,enabled:event.target.checked})}/> ACTIVE</label></div><div className="delay-controls"><NumericSlider label="TIME" unit="s" min={0.05} max={2} step={0.01}
+    {!patchDroneEdit && <section className="master-delay"><div className="oscillator-title"><strong>MASTER ECHO / DELAY</strong><label className="switch"><input type="checkbox" checked={delaySettings.enabled} onChange={event => updateDelay({...delaySettings,enabled:event.target.checked})}/> ACTIVE</label></div><div className="delay-controls"><NumericSlider label="TIME" unit="s" min={0.05} max={2} step={0.01}
       disabled={!delaySettings.enabled} value={delaySettings.timeSeconds} onChange={value => updateDelay({...delaySettings,timeSeconds:value})}/><NumericSlider label="FEEDBACK" unit="%" displayFactor={100} min={0} max={0.85} step={0.01}
       disabled={!delaySettings.enabled} value={delaySettings.feedback} onChange={value => updateDelay({...delaySettings,feedback:value})}/><NumericSlider label="WET MIX" unit="%" displayFactor={100} min={0} max={1} step={0.01}
-      disabled={!delaySettings.enabled} value={delaySettings.mix} onChange={value => updateDelay({...delaySettings,mix:value})}/></div><p>Echo repeats the combined drone. Start with low feedback and mix.</p></section>
-    <section className="preset-library"><h2>PRESET LIBRARY</h2><div className="preset-actions"><input aria-label="Preset name" placeholder="Preset name" maxLength={DRONE_PRESET_NAME_LIMIT} value={presetName} onChange={event => setPresetName(event.target.value)}/><button type="button" onClick={() => void saveCurrentPreset(false)}>SAVE PRESET</button><button type="button" onClick={() => void saveCurrentPreset(true)}>SAVE SNAPSHOT</button><button type="button" onClick={() => importInput.current?.click()}>IMPORT JSON</button><input ref={importInput} type="file" accept=".json,application/json" hidden onChange={event => { const file = event.target.files?.[0]; if (file) void handlePresetImport(file); event.target.value = ''; }}/></div><div className="preset-morph">
+      disabled={!delaySettings.enabled} value={delaySettings.mix} onChange={value => updateDelay({...delaySettings,mix:value})}/></div><p>Echo repeats the combined drone. Start with low feedback and mix.</p></section>}
+    <section className="preset-library"><h2>PRESET LIBRARY</h2><div className="preset-actions"><input aria-label="Preset name" placeholder="Preset name" maxLength={DRONE_PRESET_NAME_LIMIT} value={presetName} onChange={event => setPresetName(event.target.value)}/><button type="button" onClick={() => void saveCurrentPreset(false)}>SAVE PRESET</button><button type="button" onClick={() => void saveCurrentPreset(true)}>SAVE SNAPSHOT</button><button type="button" onClick={() => importInput.current?.click()}>IMPORT JSON</button><input ref={importInput} type="file" accept=".json,application/json" hidden onChange={event => { const file = event.target.files?.[0]; if (file) void handlePresetImport(file); event.target.value = ''; }}/></div><div className="preset-morph" hidden={Boolean(patchDroneEdit)}>
       <div className="preset-morph-heading">
         <h3>Preset Morph</h3>
         <label className="preset-morph-toggle"><input type="checkbox" checked={morphEnabled}
@@ -669,9 +727,9 @@ export function App() {
         <p>Travel time is for one direction. Move the slider to take over the blend, or turn Morph off to return to the editor sound.</p>
       </fieldset>
     </div>
-    <SceneTimeline captureSound={captureSound} onPlay={scenes => void playArrangement(scenes)}
+    <div hidden={Boolean(patchDroneEdit)}><SceneTimeline captureSound={captureSound} onPlay={scenes => void playArrangement(scenes)}
       onStop={stopScenePlayback} playing={previewMode === 'arrangement'}
-      blocked={previewMode === 'morph' || playbackTransition} sceneIndex={sceneIndex}/>
+      blocked={previewMode === 'morph' || playbackTransition} sceneIndex={sceneIndex}/></div>
     <div className="preset-list">{presets.length === 0 ? <p>No saved presets yet. Presets stay in this browser; export JSON for backup.</p> : presets.map(preset => <div className="preset-item" key={preset.id}><div><strong>{preset.name}</strong><small>{new Date(preset.createdAt).toLocaleString()}</small></div><div className="preset-item-actions"><button type="button" aria-label={`Load ${preset.name} into Drone ${activeLayer}`} onClick={() => loadPreset(preset)}>LOAD TO {activeLayer}</button><button type="button" onClick={() => exportPreset(preset)}>EXPORT</button><button type="button" onClick={() => void removePreset(preset)}>DELETE</button></div></div>)}</div></section>
     <section className="diagnostic"><h2>ANDROID AUDIO DIAGNOSTIC</h2><label><input type="checkbox" checked={renderingDiagnosticEnabled} onChange={event => setRenderingDiagnosticEnabled(event.target.checked)}/> Keep rendering active while playing (experiment)</label><div className="diagnostic-track"><div className="diagnostic-indicator" ref={renderingIndicator}/></div><p>Compare 30 seconds with this OFF and ON without touching the screen. This intentionally increases rendering work and battery use; it is not a permanent audio fix.</p><a href="./audio-diagnostic.html">Open standalone audio output test</a></section><footer>WEB AUDIO ENGINE · SOLAR 42 INSPIRED · USE LOW VOLUME</footer></main></>;
 }

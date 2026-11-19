@@ -34,6 +34,8 @@ Select an automation cable to show **Flip** and **On/Off** beside its source por
 
 Select a **Drone** node and choose **Copy Drone A** or **Copy Drone B** to take a snapshot of that layer’s oscillator settings, harmony-adjusted tuning, layer mix, and modulation. The copy is independent of later edits in the drone editor. It plays through its patch cables regardless of the source layer’s on/off switch. The node inspector also offers the same grouped **5-oscillator preset** menu and shared **Drone presets** library as the Drone editor. Load a named preset or save the node with **Save preset** or **Save snapshot**. The node uses the preset’s selected drone sound, including harmony and modulation. Shared echo and master level belong to the editor where the sound plays.
 
+To edit a patch’s Drone node, select it and click **Edit drone**. Orbit stops the patch and opens the node’s sound in the Drone editor for editing and solo audition. **Apply edits and return to patch** stops the audition and updates the same node. The patch keeps its cables and the standalone Drone A and B sounds are preserved.
+
 To combine two sources, connect them to **Audio A** and **Audio B** on a **Mixer**, then connect its **Audio out** to a filter, gain stage, or other audio input. Set each channel’s level in the inspector or automate it via **Level A** and **Level B**.
 
 Connect an Automation or LFO **Value** to **Pitch Shift → Pitch** to sweep the pitch of an audio line. Set the cable’s endpoints in semitones. For example, map 0 to +12 for a rise of one octave. Fine tune sits on top of the automated shift.
