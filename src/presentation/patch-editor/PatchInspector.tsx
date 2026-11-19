@@ -86,6 +86,13 @@ function ModuleSettings({module, sampleRate, onChange}: {module: PatchModule; sa
       {supportsOscillatorShape(module.settings.waveform) && <NumericSlider label="Base shape" unit="%" displayFactor={100}
         min={0} max={1} step={0.01} value={module.settings.shape} onChange={shape => onChange({...module,settings:{...module.settings,shape}})}/>}
     </div>;
+    case 'pitchShift': return <div className="patch-fields">
+      <NumericSlider label="Transpose" unit="st" min={-24} max={24} step={1}
+        value={module.settings.semitones} onChange={semitones => onChange({...module,settings:{...module.settings,semitones}})}/>
+      <NumericSlider label="Fine tune" unit="cents" min={-100} max={100} step={1}
+        value={module.settings.cents} onChange={cents => onChange({...module,settings:{...module.settings,cents}})}/>
+      <p>Pitch-shifts incoming audio without changing its duration. Large shifts may sound granular.</p>
+    </div>;
     case 'filter': return <div className="patch-fields">
       <NumericSlider label="Base cutoff" unit="Hz" min={40} max={6000} step={1} value={module.settings.cutoff}
         onChange={cutoff => onChange({...module,settings:{...module.settings,cutoff}})}/>

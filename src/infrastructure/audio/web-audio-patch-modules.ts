@@ -1,4 +1,6 @@
 import { getShelfFrequencyHz } from '../../domain/drone-shelf-response';
+import { WebAudioOutputProtection } from './web-audio-output-protection';
+import { WebAudioPitchShift } from './web-audio-pitch-shift';
 import { WebAudioShelfEq } from './web-audio-shelf-eq';
 import { createDefaultDroneSettings } from '../../domain/drone';
 import type { PatchModule } from '../../domain/patch';
@@ -113,6 +115,10 @@ export function createPatchRuntimeModule(
         source.stop(); source.disconnect(); smoothing.disconnect(); bounds.disconnect();
       }};
     }
+    case 'pitchShift': {
+      const effect = new WebAudioPitchShift(context,definition.settings.semitones,definition.settings.cents);
+      return {definition, inputs:{in:effect.input}, output:effect.output, dispose:() => effect.dispose()};
+    }
     case 'filter': {
       const filter = context.createBiquadFilter();
       filter.type = 'lowpass';
@@ -157,11 +163,19 @@ export function createPatchRuntimeModule(
       return {definition, inputs:{in:signal}, output:signal, waveformAnalyser:analyser,
         dispose() {signal.disconnect(); analyser.disconnect();}};
     }
-    case 'gain':
     case 'output': {
       const gain = context.createGain();
       gain.gain.value = definition.settings.level;
-      if (definition.kind === 'output') gain.connect(master);
+      const protection = new WebAudioOutputProtection(context);
+      gain.connect(protection.input);
+      protection.output.connect(master);
+      return {definition, inputs:{in:gain}, output:protection.output,
+        parameters:{level:{parameter:gain.gain,base:definition.settings.level}},
+        dispose() {gain.disconnect(); protection.dispose();}};
+    }
+    case 'gain': {
+      const gain = context.createGain();
+      gain.gain.value = definition.settings.level;
       return {definition, inputs:{in:gain}, output:gain,
         parameters:{level:{parameter:gain.gain,base:definition.settings.level}}, dispose:() => gain.disconnect()};
     }
