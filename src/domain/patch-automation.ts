@@ -19,12 +19,33 @@ export interface AutomationPlaybackTiming {
   readonly stepCount?: number;
 }
 
+export interface AutomationStepEnvelope {
+  readonly enabled: boolean;
+  readonly attack: number;
+  readonly decay: number;
+  readonly sustain: number;
+  readonly release: number;
+}
+
+type TimedEnvelopeStage = 'attack' | 'decay' | 'release';
+
+export function setAutomationEnvelopeTime(envelope: AutomationStepEnvelope, stage: TimedEnvelopeStage, value: number): AutomationStepEnvelope {
+  const occupied = (['attack','decay','release'] as const)
+    .reduce((total,other) => other === stage ? total : total + envelope[other],0);
+  return {...envelope,[stage]:Math.max(0,Math.min(value,1 - occupied))};
+}
+
+export const DEFAULT_AUTOMATION_STEP_ENVELOPE: AutomationStepEnvelope = {
+  enabled:false, attack:0.15, decay:0.2, sustain:0.65, release:0.25
+};
+
 export interface PatchAutomation {
   readonly duration: number;
   readonly mode: 'loop' | 'once';
   readonly shape: AutomationShape;
   readonly points: readonly AutomationPoint[];
   readonly glide: number;
+  readonly stepEnvelope?: AutomationStepEnvelope;
 }
 
 export function validateAutomation(settings: PatchAutomation): void {
@@ -36,6 +57,12 @@ export function validateAutomation(settings: PatchAutomation): void {
         !isNormalized(position) || !isNormalized(value) ||
         (index > 0 && position <= settings.points[index - 1].position))) {
     throw new Error('Automation needs ordered points from 0 to 1 and a duration between 0.05 and 60 seconds.');
+  }
+  const envelope = settings.stepEnvelope;
+  if (envelope !== undefined && (!envelope || typeof envelope.enabled !== 'boolean' ||
+      ![envelope.attack,envelope.decay,envelope.sustain,envelope.release].every(isNormalized) ||
+      envelope.attack + envelope.decay + envelope.release > 1 + 1e-12)) {
+    throw new Error('Automation step envelope stages must fit within one step, with sustain between 0% and 100%.');
   }
 }
 
@@ -51,11 +78,13 @@ export function readAutomationPhase(settings: PatchAutomation, elapsed: number):
 export function readAutomationValue(settings: PatchAutomation, phase: number): number {
   if (settings.shape === 'sine') return (1 - Math.cos(phase * Math.PI * 2)) / 2;
   if (settings.shape === 'square') return phase < 0.5 ? 0 : 1;
+  const envelope = settings.shape === 'steps' && settings.stepEnvelope?.enabled ? settings.stepEnvelope : undefined;
   const nextIndex = settings.points.findIndex(point => point.position > phase);
-  if (nextIndex < 1) return settings.points[settings.points.length - 1].value;
+  if (nextIndex < 1) return envelope ? 0 : settings.points[settings.points.length - 1].value;
   const previous = settings.points[nextIndex - 1];
   const next = settings.points[nextIndex];
   const position = (phase - previous.position) / (next.position - previous.position);
+  if (envelope) return previous.value * readStepEnvelope(envelope,position);
   if (settings.shape === 'smoothCurve') {
     const eased = position * position * (3 - 2 * position);
     return previous.value + (next.value - previous.value) * eased;
@@ -66,6 +95,12 @@ export function readAutomationValue(settings: PatchAutomation, phase: number): n
   return previous.value + (next.value - previous.value) * fraction;
 }
 
+function readStepEnvelope({attack,decay,sustain,release}: AutomationStepEnvelope, position: number): number {
+  if (position < attack) return position / attack;
+  if (position < attack + decay) return 1 - (1 - sustain) * (position - attack) / decay;
+  if (release > 0 && position >= 1 - release) return sustain * (1 - position) / release;
+  return sustain;
+}
 
 export function limitAutomationSteps(settings: PatchAutomation, requested: number): PatchAutomation {
   const count = Math.min(settings.points.length-1,Math.max(1,Math.round(requested)));

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readAutomationPreset } from './automation-preset';
+import { DEFAULT_AUTOMATION_STEP_ENVELOPE } from './patch-automation';
 import { applyHarmonicsPreset } from './patch-harmonics';
 
 const automation = applyHarmonicsPreset({duration:3,mode:'once',shape:'steps',glide:0,
@@ -13,6 +14,14 @@ describe('Automation preset files', () => {
     expect(snapshot.automation).toEqual(automation);
     expect(snapshot.automation.points[0]).not.toBe(automation.points[0]);
     expect(readAutomationPreset(JSON.parse(JSON.stringify(snapshot)))).toEqual(snapshot);
+  });
+
+  it('preserves the envelope through JSON and rejects stages longer than a step', () => {
+    const stepEnvelope = {...DEFAULT_AUTOMATION_STEP_ENVELOPE,enabled:true};
+    const saved = readAutomationPreset(JSON.parse(JSON.stringify({...preset,automation:{...automation,stepEnvelope}})));
+    expect(saved.automation.stepEnvelope).toEqual(stepEnvelope);
+    expect(() => readAutomationPreset({...preset,automation:{...automation,stepEnvelope:{...stepEnvelope,attack:0.9}}}))
+      .toThrow('stages must fit');
   });
 
   it('rejects drone files, unknown versions, and invalid Automation data', () => {
