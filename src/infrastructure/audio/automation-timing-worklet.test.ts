@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_AUTOMATION_STEP_ENVELOPE, limitAutomationSteps, readAutomationValue } from '../../domain/patch-automation';
+import type { PatchAutomation } from '../../domain/patch-automation';
+import { compileAutomationPattern } from './web-audio-automation-timing';
 import workletSource from './automation-timing.worklet.js?raw';
 
 const sampleRate = 1000;
@@ -53,6 +56,19 @@ describe('Automation node timing', () => {
     expect(one.steps[700]*31).toBeCloseTo(1);
     expect(two.value[700]).toBeCloseTo(0.8);
     expect(two.steps[700]*31).toBeCloseTo(2);
+  });
+
+  it('matches the step envelope preview after a clip offset and a step count reduction', () => {
+    const settings: PatchAutomation = {duration:1,mode:'once',shape:'steps',glide:0.5,
+      points:[{position:0,value:0.8},{position:0.2,value:0.6},{position:0.55,value:1},{position:1,value:1}],
+      stepEnvelope:{...DEFAULT_AUTOMATION_STEP_ENVELOPE,enabled:true}};
+    const processor = createTimingProcessor({phase:0.1,mode:'once',pattern:compileAutomationPattern(settings)});
+    const timing = render(processor,1000,new Float32Array([1]),2);
+    const visibleSteps = limitAutomationSteps(settings,2);
+    for (const [index,value] of timing.value.entries()) {
+      expect(value).toBeCloseTo(readAutomationValue(visibleSteps,timing.phase[index]),5);
+    }
+    expect(timing.value[999]).toBe(0);
   });
 
   it('honors clip frames and holds the ending in once mode', () => {

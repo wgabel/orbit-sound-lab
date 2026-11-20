@@ -142,6 +142,19 @@ describe('patch routing', () => {
 });
 
 describe('patch automation', () => {
+  it('restarts the envelope for every step and uses the step value as its peak', () => {
+    const node = createPatchModule('automation','enveloped-steps');
+    if (node.kind !== 'automation') throw new Error('Expected Automation.');
+    const settings: typeof node.settings = {...node.settings,mode:'once',glide:1,
+      points:[{position:0,value:0.8},{position:0.5,value:0.4},{position:1,value:0.4}],
+      stepEnvelope:{enabled:true,attack:0.25,decay:0.25,sustain:0.5,release:0.25}};
+    expect([0,0.0625,0.125,0.25,0.4375,0.5,0.625,1].map(phase => readAutomationValue(settings,phase)))
+      .toEqual([0,0.4,0.8,0.4,0.2,0,0.4,0]);
+    if (!settings.stepEnvelope) throw new Error('Expected envelope settings.');
+    expect(readAutomationValue({...settings,stepEnvelope:{...settings.stepEnvelope,enabled:false},glide:0},0.5))
+      .toBe(0.4);
+  });
+
   it('holds steps, supports glides, and uses the shared elapsed time for loop and once', () => {
     const node = createPatchModule('automation','automation');
     if (node.kind !== 'automation') throw new Error('Wrong module kind.');

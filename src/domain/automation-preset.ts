@@ -1,5 +1,5 @@
 import { isAutomationShape, validateAutomation } from './patch-automation';
-import type { AutomationPoint, PatchAutomation } from './patch-automation';
+import type { AutomationPoint, AutomationStepEnvelope, PatchAutomation } from './patch-automation';
 
 export const AUTOMATION_PRESET_NAME_LIMIT = 120;
 
@@ -18,7 +18,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function readAutomationSettings(value: unknown): PatchAutomation {
   if (!isRecord(value)) throw new Error('Invalid automation settings.');
-  const {duration, mode, shape, points, glide} = value;
+  const {duration, mode, shape, points, glide, stepEnvelope} = value;
   if (typeof duration !== 'number' || (mode !== 'loop' && mode !== 'once') ||
       !isAutomationShape(shape) ||
       !Array.isArray(points) || points.length > 32 || typeof glide !== 'number') {
@@ -30,9 +30,18 @@ export function readAutomationSettings(value: unknown): PatchAutomation {
     }
     return {position:point.position,value:point.value};
   });
-  const settings = {duration,mode,shape,points:automationPoints,glide} satisfies PatchAutomation;
+  const settings: PatchAutomation = {duration,mode,shape,points:automationPoints,glide,
+    ...(stepEnvelope === undefined ? {} : {stepEnvelope:readStepEnvelope(stepEnvelope)})};
   validateAutomation(settings);
   return settings;
+}
+
+function readStepEnvelope(value: unknown): AutomationStepEnvelope {
+  if (!isRecord(value)) throw new Error('Invalid automation step envelope.');
+  const {enabled,attack,decay,sustain,release} = value;
+  if (typeof enabled !== 'boolean' || typeof attack !== 'number' || typeof decay !== 'number' ||
+      typeof sustain !== 'number' || typeof release !== 'number') throw new Error('Invalid automation step envelope.');
+  return {enabled,attack,decay,sustain,release};
 }
 
 export function readAutomationPreset(value: unknown): AutomationPreset {

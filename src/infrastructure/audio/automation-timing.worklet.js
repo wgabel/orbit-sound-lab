@@ -29,7 +29,7 @@ class OrbitAutomationTimingProcessor extends AudioWorkletProcessor {
         const next = points[index+1];
         if (phase >= next.position) continue;
         if (phase <= point.rampStart) return point.value;
-        return point.value + (next.value-point.value)*(phase-point.rampStart)/(next.position-point.rampStart);
+        return point.value + ((point.endValue ?? next.value)-point.value)*(phase-point.rampStart)/(next.position-point.rampStart);
       }
       return points.at(-1).value;
     }

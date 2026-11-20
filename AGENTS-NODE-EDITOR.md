@@ -39,6 +39,8 @@ The generator produces a normalized value from 0 to 1. Its shape, rate or durati
 | Drawn curve | Time/value points with explicit interpolation and holds. Support long, slow changes over a defined duration. |
 | Steps | A sequence of held values with optional glides and step durations. Preserve manual advance for migrated stepper sequences that use it. |
 
+A step envelope shapes each step between zero and its own peak value. Its attack, decay and release are fractions of the step duration, so it follows changes to the lane’s duration and step count. The envelope replaces glide while enabled. One-shot envelopes return to zero at the end. Preserve the disabled envelope settings in presets and custom clip automation.
+
 Chord Progression sends discrete chord steps over the Chords port. The generator applies the chosen root and quality with its own octave, spread, and valid inversion. Keep chord changes on the audio clock. Use complementary fades when switching voicings and return to the generator’s fallback chord where no progression clip is active.
 
 - Support once, loop, and trigger/retrigger behavior with an explicit time origin. Define the value at clip end, on stop, and on retrigger. The shared audio clock drives independent automation lanes and the UI playhead.

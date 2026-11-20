@@ -1,5 +1,5 @@
-import { MAXIMUM_AUTOMATION_DURATION, MINIMUM_AUTOMATION_DURATION } from '../../domain/patch-automation';
-import type { PatchAutomation } from '../../domain/patch-automation';
+import { DEFAULT_AUTOMATION_STEP_ENVELOPE, MAXIMUM_AUTOMATION_DURATION, MINIMUM_AUTOMATION_DURATION, setAutomationEnvelopeTime } from '../../domain/patch-automation';
+import type { AutomationStepEnvelope, PatchAutomation } from '../../domain/patch-automation';
 import { applyHarmonicsPreset, HARMONICS_GROUPS, readHarmonicsPresetId } from '../../domain/patch-harmonics';
 import { applySmoothWavePreset, readSmoothWavePresetId, SMOOTH_WAVE_PRESETS } from '../../domain/patch-smooth-waves';
 import { NumericSlider } from '../NumericSlider';
@@ -7,6 +7,13 @@ import { NumericSlider } from '../NumericSlider';
 export function AutomationSettings({settings, onChange}: {settings: PatchAutomation; onChange(settings: PatchAutomation): void}) {
   const harmonics = readHarmonicsPresetId(settings);
   const smoothWave = readSmoothWavePresetId(settings);
+  const stepEnvelope = settings.stepEnvelope ?? DEFAULT_AUTOMATION_STEP_ENVELOPE;
+  const enveloped = settings.shape === 'steps' && stepEnvelope.enabled;
+
+  function updateEnvelope(changes: Partial<AutomationStepEnvelope>) {
+    onChange({...settings,stepEnvelope:{...stepEnvelope,...changes}});
+  }
+
   function updatePoint(index: number, value: number) {
     const points = settings.points.map((point, pointIndex) => pointIndex === index ? {...point,value} : point);
     if (settings.shape === 'steps' && index === points.length - 2) {
@@ -36,14 +43,32 @@ export function AutomationSettings({settings, onChange}: {settings: PatchAutomat
       </select></label>
       <label>Playback<select value={settings.mode} onChange={event =>
         onChange({...settings,mode:event.target.value as PatchAutomation['mode']})}>
-        <option value="loop">Loop</option><option value="once">Play once, hold end</option>
+        <option value="loop">Loop</option><option value="once">{enveloped ? 'Play once, release' : 'Play once, hold end'}</option>
       </select></label>
       <NumericSlider label="Duration" unit="s" min={MINIMUM_AUTOMATION_DURATION} max={MAXIMUM_AUTOMATION_DURATION} step={0.05}
         value={settings.duration} onChange={duration => onChange({...settings,duration})}/>
-      {settings.shape === 'steps' && <NumericSlider label="Glide" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+      {settings.shape === 'steps' && !enveloped && <NumericSlider label="Glide" unit="%" displayFactor={100} min={0} max={1} step={0.01}
         value={settings.glide} onChange={glide => onChange({...settings,glide})}/>}
     </div>
-    {harmonics && <p>For tuned pitches, map a cable to Wave Frequency across one octave, such as 110–220 Hz.</p>}
+    {settings.shape === 'steps' && <fieldset className="patch-step-envelope">
+      <legend>Step envelope (ADSR)</legend>
+      <label><input type="checkbox" checked={stepEnvelope.enabled}
+        onChange={event => updateEnvelope({enabled:event.target.checked})}/> Enable step envelope</label>
+      {enveloped && <>
+        <div className="patch-fields">
+          <NumericSlider label="Attack" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+            value={stepEnvelope.attack} onChange={value => updateEnvelope(setAutomationEnvelopeTime(stepEnvelope,'attack',value))}/>
+          <NumericSlider label="Decay" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+            value={stepEnvelope.decay} onChange={value => updateEnvelope(setAutomationEnvelopeTime(stepEnvelope,'decay',value))}/>
+          <NumericSlider label="Sustain" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+            value={stepEnvelope.sustain} onChange={sustain => updateEnvelope({sustain})}/>
+          <NumericSlider label="Release" unit="%" displayFactor={100} min={0} max={1} step={0.01}
+            value={stepEnvelope.release} onChange={value => updateEnvelope(setAutomationEnvelopeTime(stepEnvelope,'release',value))}/>
+        </div>
+        <p>Attack, decay and release share the step time. Sustain sets how much of the step level is held.</p>
+      </>}
+    </fieldset>}
+    {harmonics && !enveloped && <p>For tuned pitches, map a cable to Wave Frequency across one octave, such as 110–220 Hz.</p>}
     {(settings.shape === 'steps' || settings.shape === 'curve' || settings.shape === 'smoothCurve') && <div className="patch-fields patch-points">
       {settings.points.slice(0, settings.shape === 'steps' ? -1 : undefined).map((point,index) =>
         <NumericSlider key={point.position} label={`${settings.shape === 'steps' ? 'Step' : 'Point'} ${index+1} · ${+(point.position * settings.duration).toFixed(2)} s`}

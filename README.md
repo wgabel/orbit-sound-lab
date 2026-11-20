@@ -58,6 +58,12 @@ Use an **Oscilloscope** node to display the waveform at any patch audio connecti
 
 The **Heavy & Wet Drones** factory group contains four ready-to-play patches. **Flooded Foundry** fades between a cross-modulated bass drone and a reverberant choir. **Drowned Conveyor** steps filter cutoff and the level of a mechanical drone together. **Silt Pressure** layers random low-pass movement over slower swells. **Blackwater Siren** adds an automated pitch-shifted branch to a folded-sine and noise drone.
 
+### Shape an Automation step with an envelope
+
+Select an **Automation** node, choose **Steps**, and enable **Step envelope (ADSR)**. Each step value sets its peak. Attack, Decay, and Release are percentages of that step’s duration. Sustain sets the held percentage of the peak. A zero step stays at zero. **Play once, release** returns the output to zero after the final step.
+
+To make a drone swell on each step, route **Drone audio → Gain → Output** and connect **Automation Value → Gain Level**. Set the cable’s minimum to 0%. Use a second Automation node if you want stepped pitch or cutoff alongside the shaped volume. An envelope takes over from Glide until you switch it off. The preview, saved presets, and custom Automation clips use the same envelope settings.
+
 ### Compose a piece
 
 Open **Arrangement** in the patch editor. Choose a Wave, Drone, Chord Generator, Automation, or Chord Progression node and select **Add clip**. Select a clip to edit its start, length, level or modulation strength, and fades. Tracks can be named from any clip. During arrangement playback, source nodes and Automation cables are active where their clips run. LFOs and effects continue to run in the patch.
