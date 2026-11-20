@@ -1,11 +1,11 @@
-import type { MorphAutomationSettings } from '../domain/morph-automation';
-import type { OscillatorModulationParameter, OscillatorModulationRoute } from '../domain/oscillator-modulation';
-import type { DroneEnvelope } from '../domain/drone-envelope';
-import type { ArrangementScene, SoundScene } from '../domain/sound-scene';
-import type { PerformancePosition } from '../domain/performance-pad';
-import type { DroneLayerId } from '../domain/drone-layers';
-import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
-import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../domain/drone';
+import type { MorphAutomationSettings } from '@domain/morph-automation';
+import type { OscillatorModulationParameter, OscillatorModulationRoute } from '@domain/oscillator-modulation';
+import type { DroneEnvelope } from '@domain/drone-envelope';
+import type { ArrangementScene, SoundScene } from '@domain/sound-scene';
+import type { PerformancePosition } from '@domain/performance-pad';
+import type { DroneLayerId } from '@domain/drone-layers';
+import type { LowFrequencyOscillatorSettings } from '@domain/modulation';
+import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '@domain/drone';
 export interface AudioSourceModule { readonly output: AudioNode; start(): void; stop(): Promise<void>; dispose(): void; }
 export interface AudioProcessorModule { readonly input: AudioNode; readonly output: AudioNode; dispose(): void; }
 export interface ModulationTarget { readonly parameter: AudioParam; readonly minimum: number; readonly maximum: number; }
@@ -49,8 +49,8 @@ export interface SoundLabVoiceController {
   setMasterGain(gain: number): void;
   setPerformancePosition(position: PerformancePosition): void;
   dispose(): void;
-  readonly delaySettings: import('../domain/delay').DelaySettings;
-  updateDelay(settings: import('../domain/delay').DelaySettings): void;
+  readonly delaySettings: import('@domain/delay').DelaySettings;
+  updateDelay(settings: import('@domain/delay').DelaySettings): void;
 }
 
 export interface ScenePlayback {

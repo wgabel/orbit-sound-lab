@@ -75,7 +75,7 @@ A useful comparison is to play this once with the drone fixed, then again with t
 | Arrange individual parts | The patch editor’s Arrangement timeline schedules Wave, Drone, Chord Generator, and Automation clips in seconds. A sustained part can cross section boundaries while other tracks change. The patch preset stores the arrangement alongside the graph and layout. |
 | Move between complete sounds | The Drone editor’s Scene Timeline captures sound snapshots with explicit hold and blend times. |
 
-See [patch arrangements](src/domain/patch-arrangement.ts), [patch modules](src/domain/patch.ts), [patch automation](src/domain/patch-automation.ts), [patch preset format](src/domain/patch-preset.ts), and [scene arrangement](src/domain/sound-scene.ts).
+See [patch arrangements](src/domain/patch/arrangement/index.ts), [patch modules](src/domain/patch/model.ts), [patch automation](src/domain/patch/automation.ts), [patch preset format](src/domain/patch/presets/model.ts), and [scene arrangement](src/domain/sound-scene.ts).
 
 Keep these meanings distinct when changing the app:
 

@@ -1,6 +1,6 @@
 import { MAXIMUM_REVERB_DECAY_SECONDS, MAXIMUM_REVERB_PRE_DELAY_MILLISECONDS, MINIMUM_REVERB_DECAY_SECONDS,
-  REVERB_PRESETS } from '../domain/reverb';
-import type { ReverbSettings } from '../domain/reverb';
+  REVERB_PRESETS } from '@domain/reverb';
+import type { ReverbSettings } from '@domain/reverb';
 import { NumericSlider } from './NumericSlider';
 
 interface ReverbControlsProps {

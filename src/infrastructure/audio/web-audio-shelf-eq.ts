@@ -1,5 +1,5 @@
-import type { DroneShelfSettings, ShelfEqSettings } from '../../domain/drone';
-import { getShelfFrequencyHz } from '../../domain/drone-shelf-response';
+import type { DroneShelfSettings, ShelfEqSettings } from '@domain/drone';
+import { getShelfFrequencyHz } from '@domain/drone-shelf-response';
 
 export class WebAudioShelfEq {
   readonly lowShelf: BiquadFilterNode;

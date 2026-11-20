@@ -1,6 +1,6 @@
-import type { ModulationSource, ModulationSourceFactory } from '../../application/modulation-contracts';
-import type { LowFrequencyOscillatorSettings, LowFrequencyOscillatorWaveform } from '../../domain/modulation';
-import { DEFAULT_SHAPE_LFO_DEPTH, validateLowFrequencyOscillatorSettings } from '../../domain/modulation';
+import type { ModulationSource, ModulationSourceFactory } from '@application/modulation-contracts';
+import type { LowFrequencyOscillatorSettings, LowFrequencyOscillatorWaveform } from '@domain/modulation';
+import { DEFAULT_SHAPE_LFO_DEPTH, validateLowFrequencyOscillatorSettings } from '@domain/modulation';
 import type { LfoWorkletConfiguration, WebAudioLfoWorkletFactory } from './web-audio-lfo-worklet';
 
 const NATIVE_LFO_WAVEFORMS = ['sine','triangle','square','sawtooth'] as const;

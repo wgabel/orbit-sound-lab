@@ -1,4 +1,4 @@
-import type { CompressorSettings, OverdriveSettings } from '../../domain/drone-effects';
+import type { CompressorSettings, OverdriveSettings } from '@domain/drone-effects';
 import type { EffectProcessor } from './web-audio-effect-stage';
 
 const SMOOTHING_SECONDS = 0.02;

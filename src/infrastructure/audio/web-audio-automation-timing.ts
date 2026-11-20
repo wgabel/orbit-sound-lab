@@ -1,7 +1,7 @@
-import { limitAutomationSteps, MAXIMUM_AUTOMATION_STEPS, readAutomationPhase, readAutomationValue } from '../../domain/patch-automation';
-import type { AutomationPlaybackTiming, AutomationPoint, AutomationStepEnvelope, PatchAutomation } from '../../domain/patch-automation';
-import { readClipElapsed } from '../../domain/patch-arrangement';
-import type { ArrangementClip } from '../../domain/patch-arrangement';
+import { limitAutomationSteps, MAXIMUM_AUTOMATION_STEPS, readAutomationPhase, readAutomationValue } from '@domain/patch/automation';
+import type { AutomationPlaybackTiming, AutomationPoint, AutomationStepEnvelope, PatchAutomation } from '@domain/patch/automation';
+import { readClipElapsed } from '@domain/patch/arrangement';
+import type { ArrangementClip } from '@domain/patch/arrangement';
 import moduleUrl from './automation-timing.worklet.js?url&no-inline';
 
 export interface AutomationTimingPorts {

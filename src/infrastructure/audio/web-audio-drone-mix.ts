@@ -1,4 +1,4 @@
-import type { DroneMixSettings } from '../../domain/drone';
+import type { DroneMixSettings } from '@domain/drone';
 import { WebAudioDroneEffects } from './web-audio-drone-effects';
 import { fadeGain } from './web-audio-fade';
 

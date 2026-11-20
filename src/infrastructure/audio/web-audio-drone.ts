@@ -1,10 +1,10 @@
-import { AMPLITUDE_LFO_CENTER } from '../../domain/modulation';
-import { getOscillatorModulationRange, usesWaveformFrequency } from '../../domain/oscillator-modulation';
-import type { OscillatorModulationParameter, OscillatorModulationRoute } from '../../domain/oscillator-modulation';
+import { AMPLITUDE_LFO_CENTER } from '@domain/modulation';
+import { getOscillatorModulationRange, usesWaveformFrequency } from '@domain/oscillator-modulation';
+import type { OscillatorModulationParameter, OscillatorModulationRoute } from '@domain/oscillator-modulation';
 import { WebAudioOscillatorModulation } from './web-audio-oscillator-modulation';
-import type { DroneVoice } from '../../application/audio-contracts';
-import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../../domain/drone';
-import { validateDroneSettings, validateLowPassFilterSettings } from '../../domain/drone';
+import type { DroneVoice } from '@application/audio-contracts';
+import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '@domain/drone';
+import { validateDroneSettings, validateLowPassFilterSettings } from '@domain/drone';
 import type { WebAudioPulseWorkletFactory } from './web-audio-pulse-worklet';
 import { WebAudioWaveformSource } from './web-audio-waveform-source';
 import { WebAudioDroneMix } from './web-audio-drone-mix';

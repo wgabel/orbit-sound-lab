@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DroneController } from './drone-controller';
-import { createDefaultDroneSettings } from '../domain/drone';
-import { createDefaultLowFrequencyOscillators, validateLowFrequencyOscillatorSettings } from '../domain/modulation';
+import { createDefaultDroneSettings } from '@domain/drone';
+import { createDefaultLowFrequencyOscillators, validateLowFrequencyOscillatorSettings } from '@domain/modulation';
 import type { DroneVoice, DroneVoiceFactory } from './audio-contracts';
 import type { AudioGraph } from './audio-graph-contracts';
 import type { ModulationMatrix, ModulationSourceFactory } from './modulation-contracts';

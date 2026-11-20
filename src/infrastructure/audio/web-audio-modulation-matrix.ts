@@ -1,4 +1,4 @@
-import type { ModulationDestination, ModulationMatrix, ModulationSource } from '../../application/modulation-contracts';
+import type { ModulationDestination, ModulationMatrix, ModulationSource } from '@application/modulation-contracts';
 export class WebAudioModulationMatrix implements ModulationMatrix {
   private readonly connections = new Map<ModulationSource, Set<ModulationDestination>>();
   private disposed = false;

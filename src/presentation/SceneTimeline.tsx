@@ -2,8 +2,8 @@ import { useState } from 'react';
 import {
   ARRANGEMENT_FADE_IN_SECONDS, ARRANGEMENT_FADE_OUT_SECONDS, ARRANGEMENT_TAIL_SECONDS,
   getArrangementDuration, hasValidArrangementTimes, MAX_SCENE_DURATION_SECONDS
-} from '../domain/sound-scene';
-import type { ArrangementScene, SoundScene } from '../domain/sound-scene';
+} from '@domain/sound-scene';
+import type { ArrangementScene, SoundScene } from '@domain/sound-scene';
 
 interface CapturedScene extends ArrangementScene {
   readonly id: number;

@@ -1,6 +1,6 @@
-import { DEFAULT_DRONE_EFFECT_ORDER, DEFAULT_DRONE_EFFECTS } from '../../domain/drone-effects';
-import type { ChorusSettings, CompressorSettings, DroneEffectId, FlangerSettings, OverdriveSettings } from '../../domain/drone-effects';
-import type { DroneMixSettings } from '../../domain/drone';
+import { DEFAULT_DRONE_EFFECT_ORDER, DEFAULT_DRONE_EFFECTS } from '@domain/drone-effects';
+import type { ChorusSettings, CompressorSettings, DroneEffectId, FlangerSettings, OverdriveSettings } from '@domain/drone-effects';
+import type { DroneMixSettings } from '@domain/drone';
 import { WebAudioDelay } from './web-audio-delay';
 import { createCompressor, createOverdrive } from './web-audio-drone-drive-and-compression';
 import { WebAudioEffectStage } from './web-audio-effect-stage';

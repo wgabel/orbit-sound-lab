@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { connectPatchPorts, createPatchModule, validatePatch } from './patch';
-import type { Patch } from './patch';
+import { connectPatchPorts, createPatchModule, validatePatch } from '@domain/patch';
+import type { Patch } from '@domain/patch';
 import { DEFAULT_SIMPLEX_NOISE, readSimplexNoise } from './simplex-noise';
 
 it('replays a smooth, bounded pattern with seed and rate controlling its shape and speed', () => {

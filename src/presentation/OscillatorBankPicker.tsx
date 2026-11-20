@@ -1,4 +1,4 @@
-import { oscillatorBankGroups } from '../domain/built-in-oscillator-banks';
+import { oscillatorBankGroups } from '@domain/built-in-oscillator-banks';
 
 export function OscillatorBankPicker({onLoad}: {onLoad(presetId: string): void}) {
   return <label className="oscillator-bank-picker">5-oscillator preset

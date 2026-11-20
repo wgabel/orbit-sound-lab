@@ -1,5 +1,5 @@
-import { readSimplexNoise } from '../../domain/simplex-noise';
-import type { SimplexNoiseSettings } from '../../domain/simplex-noise';
+import { readSimplexNoise } from '@domain/simplex-noise';
+import type { SimplexNoiseSettings } from '@domain/simplex-noise';
 
 interface SimplexNoiseOptions {
   readonly processorOptions: {readonly settings: SimplexNoiseSettings; readonly originFrame: number};

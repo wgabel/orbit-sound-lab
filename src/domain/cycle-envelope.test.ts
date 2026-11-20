@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { DEFAULT_CYCLE_ENVELOPE, readCycleEnvelopeGain, sampleCycleEnvelope, validateCycleEnvelope } from './cycle-envelope';
-import { createPatchModule, getPatchPort, validatePatch } from './patch';
-import type { Patch } from './patch';
+import { createPatchModule, getPatchPort, validatePatch } from '@domain/patch';
+import type { Patch } from '@domain/patch';
 
 it('fits attack, decay, sustain and release within a single cycle', () => {
   const envelope = DEFAULT_CYCLE_ENVELOPE;

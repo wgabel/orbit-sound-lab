@@ -1,5 +1,5 @@
-import type { PerformancePosition } from '../../domain/performance-pad';
-import { getPerformanceMix } from '../../domain/performance-pad';
+import type { PerformancePosition } from '@domain/performance-pad';
+import { getPerformanceMix } from '@domain/performance-pad';
 
 const SMOOTHING_SECONDS = 0.015;
 const BUTTERWORTH_RESONANCE_DECIBELS = 20 * Math.log10(Math.SQRT1_2);

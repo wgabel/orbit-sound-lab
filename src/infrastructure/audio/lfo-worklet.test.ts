@@ -1,6 +1,6 @@
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import type { LfoWorkletConfiguration } from './web-audio-lfo-worklet';
-import { readLfoPreviewValue, readPatchLfoPhase } from '../../domain/patch-lfo';
+import { readLfoPreviewValue, readPatchLfoPhase } from '@domain/patch/lfo';
 
 interface WorkletInstance {
   readonly port: {onmessage: (event: {data: string | LfoWorkletConfiguration}) => void};

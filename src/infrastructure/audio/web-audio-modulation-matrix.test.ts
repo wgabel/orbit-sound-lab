@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { WebAudioModulationMatrix } from './web-audio-modulation-matrix';
-import type { ModulationSource, ModulationDestination } from '../../application/modulation-contracts';
+import type { ModulationSource, ModulationDestination } from '@application/modulation-contracts';
 describe('modulation matrix', () => {
   it('connects once and disconnects on disposal', () => {
     const output = {connect:vi.fn(),disconnect:vi.fn()} as unknown as AudioNode;

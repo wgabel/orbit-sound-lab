@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readAutomationPreset } from './automation-preset';
-import { DEFAULT_AUTOMATION_STEP_ENVELOPE } from './patch-automation';
-import { applyHarmonicsPreset } from './patch-harmonics';
+import { DEFAULT_AUTOMATION_STEP_ENVELOPE } from '@domain/patch/automation';
+import { applyHarmonicsPreset } from '@domain/patch/harmonics';
 
 const automation = applyHarmonicsPreset({duration:3,mode:'once',shape:'steps',glide:0,
   points:[{position:0,value:0},{position:1,value:1}]},'dorian');

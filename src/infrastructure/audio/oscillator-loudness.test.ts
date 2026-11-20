@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_CYCLE_ENVELOPE } from '../../domain/cycle-envelope';
+import { DEFAULT_CYCLE_ENVELOPE } from '@domain/cycle-envelope';
 import { readCycleEnvelopeHarmonics } from './cycle-envelope-wave';
 import { analyseFoldedSineHarmonics, readOscillatorLoudnessGain } from './oscillator-loudness';
 

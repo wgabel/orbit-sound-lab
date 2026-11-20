@@ -1,4 +1,4 @@
-import { MAXIMUM_PULSE_WIDTH, MINIMUM_PULSE_WIDTH } from '../../domain/drone';
+import { MAXIMUM_PULSE_WIDTH, MINIMUM_PULSE_WIDTH } from '@domain/drone';
 import moduleUrl from './pulse.worklet.js?url&no-inline';
 
 export class WebAudioPulseWorkletFactory {

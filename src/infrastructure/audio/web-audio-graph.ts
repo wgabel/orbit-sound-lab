@@ -1,4 +1,4 @@
-import type { AudioGraph, AudioGraphConnection, AudioGraphModule, AudioGraphPort } from '../../application/audio-graph-contracts';
+import type { AudioGraph, AudioGraphConnection, AudioGraphModule, AudioGraphPort } from '@application/audio-graph-contracts';
 
 /** Connects registered modules, rejects cycles, and owns only graph-created connections. */
 export class WebAudioGraph implements AudioGraph {

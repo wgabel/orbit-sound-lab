@@ -1,11 +1,11 @@
 import { useCallback, useId, useRef, useState } from 'react';
-import { applyPitchOffset, getEffectiveCutoffLfoDepth } from '../domain/modulation';
-import type { OscillatorSettings } from '../domain/drone';
+import { applyPitchOffset, getEffectiveCutoffLfoDepth } from '@domain/modulation';
+import type { OscillatorSettings } from '@domain/drone';
 import {
   getAmplitudeModulationRange, getOscillatorModulationRange, getOscillatorSliderSpan, OSCILLATOR_MODULATION_PARAMETERS,
   replaceOscillatorModulationRoute, validateOscillatorModulationRoutes
-} from '../domain/oscillator-modulation';
-import type { OscillatorModulationParameter, OscillatorModulationRoute, OscillatorModulationSignal } from '../domain/oscillator-modulation';
+} from '@domain/oscillator-modulation';
+import type { OscillatorModulationParameter, OscillatorModulationRoute, OscillatorModulationSignal } from '@domain/oscillator-modulation';
 import { NumericSlider } from './NumericSlider';
 
 interface OscillatorModulationSliderProps {

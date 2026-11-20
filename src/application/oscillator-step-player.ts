@@ -1,6 +1,6 @@
-import { getStepGlideValues, prepareStepGlide } from '../domain/oscillator-step-sequence';
-import type { OscillatorStep, StepValue } from '../domain/oscillator-step-sequence';
-import type { DroneSettings } from '../domain/drone';
+import { getStepGlideValues, prepareStepGlide } from '@domain/oscillator-step-sequence';
+import type { OscillatorStep, StepValue } from '@domain/oscillator-step-sequence';
+import type { DroneSettings } from '@domain/drone';
 
 export type StepPlaybackMode = 'once' | 'loop' | 'manual';
 

@@ -1,7 +1,7 @@
 import { memo, useId } from 'react';
-import { MAX_SHELF_FREQUENCY_HZ, MAX_SHELF_GAIN_DECIBELS, MIN_SHELF_FREQUENCY_HZ } from '../domain/drone';
-import type { DroneMixSettings } from '../domain/drone';
-import { getDroneShelfResponseDecibels, getShelfFrequencyHz } from '../domain/drone-shelf-response';
+import { MAX_SHELF_FREQUENCY_HZ, MAX_SHELF_GAIN_DECIBELS, MIN_SHELF_FREQUENCY_HZ } from '@domain/drone';
+import type { DroneMixSettings } from '@domain/drone';
+import { getDroneShelfResponseDecibels, getShelfFrequencyHz } from '@domain/drone-shelf-response';
 
 interface DroneShelfResponseProps {
   readonly settings: Pick<DroneMixSettings, 'lowShelf' | 'highShelf'>;

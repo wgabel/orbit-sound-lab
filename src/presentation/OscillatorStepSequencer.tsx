@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { createOscillatorStep, hasValidStepTimes, MAX_STEP_SECONDS, readStepValue, STEP_TARGET_LABELS } from '../domain/oscillator-step-sequence';
-import type { OscillatorStep, StepTarget, StepValue } from '../domain/oscillator-step-sequence';
-import type { DroneSettings } from '../domain/drone';
-import type { DroneLayerId } from '../domain/drone-layers';
+import { createOscillatorStep, hasValidStepTimes, MAX_STEP_SECONDS, readStepValue, STEP_TARGET_LABELS } from '@domain/oscillator-step-sequence';
+import type { OscillatorStep, StepTarget, StepValue } from '@domain/oscillator-step-sequence';
+import type { DroneSettings } from '@domain/drone';
+import type { DroneLayerId } from '@domain/drone-layers';
 import { useOscillatorStepPlayback } from './use-oscillator-step-playback';
 
 interface OscillatorStepSequencerProps {

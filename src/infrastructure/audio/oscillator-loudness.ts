@@ -1,5 +1,5 @@
-import type { OscillatorWaveform } from '../../domain/drone';
-import { foldSineSample } from '../../domain/oscillator-shapes';
+import type { OscillatorWaveform } from '@domain/drone';
+import { foldSineSample } from '@domain/oscillator-shapes';
 import { analyseCycleHarmonics, readCycleEnvelopeHarmonics } from './cycle-envelope-wave';
 import { CLEAN_FOLD_INPUT_GAIN } from './sine-wavefolding';
 

@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
-import { DEFAULT_OSCILLATOR_SHAPE, MAXIMUM_PULSE_WIDTH, MINIMUM_PULSE_WIDTH } from '../domain/drone';
-import type { OscillatorSettings } from '../domain/drone';
-import { DEFAULT_SHAPE_LFO_DEPTH } from '../domain/modulation';
-import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
+import { DEFAULT_OSCILLATOR_SHAPE, MAXIMUM_PULSE_WIDTH, MINIMUM_PULSE_WIDTH } from '@domain/drone';
+import type { OscillatorSettings } from '@domain/drone';
+import { DEFAULT_SHAPE_LFO_DEPTH } from '@domain/modulation';
+import type { LowFrequencyOscillatorSettings } from '@domain/modulation';
 import { NumericSlider } from './NumericSlider';
 import { OscillatorLfoControls } from './OscillatorLfoControls';
 

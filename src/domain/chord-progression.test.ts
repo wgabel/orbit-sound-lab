@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CHORD_SETTINGS, getChordMidiNotes } from './chord';
 import { DEFAULT_CHORD_PROGRESSION, validateChordProgression, voiceProgressionStep } from './chord-progression';
-import { readPatchArrangement } from './patch-arrangement';
-import { connectPatchPorts, createPatchModule } from './patch';
-import { readPatchPreset } from './patch-preset';
+import { readPatchArrangement } from '@domain/patch/arrangement';
+import { connectPatchPorts, createPatchModule } from '@domain/patch';
+import { readPatchPreset } from '@domain/patch/presets/model';
 
 describe('Chord Progression', () => {
   const progression = createPatchModule('chordProgression','progression');

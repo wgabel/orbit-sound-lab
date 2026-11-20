@@ -1,5 +1,5 @@
-import { sampleCycleEnvelope } from '../../domain/cycle-envelope';
-import type { CycleEnvelope } from '../../domain/cycle-envelope';
+import { sampleCycleEnvelope } from '@domain/cycle-envelope';
+import type { CycleEnvelope } from '@domain/cycle-envelope';
 
 const HARMONIC_COUNT = 64;
 

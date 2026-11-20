@@ -1,11 +1,11 @@
-import { getMorphAutomationProgress, validateMorphAutomation } from '../../domain/morph-automation';
-import type { MorphAutomationSettings } from '../../domain/morph-automation';
-import type { ScenePlayback } from '../../application/audio-contracts';
+import { getMorphAutomationProgress, validateMorphAutomation } from '@domain/morph-automation';
+import type { MorphAutomationSettings } from '@domain/morph-automation';
+import type { ScenePlayback } from '@application/audio-contracts';
 import {
   ARRANGEMENT_FADE_IN_SECONDS, ARRANGEMENT_FADE_OUT_SECONDS, ARRANGEMENT_TAIL_SECONDS,
   sceneBlendGains, validateArrangement
-} from '../../domain/sound-scene';
-import type { ArrangementScene, SoundScene } from '../../domain/sound-scene';
+} from '@domain/sound-scene';
+import type { ArrangementScene, SoundScene } from '@domain/sound-scene';
 import { fadeGain, PLAYBACK_FADE_SECONDS } from './web-audio-fade';
 
 interface SceneVoice {

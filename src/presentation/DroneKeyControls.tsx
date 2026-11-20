@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ENVELOPE_MAX_SECONDS, ENVELOPE_MIN_SECONDS, MAX_DRONE_BEND_CENTS } from '../domain/drone-envelope';
-import type { DroneEnvelope } from '../domain/drone-envelope';
-import type { DroneLayerId } from '../domain/drone-layers';
+import { ENVELOPE_MAX_SECONDS, ENVELOPE_MIN_SECONDS, MAX_DRONE_BEND_CENTS } from '@domain/drone-envelope';
+import type { DroneEnvelope } from '@domain/drone-envelope';
+import type { DroneLayerId } from '@domain/drone-layers';
 import { NumericSlider } from './NumericSlider';
 
 interface DroneKeyControlsProps {

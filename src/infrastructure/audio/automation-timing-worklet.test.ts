@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_AUTOMATION_STEP_ENVELOPE, limitAutomationSteps, readAutomationValue } from '../../domain/patch-automation';
-import type { PatchAutomation } from '../../domain/patch-automation';
+import { DEFAULT_AUTOMATION_STEP_ENVELOPE, limitAutomationSteps, readAutomationValue } from '@domain/patch/automation';
+import type { PatchAutomation } from '@domain/patch/automation';
 import { compileAutomationPattern } from './web-audio-automation-timing';
 import workletSource from './automation-timing.worklet.js?raw';
 

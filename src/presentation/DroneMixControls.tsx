@@ -1,5 +1,5 @@
-import type { DroneMixSettings } from '../domain/drone';
-import type { DroneLayerId } from '../domain/drone-layers';
+import type { DroneMixSettings } from '@domain/drone';
+import type { DroneLayerId } from '@domain/drone-layers';
 import { NumericSlider } from './NumericSlider';
 
 interface DroneMixControlsProps {

@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import workletSource from './pulse.worklet.js?raw';
-import { MAXIMUM_PULSE_WIDTH, MINIMUM_PULSE_WIDTH } from '../../domain/drone';
+import { MAXIMUM_PULSE_WIDTH, MINIMUM_PULSE_WIDTH } from '@domain/drone';
 
 interface PulseProcessor {
   readonly port: {onmessage: () => void};

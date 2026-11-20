@@ -1,12 +1,12 @@
-import { getOscillatorModulationRange, validateOscillatorModulationRoutes } from '../domain/oscillator-modulation';
-import type { OscillatorModulationParameter, OscillatorModulationRoute } from '../domain/oscillator-modulation';
+import { getOscillatorModulationRange, validateOscillatorModulationRoutes } from '@domain/oscillator-modulation';
+import type { OscillatorModulationParameter, OscillatorModulationRoute } from '@domain/oscillator-modulation';
 import type { DroneVoice, DroneVoiceFactory, SynthesizerController } from './audio-contracts';
 import type { ModulationMatrix, ModulationSource, ModulationSourceFactory, ModulationDestination } from './modulation-contracts';
-import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
-import { getEffectiveCutoffLfoDepth, validateLowFrequencyOscillatorBank, validateLowFrequencyOscillatorSettings } from '../domain/modulation';
+import type { LowFrequencyOscillatorSettings } from '@domain/modulation';
+import { getEffectiveCutoffLfoDepth, validateLowFrequencyOscillatorBank, validateLowFrequencyOscillatorSettings } from '@domain/modulation';
 import type { AudioGraph } from './audio-graph-contracts';
-import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '../domain/drone';
-import { validateDroneMix, validateDroneSettings } from '../domain/drone';
+import type { DroneMixSettings, DroneSettings, OscillatorSettings } from '@domain/drone';
+import { validateDroneMix, validateDroneSettings } from '@domain/drone';
 
 interface ActiveModulation { readonly source: ModulationSource; readonly destinations: readonly ModulationDestination[]; readonly target: LowFrequencyOscillatorSettings['destination']; }
 

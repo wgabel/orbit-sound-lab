@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { WebAudioGraph } from './web-audio-graph';
-import type { AudioGraphModule, AudioGraphConnection } from '../../application/audio-graph-contracts';
+import type { AudioGraphModule, AudioGraphConnection } from '@application/audio-graph-contracts';
 function makeModule(id: string) {
   const output = {connect: vi.fn(), disconnect: vi.fn()} as unknown as AudioNode;
   const input = {} as AudioNode;

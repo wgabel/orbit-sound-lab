@@ -1,4 +1,4 @@
-import type { SimplexNoiseSettings } from '../../domain/simplex-noise';
+import type { SimplexNoiseSettings } from '@domain/simplex-noise';
 import { createControlMonitor } from './web-audio-control-monitor';
 import moduleUrl from './simplex-noise.worklet.ts?worker&url';
 

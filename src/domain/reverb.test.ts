@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createPatchModule, getPatchPort, validatePatch } from './patch';
-import type { Patch } from './patch';
+import { createPatchModule, getPatchPort, validatePatch } from '@domain/patch';
+import type { Patch } from '@domain/patch';
 import { DEFAULT_REVERB, REVERB_PRESETS, resolveReverb, validateDroneReverb, validateReverb } from './reverb';
 
 describe('reverb settings', () => {
