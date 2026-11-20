@@ -1,5 +1,5 @@
 import { useId, useState } from 'react';
-import { LFO_MAXIMUM_RATE_HZ, LFO_MINIMUM_RATE_HZ } from '../domain/modulation';
+import { LFO_MAXIMUM_RATE_HZ, LFO_MINIMUM_RATE_HZ } from '@domain/modulation';
 
 const MINIMUM_SECONDS = 1 / LFO_MAXIMUM_RATE_HZ;
 const MAXIMUM_SECONDS = 1 / LFO_MINIMUM_RATE_HZ;

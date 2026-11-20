@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { KeyboardEvent, PointerEvent } from 'react';
-import type { PerformancePosition } from '../domain/performance-pad';
-import { NEUTRAL_PERFORMANCE_POSITION } from '../domain/performance-pad';
+import type { PerformancePosition } from '@domain/performance-pad';
+import { NEUTRAL_PERFORMANCE_POSITION } from '@domain/performance-pad';
 
 interface PerformancePadProps {
   readonly onChange: (position: PerformancePosition) => void;

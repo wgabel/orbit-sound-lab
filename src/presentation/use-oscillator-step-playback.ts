@@ -1,8 +1,8 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { OscillatorStepPlayer } from '../application/oscillator-step-player';
-import type { StepPlaybackMode, StepPlayhead } from '../application/oscillator-step-player';
-import type { OscillatorStep, StepValue } from '../domain/oscillator-step-sequence';
-import type { DroneSettings } from '../domain/drone';
+import { OscillatorStepPlayer } from '@application/oscillator-step-player';
+import type { StepPlaybackMode, StepPlayhead } from '@application/oscillator-step-player';
+import type { OscillatorStep, StepValue } from '@domain/oscillator-step-sequence';
+import type { DroneSettings } from '@domain/drone';
 
 const STEP_UPDATE_INTERVAL_MS = 32;
 

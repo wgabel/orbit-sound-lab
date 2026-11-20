@@ -1,4 +1,4 @@
-import { foldSineSample } from '../../domain/oscillator-shapes';
+import { foldSineSample } from '@domain/oscillator-shapes';
 
 export const CLEAN_FOLD_INPUT_GAIN = 0.25;
 const MAXIMUM_DRIVE = 1 / CLEAN_FOLD_INPUT_GAIN;

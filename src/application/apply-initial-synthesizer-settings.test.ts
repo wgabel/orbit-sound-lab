@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDefaultDroneSettings } from '../domain/drone';
-import { createDefaultLowFrequencyOscillators } from '../domain/modulation';
+import { createDefaultDroneSettings } from '@domain/drone';
+import { createDefaultLowFrequencyOscillators } from '@domain/modulation';
 import type { SynthesizerController } from './audio-contracts';
 import { applyInitialSynthesizerSettings } from './apply-initial-synthesizer-settings';
 

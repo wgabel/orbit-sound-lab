@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { OscillatorStepPlayer } from './oscillator-step-player';
 import type { StepPlaybackMode, StepPlayhead } from './oscillator-step-player';
-import { applyStepValues, readStepValue } from '../domain/oscillator-step-sequence';
-import type { OscillatorStep, StepTarget } from '../domain/oscillator-step-sequence';
-import { createDefaultDroneLayer } from '../domain/drone-layers';
-import { loadBuiltInOscillatorBank } from '../domain/built-in-oscillator-banks';
+import { applyStepValues, readStepValue } from '@domain/oscillator-step-sequence';
+import type { OscillatorStep, StepTarget } from '@domain/oscillator-step-sequence';
+import { createDefaultDroneLayer } from '@domain/drone-layers';
+import { loadBuiltInOscillatorBank } from '@domain/built-in-oscillator-banks';
 
 function setup(mode: StepPlaybackMode, first: OscillatorStep, second: OscillatorStep) {
   let drone = loadBuiltInOscillatorBank('breathing-reed', createDefaultDroneLayer('A')).drone;

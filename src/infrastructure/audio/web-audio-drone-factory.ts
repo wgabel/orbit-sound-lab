@@ -1,5 +1,5 @@
-import type { DroneVoice, DroneVoiceFactory } from '../../application/audio-contracts';
-import type { DroneSettings } from '../../domain/drone';
+import type { DroneVoice, DroneVoiceFactory } from '@application/audio-contracts';
+import type { DroneSettings } from '@domain/drone';
 import type { WebAudioPulseWorkletFactory } from './web-audio-pulse-worklet';
 import { WebAudioDrone } from './web-audio-drone';
 export class WebAudioDroneFactory implements DroneVoiceFactory {

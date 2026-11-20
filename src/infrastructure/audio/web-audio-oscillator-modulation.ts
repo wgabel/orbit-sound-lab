@@ -1,4 +1,4 @@
-import type { OscillatorModulationRoute } from '../../domain/oscillator-modulation';
+import type { OscillatorModulationRoute } from '@domain/oscillator-modulation';
 
 const NEGATIVE_HALF = new Float32Array([-1, 0, 0]);
 const POSITIVE_HALF = new Float32Array([0, 0, 1]);

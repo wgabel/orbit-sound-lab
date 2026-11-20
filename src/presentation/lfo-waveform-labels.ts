@@ -1,5 +1,5 @@
-import { LFO_PULSE_WIDTH } from '../domain/lfo-waveforms';
-import type { LowFrequencyOscillatorWaveform } from '../domain/modulation';
+import { LFO_PULSE_WIDTH } from '@domain/lfo-waveforms';
+import type { LowFrequencyOscillatorWaveform } from '@domain/modulation';
 
 export const LFO_WAVEFORM_LABELS: Readonly<Record<LowFrequencyOscillatorWaveform,string>> = {
   sine: 'Sine',

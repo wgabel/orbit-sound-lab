@@ -1,4 +1,4 @@
-import type { DelaySettings } from '../domain/delay';
+import type { DelaySettings } from '@domain/delay';
 import { NumericSlider } from './NumericSlider';
 
 export function DelayControls({settings,onChange,disabled}: {

@@ -1,9 +1,9 @@
-import { DEFAULT_CYCLE_ENVELOPE } from '../../domain/cycle-envelope';
-import type { CycleEnvelope } from '../../domain/cycle-envelope';
+import { DEFAULT_CYCLE_ENVELOPE } from '@domain/cycle-envelope';
+import type { CycleEnvelope } from '@domain/cycle-envelope';
 import { readCycleEnvelopeHarmonics } from './cycle-envelope-wave';
-import { DEFAULT_OSCILLATOR_SHAPE, MAXIMUM_PULSE_WIDTH, MINIMUM_PULSE_WIDTH } from '../../domain/drone';
-import type { OscillatorSettings, OscillatorWaveform } from '../../domain/drone';
-import { applyPitchOffset } from '../../domain/modulation';
+import { DEFAULT_OSCILLATOR_SHAPE, MAXIMUM_PULSE_WIDTH, MINIMUM_PULSE_WIDTH } from '@domain/drone';
+import type { OscillatorSettings, OscillatorWaveform } from '@domain/drone';
+import { applyPitchOffset } from '@domain/modulation';
 import type { WebAudioPulseWorkletFactory } from './web-audio-pulse-worklet';
 import { analyseFoldedSineHarmonics, PEAKED_SINE_HARMONICS, readOscillatorLoudnessGain } from './oscillator-loudness';
 import type { CycleHarmonics } from './oscillator-loudness';

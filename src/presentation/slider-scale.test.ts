@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyPitchOffset } from '../domain/modulation';
+import { applyPitchOffset } from '@domain/modulation';
 import { getSliderPosition, getSliderValue } from './slider-scale';
 
 describe('slider scales', () => {

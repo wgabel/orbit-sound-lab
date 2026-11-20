@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { canConnectPatchPorts, connectPatchPorts, createExamplePatch, createPatchModule, getPatchModuleLabel, readPatchDroneLayer, setPatchDroneLayer, validatePatch } from './patch';
-import type { Patch } from './patch';
-import { limitAutomationSteps, readAutomationPhase, readAutomationValue } from './patch-automation';
+import { canConnectPatchPorts, connectPatchPorts, createExamplePatch, createPatchModule, getPatchModuleLabel, readPatchDroneLayer, setPatchDroneLayer, validatePatch } from '@domain/patch';
+import type { Patch } from '@domain/patch';
+import { limitAutomationSteps, readAutomationPhase, readAutomationValue } from '@domain/patch/automation';
 import { createDefaultDroneLayer } from './drone-layers';
 import { tuneSceneLayer } from './sound-scene';
 import { createDefaultDelaySettings } from './delay';

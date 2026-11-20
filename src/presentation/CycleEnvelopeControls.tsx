@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { MINIMUM_CYCLE_STAGE, readCycleEnvelopeGain, sampleCycleEnvelope } from '../domain/cycle-envelope';
-import type { CycleEnvelope } from '../domain/cycle-envelope';
+import { MINIMUM_CYCLE_STAGE, readCycleEnvelopeGain, sampleCycleEnvelope } from '@domain/cycle-envelope';
+import type { CycleEnvelope } from '@domain/cycle-envelope';
 import { NumericSlider } from './NumericSlider';
 
 const PREVIEW_WIDTH = 320;

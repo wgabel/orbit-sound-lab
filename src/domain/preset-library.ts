@@ -9,7 +9,7 @@ import type { LowFrequencyOscillatorSettings } from './modulation';
 import { createDefaultLowFrequencyOscillators, LFO_DESTINATIONS, validateLowFrequencyOscillatorSettings } from './modulation';
 import type { DelaySettings } from './delay';
 import { validateDelaySettings } from './delay';
-import { downloadPresetJson, runPresetRequest } from '../infrastructure/storage/preset-storage';
+import { downloadPresetJson, runPresetRequest } from '@infrastructure/storage/preset-storage';
 
 export interface SoundPreset {
   readonly schemaVersion: 1;

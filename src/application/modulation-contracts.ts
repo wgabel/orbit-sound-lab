@@ -1,4 +1,4 @@
-import type { LowFrequencyOscillatorSettings } from '../domain/modulation';
+import type { LowFrequencyOscillatorSettings } from '@domain/modulation';
 /** Modulation is control signal routing, independent of the audio graph. */
 export interface ModulationSource { readonly output: AudioNode; start(): void; dispose(): void; update(settings: LowFrequencyOscillatorSettings): void; }
 export interface ModulationDestination { readonly id: string; readonly parameter: AudioParam; }

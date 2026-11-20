@@ -1,9 +1,9 @@
-import type { SoundLabController } from '../application/audio-contracts';
-import { WebAudioPulseWorkletFactory } from '../infrastructure/audio/web-audio-pulse-worklet';
-import { WebAudioLfoWorkletFactory } from '../infrastructure/audio/web-audio-lfo-worklet';
-import { WebAudioLowFrequencyOscillatorFactory } from '../infrastructure/audio/web-audio-low-frequency-oscillator';
-import { WebAudioOutputProtection } from '../infrastructure/audio/web-audio-output-protection';
-import { WebAudioScenePlayback } from '../infrastructure/audio/web-audio-scene-playback';
+import type { SoundLabController } from '@application/audio-contracts';
+import { WebAudioPulseWorkletFactory } from '@infrastructure/audio/web-audio-pulse-worklet';
+import { WebAudioLfoWorkletFactory } from '@infrastructure/audio/web-audio-lfo-worklet';
+import { WebAudioLowFrequencyOscillatorFactory } from '@infrastructure/audio/web-audio-low-frequency-oscillator';
+import { WebAudioOutputProtection } from '@infrastructure/audio/web-audio-output-protection';
+import { WebAudioScenePlayback } from '@infrastructure/audio/web-audio-scene-playback';
 import { createSoundLabVoice } from './create-sound-lab-voice';
 
 export function createSynthesizer(): SoundLabController {

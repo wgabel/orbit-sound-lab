@@ -1,4 +1,4 @@
-import { readPeriodicLfoSample } from '../../domain/lfo-waveforms';
+import { readPeriodicLfoSample } from '@domain/lfo-waveforms';
 import type { LfoWorkletConfiguration } from './web-audio-lfo-worklet';
 
 interface LfoProcessorOptions {

@@ -1,5 +1,5 @@
-import { DRONE_EFFECT_RANGES } from '../../domain/drone-effects';
-import type { ChorusSettings, FlangerSettings } from '../../domain/drone-effects';
+import { DRONE_EFFECT_RANGES } from '@domain/drone-effects';
+import type { ChorusSettings, FlangerSettings } from '@domain/drone-effects';
 import type { EffectProcessor } from './web-audio-effect-stage';
 
 const MODULATION_SMOOTHING_SECONDS = 0.02;

@@ -1,5 +1,5 @@
-import { MAXIMUM_REVERB_PRE_DELAY_MILLISECONDS, resolveReverb } from '../../domain/reverb';
-import type { DroneReverbSettings, ReverbSpace } from '../../domain/reverb';
+import { MAXIMUM_REVERB_PRE_DELAY_MILLISECONDS, resolveReverb } from '@domain/reverb';
+import type { DroneReverbSettings, ReverbSpace } from '@domain/reverb';
 
 const BLEND_TIME_CONSTANT_SECONDS = 0.015;
 const RESPONSE_CROSSFADE_SECONDS = 0.05;

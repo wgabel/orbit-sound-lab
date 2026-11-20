@@ -1,5 +1,5 @@
-import { isAutomationShape, validateAutomation } from './patch-automation';
-import type { AutomationPoint, AutomationStepEnvelope, PatchAutomation } from './patch-automation';
+import { isAutomationShape, validateAutomation } from '@domain/patch/automation';
+import type { AutomationPoint, AutomationStepEnvelope, PatchAutomation } from '@domain/patch/automation';
 
 export const AUTOMATION_PRESET_NAME_LIMIT = 120;
 

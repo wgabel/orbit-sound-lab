@@ -1,5 +1,5 @@
-import type { DelaySettings } from '../../domain/delay';
-import { validateDelaySettings } from '../../domain/delay';
+import type { DelaySettings } from '@domain/delay';
+import { validateDelaySettings } from '@domain/delay';
 
 /** Echo with a bounded feedback loop shared by drone and master delay. */
 export class WebAudioDelay {

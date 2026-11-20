@@ -1,9 +1,9 @@
 import { useId, useRef, useState } from 'react';
-import { builtInOscillatorPresetGroups, builtInOscillatorPresets, createBuiltInOscillatorSnapshot } from '../domain/built-in-oscillator-presets';
-import { retargetOscillatorSnapshot } from '../domain/oscillator-clipboard';
-import type { OscillatorSnapshot } from '../domain/oscillator-clipboard';
-import { OSCILLATOR_PRESET_NAME_LIMIT } from '../domain/oscillator-preset';
-import type { OscillatorPreset } from '../domain/oscillator-preset';
+import { builtInOscillatorPresetGroups, builtInOscillatorPresets, createBuiltInOscillatorSnapshot } from '@domain/built-in-oscillator-presets';
+import { retargetOscillatorSnapshot } from '@domain/oscillator-clipboard';
+import type { OscillatorSnapshot } from '@domain/oscillator-clipboard';
+import { OSCILLATOR_PRESET_NAME_LIMIT } from '@domain/oscillator-preset';
+import type { OscillatorPreset } from '@domain/oscillator-preset';
 
 interface OscillatorPresetPickerProps {
   readonly oscillatorNumber: number;

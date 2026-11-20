@@ -1,6 +1,6 @@
-import { readAutomationPreset } from '../../domain/automation-preset';
-import type { AutomationPreset } from '../../domain/automation-preset';
-import type { PatchAutomation } from '../../domain/patch-automation';
+import { readAutomationPreset } from '@domain/automation-preset';
+import type { AutomationPreset } from '@domain/automation-preset';
+import type { PatchAutomation } from '@domain/patch/automation';
 import { downloadPresetJson, readPresetJson, runPresetRequest } from './preset-storage';
 
 const DATABASE_NAME = 'orbit-sound-lab-automation-presets';

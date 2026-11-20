@@ -1,5 +1,5 @@
-import { MAX_SHELF_FREQUENCY_HZ, MAX_SHELF_GAIN_DECIBELS, MIN_SHELF_FREQUENCY_HZ } from '../domain/drone';
-import type { ShelfEqSettings } from '../domain/drone';
+import { MAX_SHELF_FREQUENCY_HZ, MAX_SHELF_GAIN_DECIBELS, MIN_SHELF_FREQUENCY_HZ } from '@domain/drone';
+import type { ShelfEqSettings } from '@domain/drone';
 import { DroneShelfResponse } from './DroneShelfResponse';
 import { NumericSlider } from './NumericSlider';
 

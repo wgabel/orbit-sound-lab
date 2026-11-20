@@ -1,5 +1,5 @@
-import { DEFAULT_DRONE_ENVELOPE, ENVELOPE_MIN_SECONDS, validateDroneEnvelope } from '../../domain/drone-envelope';
-import type { DroneEnvelope } from '../../domain/drone-envelope';
+import { DEFAULT_DRONE_ENVELOPE, ENVELOPE_MIN_SECONDS, validateDroneEnvelope } from '@domain/drone-envelope';
+import type { DroneEnvelope } from '@domain/drone-envelope';
 
 interface EnvelopePoint { readonly time: number; readonly gain: number; }
 

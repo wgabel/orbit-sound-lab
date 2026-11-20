@@ -1,9 +1,9 @@
 import { useId, useLayoutEffect, useRef, useState } from 'react';
-import { DEFAULT_DRONE_EFFECT_ORDER, DEFAULT_DRONE_EFFECTS, DRONE_EFFECT_RANGES, moveDroneEffect } from '../domain/drone-effects';
-import type { ChorusSettings, DroneEffectId, DroneEffectsSettings, FlangerSettings } from '../domain/drone-effects';
-import type { DroneMixSettings } from '../domain/drone';
-import type { DroneLayerId } from '../domain/drone-layers';
-import { resolveReverb } from '../domain/reverb';
+import { DEFAULT_DRONE_EFFECT_ORDER, DEFAULT_DRONE_EFFECTS, DRONE_EFFECT_RANGES, moveDroneEffect } from '@domain/drone-effects';
+import type { ChorusSettings, DroneEffectId, DroneEffectsSettings, FlangerSettings } from '@domain/drone-effects';
+import type { DroneMixSettings } from '@domain/drone';
+import type { DroneLayerId } from '@domain/drone-layers';
+import { resolveReverb } from '@domain/reverb';
 import { DelayControls } from './DelayControls';
 import { NumericSlider } from './NumericSlider';
 import { ReverbControls } from './ReverbControls';

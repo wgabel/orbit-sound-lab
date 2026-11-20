@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import { LFO_WAVEFORM_LABELS } from './lfo-waveform-labels';
-import { AMPLITUDE_LFO_CENTER, DEFAULT_SHAPE_LFO_DEPTH, LOW_FREQUENCY_OSCILLATOR_WAVEFORMS, LFO_MAXIMUM_RATE_HZ, LFO_MINIMUM_RATE_HZ } from '../domain/modulation';
-import type { LowFrequencyOscillatorSettings, LowFrequencyOscillatorWaveform } from '../domain/modulation';
+import { AMPLITUDE_LFO_CENTER, DEFAULT_SHAPE_LFO_DEPTH, LOW_FREQUENCY_OSCILLATOR_WAVEFORMS, LFO_MAXIMUM_RATE_HZ, LFO_MINIMUM_RATE_HZ } from '@domain/modulation';
+import type { LowFrequencyOscillatorSettings, LowFrequencyOscillatorWaveform } from '@domain/modulation';
 import { LfoCycleInput } from './LfoCycleInput';
 import { NumericSlider } from './NumericSlider';
 

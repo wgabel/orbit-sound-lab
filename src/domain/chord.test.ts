@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest';
 import {DEFAULT_CHORD_SETTINGS,getChordFrequencies,getChordMidiNotes,getMaximumChordInversion,validateChordSettings} from './chord';
-import {connectPatchPorts,createPatchModule,validatePatch} from './patch';
+import {connectPatchPorts,createPatchModule,validatePatch} from '@domain/patch';
 
 describe('Chord Generator',()=>{
   it('generates equal-tempered C major triad',()=>{

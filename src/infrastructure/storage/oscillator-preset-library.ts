@@ -1,6 +1,6 @@
-import type { OscillatorSnapshot } from '../../domain/oscillator-clipboard';
-import { readOscillatorPreset } from '../../domain/oscillator-preset';
-import type { OscillatorPreset } from '../../domain/oscillator-preset';
+import type { OscillatorSnapshot } from '@domain/oscillator-clipboard';
+import { readOscillatorPreset } from '@domain/oscillator-preset';
+import type { OscillatorPreset } from '@domain/oscillator-preset';
 import { runPresetRequest } from './preset-storage';
 
 const DATABASE_NAME = 'orbit-sound-lab-oscillator-presets';

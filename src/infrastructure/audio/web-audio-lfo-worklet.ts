@@ -1,4 +1,4 @@
-import type { LowFrequencyOscillatorWaveform } from '../../domain/modulation';
+import type { LowFrequencyOscillatorWaveform } from '@domain/modulation';
 import moduleUrl from './lfo.worklet.ts?worker&url';
 
 export interface LfoWorkletConfiguration {

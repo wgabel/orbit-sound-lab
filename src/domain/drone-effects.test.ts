@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createDefaultDelaySettings } from './delay';
 import { DEFAULT_DRONE_EFFECT_ORDER, DEFAULT_DRONE_EFFECTS, moveDroneEffect, validateDroneEffects } from './drone-effects';
 import { createDefaultDroneLayer } from './drone-layers';
-import { createPatchModule, readPatchDroneLayer, setPatchDroneLayer, validatePatch } from './patch';
+import { createPatchModule, readPatchDroneLayer, setPatchDroneLayer, validatePatch } from '@domain/patch';
 import { createPreset, loadPresetSound, validatePreset } from './preset-library';
 import { sceneFromPreset } from './sound-scene';
 
